@@ -1,0 +1,16 @@
+# Datos y fotos: nunca se suben (las ubicaciones de jaguar son sensibles)
+.biotrampa*.json
+*.tmp
+Clasificadas/
+prueba_mac/
+Referencias de individuos/
+# Respaldos y papelera
+antiguas/
+_para_borrar/
+.DS_Store
+# Solo se sube lo necesario para arrancar la página
+CLAUDE.md
+README.md
+cambios_v*.md
+fonts/LEEME.txt
+icono.svg
