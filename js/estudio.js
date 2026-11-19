@@ -42,7 +42,7 @@ function readDownList() { // devuelve los periodos válidos, o null (y avisa) si
 }
 
 /* ---------- Resumen: secciones nuevas ---------- */
-const xsec = (id, title, tip, body) => { const f = ls('bt_sumfold', {}); return `<details class="ssec" id="${id}"${f[id] ? '' : ' open'}><summary title="${esc(tip)}">${title}</summary>${body}</details>`; };
+const xsec = (id, title, tip, body) => { const f = ls('bt_sumfold', {}); return `<details class="ssec" id="${id}"${f[id] ? '' : ' open'}><summary title="${esc(tip)}">${title}</summary><p class="ssub">${esc(tip)}</p>${body}</details>`; };
 function extraSummary() {
   const sp = sumData.cats.filter(c => sumData.evs.some(e => e.c === c && !isNaN(e.t)));
   const tr = ls('bt_tras', []), a = sp.includes(tr[0]) ? tr[0] : sp[0], b = sp.includes(tr[1]) && tr[1] !== a ? tr[1] : sp.find(c => c !== a);
@@ -57,6 +57,8 @@ function extraSummary() {
     + indSummaryHtml();
 }
 function bindExtraSummary() {
+  document.querySelectorAll('#sumbody [data-ficha]').forEach(r => r.onclick = () => { closeOver(true); openFicha(r.dataset.ficha); }); // 1.4.24
+  document.querySelectorAll('#sumbody img.indth').forEach(im => thumbAny(im, S.items[im.dataset.ix])); // miniatura de cada individuo
   drawFun(); drawAcu();
   if ($('#tr_a')) { const go = () => { sv('bt_tras', [$('#tr_a').value, $('#tr_b').value]); drawTras(); }; $('#tr_a').onchange = $('#tr_b').onchange = go; drawTras(); }
   if ($('#fungap')) $('#fungap').onchange = e => { sv('bt_gap', +e.target.value); drawFun(); };
@@ -80,9 +82,9 @@ function drawFun() {
   rows.forEach((r, k) => {
     const y = k * rh + 4, a = Date.parse(r.t.start), b = Date.parse(r.t.end) + DAY;
     svg += `<text x="${L - 8}" y="${y + 13}" class="lbl">${esc(r.s.length > 22 ? r.s.slice(0, 21) + '…' : r.s)}<title>${esc(r.s)}</title></text>`;
-    svg += `<rect x="${x(a)}" y="${y + 3}" width="${Math.max(1, x(b) - x(a))}" height="14" class="run${r.t.est ? ' est' : ''}"><title>${esc(r.s)}: ${r.t.start} a ${r.t.end}${r.t.est ? ' (estimado con las fotos)' : ''} · ${r.t.days} días-trampa${r.t.down ? ` (${r.t.down} sin funcionar)` : ''}</title></rect>`;
+    svg += `<rect x="${x(a)}" y="${y + 3}" width="${Math.max(1, x(b) - x(a))}" height="14" rx="5" class="run${r.t.est ? ' est' : ''}"><title>${esc(r.s)}: ${r.t.start} a ${r.t.end}${r.t.est ? ' (estimado con las fotos)' : ''} · ${r.t.days} días-trampa${r.t.down ? ` (${r.t.down} sin funcionar)` : ''}</title></rect>`;
     for (const p of r.dn) { if (!p.a || !p.b) continue; const pa = Date.parse(p.a), pb = Date.parse(p.b) + DAY; svg += `<rect x="${x(pa)}" y="${y + 1}" width="${Math.max(1.5, x(pb) - x(pa))}" height="18" class="down"><title>Sin funcionar: ${p.a} a ${p.b}${p.why ? ' · ' + esc(p.why) : ''}</title></rect>`; }
-    for (const d of r.ph) { const t = Date.parse(d); if (t < t0 || t >= t1) continue; svg += `<rect x="${x(t)}" y="${y + 6}" width="${Math.max(1.2, x(t + DAY) - x(t))}" height="8" class="ph"><title>${d}: hay fotos</title></rect>`; }
+    for (const d of r.ph) { const t = Date.parse(d); if (t < t0 || t >= t1) continue; svg += `<rect x="${x(t)}" y="${y + 6}" width="${Math.max(1.2, x(t + DAY) - x(t))}" height="8" rx="1" class="ph"><title>${d}: hay fotos</title></rect>`; }
   });
   svg += '</svg>';
   const gap = +ls('bt_gap', 7), sug = [];
@@ -126,9 +128,9 @@ function drawAcu() {
   let svg = `<svg viewBox="0 0 ${W} ${H}" class="acusvg" role="img" aria-label="Curva de acumulación de especies">`;
   for (let v = 0; v <= Math.ceil(tot); v += Math.max(1, Math.round(Math.ceil(tot) / 5))) svg += `<line x1="${L}" x2="${W - 10}" y1="${Y(v)}" y2="${Y(v)}" class="grid"/><text x="${L - 6}" y="${Y(v) + 4}" class="ax" style="text-anchor:end">${v}</text>`;
   for (let k = 0; k <= 4; k++) { const d = Math.round((n - 1) * k / 4); svg += `<text x="${X(d)}" y="${H - 8}" class="ax">${d + 1}</text>`; }
-  svg += `<polyline points="${pts.join(' ')}" class="cur"/><line x1="${L}" x2="${W - 10}" y1="${H - B}" y2="${H - B}" class="base"/></svg>`;
+  svg += `<polygon points="${X(0)},${Y(0)} ${pts.join(' ')} ${X(n - 1)},${Y(0)}" class="area"/><polyline points="${pts.join(' ')}" class="cur"/><line x1="${L}" x2="${W - 10}" y1="${H - B}" y2="${H - B}" class="base"/></svg>`;
   const last = Math.max(0, Math.floor(n * .9) - 1), rise = tot - mean[last];
-  box.innerHTML = svg + `<p class="hint tiny">Eje horizontal: días-trampa acumulados (${n}); vertical: especies. Con todo el esfuerzo se registraron <b>${Math.round(tot)}</b> especie(s) (Fantasmas no cuenta). En el último 10 % del esfuerzo la curva subió en promedio <b>${rise.toFixed(1)}</b> especie(s): ${rise < .5 ? 'casi ya no sube, así que es poco probable que falten especies comunes.' : 'todavía sube; con más días-trampa probablemente aparecerían más especies.'} Es el promedio de 100 órdenes al azar de los días-trampa.</p>`;
+  box.innerHTML = `<div class="sumnums"><div><b>${Math.round(tot)}</b><span>especies registradas</span></div><div><b>${n}</b><span>días-trampa</span></div><div><b class="acc">${rise < .5 ? 'Se aplana' : 'Sigue subiendo'}</b><span>último 10 % del esfuerzo</span></div></div>` + svg + `<p class="hint tiny">Eje horizontal: días-trampa acumulados (${n}); vertical: especies. Con todo el esfuerzo se registraron <b>${Math.round(tot)}</b> especie(s) (Fantasmas no cuenta). En el último 10 % del esfuerzo la curva subió en promedio <b>${rise.toFixed(1)}</b> especie(s): ${rise < .5 ? 'casi ya no sube, así que es poco probable que falten especies comunes.' : 'todavía sube; con más días-trampa probablemente aparecerían más especies.'} Es el promedio de 100 órdenes al azar de los días-trampa.</p>`;
 }
 
 /* Traslape de actividad (coeficiente Δ): densidades circulares con núcleo de von Mises.
@@ -159,7 +161,7 @@ function drawTras() {
   svg += `<polyline points="${line(f)}" class="ca"/><polyline points="${line(g)}" class="cb"/>`;
   for (let h = 0; h <= 24; h += 3) svg += `<text x="${X(h / 24 * G)}" y="${H - 8}" class="ax"${h ? (h === 24 ? ' style="text-anchor:end"' : '') : ' style="text-anchor:start"'}>${pad(h % 24)}:00</text>`;
   svg += `<line x1="${L}" x2="${W - L}" y1="${H - Bm}" y2="${H - Bm}" class="base"/></svg>`;
-  box.innerHTML = svg + `<p class="hint tiny"><span class="lg ca"></span> ${esc(a)} (${A.length} eventos) <span class="lg cb"></span> ${esc(b)} (${B.length} eventos). Traslape <b>Δ = ${dl.toFixed(2)}</b> (0 = horarios distintos, 1 = iguales; zona gris).${Math.min(A.length, B.length) < 20 ? ' <b>Pocos eventos:</b> el valor es poco confiable.' : ''} Es un cálculo aproximado (núcleo de von Mises); para publicarlo, calcúlalo con su intervalo de confianza en el paquete <i>overlap</i> de R.</p>`;
+  box.innerHTML = `<div class="sumnums"><div><b class="acc">${dl.toFixed(2)}</b><span>traslape Δ (0 a 1)</span></div><div><b>${A.length}</b><span>eventos de ${esc(a)}</span></div><div><b>${B.length}</b><span>eventos de ${esc(b)}</span></div></div>` + svg + `<p class="hint tiny"><span class="lg ca"></span> ${esc(a)} (${A.length} eventos) <span class="lg cb"></span> ${esc(b)} (${B.length} eventos). Traslape <b>Δ = ${dl.toFixed(2)}</b> (0 = horarios distintos, 1 = iguales; zona gris).${Math.min(A.length, B.length) < 20 ? ' <b>Pocos eventos:</b> el valor es poco confiable.' : ''} Es un cálculo aproximado (núcleo de von Mises); para publicarlo, calcúlalo con su intervalo de confianza en el paquete <i>overlap</i> de R.</p>`;
 }
 
 /* ---------- Respaldo del proyecto: solo datos (nunca fotos ni videos) ---------- */

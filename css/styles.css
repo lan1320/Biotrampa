@@ -77,9 +77,9 @@ h2.fold small{font-size:12px;font-weight:400;color:var(--fa)}h2.fold .ic{width:1
 .cat b,.stn b{font-weight:400;color:var(--fa);font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .stn.on b{color:var(--ac)}
 .cat.gh{color:var(--mu)}
-.dots{display:none;margin-left:-6px;padding:0 6px 3px;border:0;background:none;color:var(--mu);font-size:16px;line-height:1;border-radius:5px}
-.cat:hover .dots,.cat:focus-within .dots,.dots:focus-visible{display:block}.dots:hover{background:var(--ln);color:var(--tx)}
-.sdots{display:none;padding:0 6px 2px;margin-left:-6px;border-radius:5px;color:var(--mu);font-size:15px;line-height:1}.stn:hover .sdots{display:inline-block}.sdots:hover{background:var(--ln);color:var(--tx)}
+.dots{display:none;place-items:center;flex:none;width:30px;height:30px;margin:-6px -8px -6px -4px;padding:0;border:0;background:none;color:var(--mu);border-radius:7px;cursor:pointer}.dots svg{width:17px;height:17px} /* 1.4.24: centrado y con más área para picar */
+.cat:hover .dots,.cat:focus-within .dots,.dots:focus-visible{display:grid}.dots:hover{background:var(--ln);color:var(--tx)}
+.sdots{display:none}.stn:hover .sdots{display:grid}.sdots:hover{background:var(--ln);color:var(--tx)}
 .cat.mv{cursor:grab;touch-action:none}body.drag .cat.mv{cursor:grabbing}.cat.dragging{opacity:.4}
 .cat.dropb{box-shadow:inset 0 2px 0 var(--ac)}.cat.dropa{box-shadow:inset 0 -2px 0 var(--ac)}
 /* listas del catálogo de individuos */
@@ -255,7 +255,7 @@ body.home #pend{max-width:992px;margin:16px auto 0}
 #lupe{position:absolute;width:var(--lz,220px);height:var(--lz,220px);border-radius:50%;border:2px solid #fff;box-shadow:0 4px 18px #000a;pointer-events:none;background-repeat:no-repeat;z-index:3}
 .imgwrap.lupe,.imgwrap.lupe #big{cursor:none!important}
 .lbcats{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:2px 4px;flex:none}
-#lbmorebtn{padding:0 10px;background:var(--ac2);font-weight:500}#lbmorebtn kbd{margin-left:2px}
+#lbmorebtn{padding:0 10px;background:var(--ac2);font-weight:500}#lbcats>#lbadd{padding:0 9px;color:var(--mu)}#lbmorebtn kbd{margin-left:2px}
 #lbside{left:auto;right:0;width:300px;gap:4px;padding:8px}
 #lbside .lbql{flex-direction:row;align-items:center;gap:8px;height:36px;padding:0 10px;border:1px solid var(--ac);border-radius:8px;color:var(--mu)}
 #lbq{flex:1;min-width:0;padding:0;border:0;outline:0;background:none;box-shadow:none;font-size:13px}
@@ -338,7 +338,7 @@ table.st tr.tot td{font-weight:600;border-top:1.5px solid var(--ln)}
 .sttab input[type=date].sti{min-width:128px}.sttab td{vertical-align:middle}
 .stedit{padding:2px 10px;font-size:12px}
 #actchart svg{width:100%;max-width:760px;height:auto;display:block;margin-top:8px}
-#actchart .bar{fill:var(--ok)}#actchart .nightbg{fill:var(--ln);opacity:.6}#actchart .base{stroke:var(--mu)}
+#actchart .bar{fill:var(--ac)}#actchart .nightbg{fill:var(--act);opacity:.7}#actchart .base{stroke:var(--mu)}
 #actchart text{fill:var(--mu);font:11px var(--sans);text-anchor:middle}#actchart .v{fill:var(--tx)}
 .printhead{display:none}
 /* tutorial */
@@ -573,3 +573,62 @@ body.mouse :focus-visible{outline:none!important}
 .pripk,.priinc{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}.pripk{max-height:180px;overflow:auto}
 @media (max-width:900px){.ficstats{grid-template-columns:repeat(3,1fr)}.ficcols,.ficrefs{grid-template-columns:1fr}.prpage{min-height:0;padding:20px}.indst{max-height:none}}
 @media print{body.printind #printind .prpage{box-shadow:none;width:auto;min-height:0;max-width:none;padding:0;break-after:page;font-size:10pt}body.printind #printind .prpage:last-child{break-after:auto}}
+/* 1.4.23: skeleton (brillo) mientras carga una foto */
+@keyframes sk{from{background-position:100% 0}to{background-position:0 0}}
+.card:not(.err):has(>img:not([src])),.phth:has(img:not([src])),.ficph:has(img:not([src])),.ficrf:has(img:not([src])),.idimg:not(.empty):has(img:not([src])),#lb .imgwrap.ld{background-image:linear-gradient(90deg,transparent 40%,var(--skh,color-mix(in srgb,var(--tx) 7%,transparent)) 50%,transparent 60%);background-size:300% 100%;background-position:100% 0;animation:sk 1.4s ease-in-out infinite}
+.imgwrap,.idimg,.ficrf{--skh:#ffffff12}
+img:not([src]){visibility:hidden} /* 1.4.24: sin el marco claro de Chrome en imágenes vacías (con «content» Chrome no volvía a dibujar la foto al cargarla) */
+#lb .imgwrap.ld{animation-delay:.15s}.imgwrap.ld #big{opacity:0;transition:opacity 0s .15s} /* el retraso evita el parpadeo con fotos ya precargadas */
+@media(prefers-reduced-motion:reduce){.card,.phth,.ficph,.ficrf,.idimg,#lb .imgwrap{animation:none!important}}
+/* 1.4.24: menú ⋯ de Individuos */
+#cmenu.indmenu,#cmenu.spmenu{box-sizing:border-box}#cmenu.indmenu{min-width:290px;padding:6px}
+#cmenu>button.rich,.indlam{display:flex;align-items:center;gap:12px;padding:8px 10px}#cmenu>button.rich>.ic,.indlam>.ic{color:var(--mu)}
+#cmenu .rich>span,.indlam>span{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0}#cmenu .rich b,.indlam b{font-weight:600}#cmenu .rich small,.indlam small{font-size:12px;color:var(--mu)}
+.indsps{padding:6px 10px 10px}.indsps>div{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}.indsps span{padding:3px 10px;border-radius:14px;background:var(--act);color:var(--ac);font-size:12px;font-weight:600}#cmenu .indsps button{padding:3px 6px;color:var(--ac);font-size:12px}
+#cmenu .indlam button{padding:3px 9px;font-size:12px;background:var(--pn2)}#cmenu .indlam button:hover{background:var(--ac2)}
+#cmenu{max-height:calc(100vh - 16px);overflow:auto} /* 1.4.24: un menú alto se desplaza en vez de salirse de la pantalla */
+.lbcats>button{max-width:200px}.lbcats>button span{min-width:0;overflow:hidden;text-overflow:ellipsis}.lbcats>button kbd{flex:none} /* nombres largos: se recortan con … (el nombre completo sale al pasar el ratón) */
+.nsdir{display:flex;flex-direction:column;gap:6px;font-size:13px}.nsdir .idseg{margin:0}.nsdir small{font-size:12px;color:var(--mu)}.nsdir[hidden]{display:none} /* 1.4.24: ventana de especie */
+#cmenu button .sw{margin-left:auto}.sw{flex:none;position:relative;width:30px;height:18px;border-radius:9px;background:var(--ln2);transition:background .15s}.sw::after{content:'';position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:7px;background:#fff;transition:transform .15s var(--ease)}.sw.on{background:var(--ac)}.sw.on::after{transform:translateX(12px)}
+#cmenu .rich>span.sw{display:block;flex:none;width:30px}#cmenu>button.rich.danger>.ic{color:var(--danger)} /* el interruptor no se estira; basurero en rojo */
+#spmore,#indmore{width:30px;height:30px;border-radius:7px}#spmore svg,#indmore svg{width:17px;height:17px} /* 1.4.24: mismo tamaño que los ⋯ de cada especie */
+/* 1.4.24: Resumen con barra lateral y una sección a la vez */
+.over .panel.sumpanel{width:min(1240px,100%);height:min(860px,92vh);padding:0;display:flex;overflow:hidden}
+.sumside{width:250px;flex:none;display:flex;flex-direction:column;gap:2px;padding:18px 10px;border-right:1px solid var(--ln);overflow:auto}.sumside h2{margin:0 10px 12px;font-size:18px}
+.sumside button{display:flex;align-items:center;gap:12px;border:0;background:none;border-radius:8px;padding:9px 10px;text-align:left;font-size:13px;color:var(--tx)}.sumside button:hover{background:var(--ac2)}.sumside button.on{background:var(--act)}.sumside button[hidden]{display:none}
+.sumside button .ic{color:var(--mu)}.sumside button.on .ic{color:var(--ac)}.sumside button>span{display:flex;flex-direction:column;gap:1px;min-width:0}.sumside b{font-weight:600}.sumside small{font-size:12px;color:var(--mu)}.sumside hr{border:0;border-top:1px solid var(--ln);margin:6px 4px}
+.summain{flex:1;min-width:0;overflow:auto;padding:24px 32px;position:relative}.summain>.pclose{position:absolute;top:16px;right:18px}
+#sumbody details.ssec{display:none;margin:0;border:0;padding:0}#sumbody details.ssec.on{display:block}#sumbody details.ssec>summary{pointer-events:none;list-style:none;font-size:20px;font-weight:700;margin:0 40px 6px 0}#sumbody details.ssec>summary::-webkit-details-marker{display:none}
+.sumtop{display:flex;align-items:flex-start;gap:16px;margin:0 0 14px}.sumstats{margin:0;flex:1;font-size:13px;color:var(--mu);line-height:1.6}.sumstats small{font-size:12px}
+.avisos{display:flex;align-items:center;gap:6px;border:0;border-radius:16px;padding:5px 12px;font-size:12px;font-weight:600;background:color-mix(in srgb,var(--pe) 14%,transparent);color:var(--tx)}
+.swl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mu)}.swi{appearance:none;-webkit-appearance:none;margin:0;flex:none;position:relative;width:30px;height:18px;border-radius:9px;background:var(--ln2);cursor:pointer;transition:background .15s}.swi::after{content:'';position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:7px;background:#fff;transition:transform .15s var(--ease)}.swi:checked{background:var(--ac)}.swi:checked::after{transform:translateX(12px)}.swi:disabled{opacity:.45;cursor:default}
+table.st.heat{border-collapse:separate;border-spacing:4px}table.st.heat td.h{height:38px;border:0;border-radius:8px;text-align:center;background:color-mix(in srgb,var(--ac) var(--a),transparent);font-variant-numeric:tabular-nums}table.st.heat td.h.hd{color:#fff;font-weight:600}
+@media print{.over .panel.sumpanel{display:block;height:auto;overflow:visible}.summain{overflow:visible;padding:0}#sumbody details.ssec{display:block!important;margin-top:18px}table.st.heat td.h{background:none!important;color:inherit!important}}
+@media (max-width:760px){.over .panel.sumpanel{flex-direction:column;height:auto}.sumside{width:auto;flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--ln)}.sumside h2,.sumside small,.sumside hr,.sumside .sp{display:none}}
+.warnbox[hidden]{display:none}
+.ssub{margin:0 0 18px;font-size:13px;color:var(--mu)}@media print{.ssub{display:none}}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px}.chips button{border:0;border-radius:16px;padding:6px 14px;font-size:13px;background:var(--pn2);color:var(--tx)}.chips button:hover{background:var(--ac2)}.chips button.on{background:var(--ac);color:var(--onac);font-weight:600} /* 1.4.24 */
+.stprog{min-width:110px}.stprog span{display:block;height:4px;margin-top:5px;border-radius:2px;background:var(--ln)}.stprog i{display:block;height:100%;border-radius:2px;background:var(--ac)} /* 1.4.24: Estaciones */
+.sti.miss{border-style:dashed;border-color:var(--pe)}
+.warnrow{display:flex;align-items:center;gap:12px;width:100%;border:0;border-radius:8px;padding:10px 12px;margin:0 0 12px;text-align:left;font-size:13px;color:var(--tx);background:color-mix(in srgb,var(--pe) 12%,transparent)}.warnrow span{flex:1}.warnrow>b{color:var(--pe)}
+#sumbody .stbtns button:not(.lnk2){border:0;background:var(--pn2);border-radius:8px}
+/* 1.4.24: gráficas del Resumen en morado, como la maqueta */
+.funsvg .run{fill:color-mix(in srgb,var(--ac) 22%,transparent)}.funsvg .run.est{fill:color-mix(in srgb,var(--ac) 10%,transparent);stroke:color-mix(in srgb,var(--ac) 35%,transparent);stroke-dasharray:3 3}.funsvg .down{fill:color-mix(in srgb,var(--pe) 45%,transparent)}.funsvg .ph{fill:var(--ac)}
+.lg.run{background:color-mix(in srgb,var(--ac) 22%,transparent)}.lg.est{background:color-mix(in srgb,var(--ac) 10%,transparent)}.lg.down{background:color-mix(in srgb,var(--pe) 45%,transparent)}.lg.ph{background:var(--ac)}
+.acusvg .area{fill:var(--ac);opacity:.08}.acusvg .cur{stroke-width:3;stroke-linecap:round}.trsvg .ov{fill:color-mix(in srgb,var(--ac) 14%,transparent)}
+.sumnums{display:flex;flex-wrap:wrap;gap:8px 36px;margin:4px 0 12px}.sumnums div{display:flex;flex-direction:column}.sumnums b{font-size:26px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}.sumnums b.acc{color:var(--ac)}.sumnums span{font-size:12px;color:var(--mu)}
+#sumbody select{border-radius:8px}
+.indsum tbody tr{cursor:pointer}.indsum tbody tr:hover td{background:var(--ac2)}.stchip{display:inline-block;padding:2px 8px;border-radius:10px;background:var(--act);color:var(--ac);font-size:12px;font-weight:600;margin:1px 0}.sumnums b.warnc{color:var(--pe)}
+.indsum td.indthw{width:64px;padding:4px 6px}.indth{display:block;width:56px;height:40px;object-fit:cover;border-radius:8px;background:var(--pn2)}
+.ficerr{position:absolute;left:8px;right:8px;top:8px;font-size:12px;color:#fff;background:#000000b0;border-radius:6px;padding:4px 8px}
+/* 1.4.24: Ajustes con el estilo del Resumen */
+.over .panel.setpanel{width:min(980px,100%);height:min(640px,90vh)}.setsec h3{margin:0 40px 4px 0!important;font-size:20px!important;font-weight:700}.setsec[hidden]{display:none}
+.setrow{display:flex;align-items:center;gap:20px;padding:14px 0;border-bottom:1px solid var(--ln);cursor:pointer}.setrow>span{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}.setrow b{font-size:14px;font-weight:600}.setrow small{font-size:12px;color:var(--mu)}
+.setrow select,.setrow input:not(.swi){width:240px;flex:none}.setrow .swi{width:36px;height:21px;border-radius:11px}.setrow .swi::after{width:17px;height:17px;border-radius:9px}.setrow .swi:checked::after{transform:translateX(15px)}
+.sumside button.danger,.sumside button.danger .ic{color:var(--danger)}
+@media screen{.over:has(>.sumpanel){align-items:center;overflow:hidden;padding:4vh 16px}.over .panel.sumpanel{max-height:92vh}} /* 1.4.24: Resumen y Ajustes ya no se mueven arriba y abajo (el fondo tenía más alto que la pantalla) */
+.setsub{display:flex;align-items:center;gap:8px;margin:22px 0 0;font-size:12px;font-weight:600;color:var(--mu);letter-spacing:.04em;text-transform:uppercase} /* 1.4.24: Ajustes reorganizados */
+.qhelp{position:relative;display:grid;place-items:center;width:18px;height:18px;border-radius:9px;border:1.5px solid var(--ac);color:var(--ac);font-size:11px;font-weight:700;cursor:help;text-transform:none;letter-spacing:0}
+.qhelp:hover::after,.qhelp:focus::after{content:attr(data-tip);position:absolute;left:26px;top:-8px;width:300px;padding:8px 12px;border-radius:8px;background:var(--tx);color:var(--bg);font-size:12px;font-weight:400;line-height:1.5;z-index:5;box-shadow:var(--pop)}
+.setseg button{padding:5px 11px!important;font-size:13px!important}.setrow input[type=range]{accent-color:var(--ac)}
+.setseg{flex:none}.setseg button{flex:none;white-space:nowrap}

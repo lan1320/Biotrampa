@@ -495,9 +495,10 @@ function impForm() { const m = IMP.list[IMP.sel], f = $('#imp_form'), n = IMP.li
 function impCrop() { const m = IMP.list[IMP.sel], [a, b] = IMP.ed.zone, x0 = Math.max(0, Math.round(Math.min(a[0], b[0]))), y0 = Math.max(0, Math.round(Math.min(a[1], b[1]))), w = Math.min(m.img.width - x0, Math.round(Math.abs(a[0] - b[0]))), h = Math.min(m.img.height - y0, Math.round(Math.abs(a[1] - b[1])));
   if (w < 20 || h < 20) return; const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(m.img, x0, y0, w, h, 0, 0, w, h);
   impAdd(`Recorte ${IMP.list.filter(x => x.crop).length + 1}`, c, { crop: true }); IMP.ed.zone = null; IMP.sel = IMP.list.length - 1; impRender(); toast('Recorte separado: ponle código y lado.', 3000); }
-$('#imp_file').onchange = async e => { const fs = [...e.target.files]; e.target.value = '';
+$('#imp_file').onchange = e => { const fs = [...e.target.files]; e.target.value = ''; impFiles(fs); };
+async function impFiles(fs) { // 1.4.24: también al soltar imágenes sobre la ventana
   for (const f of fs) { try { const img = await createImageBitmap(f); impAdd(f.name, img, { file: f }); } catch (x) { toast(`No se pudo abrir ${f.name}.`, 3000); } }
-  IMP.sel = Math.max(0, IMP.list.length - fs.length); impRender(); };
+  IMP.sel = Math.max(0, IMP.list.length - fs.length); impRender(); }
 $('#imp_sp').onchange = e => { IMP.sp = e.target.value; };
 $('#imp_ok').onclick = async () => { const l = IMP.list.filter(m => !m.sheet); if (l.some(m => !m.id)) return toast('Falta el código de alguna imagen.', 3000);
   let nw = 0, more = 0; toast('Guardando las imágenes de referencia…', 0);
@@ -509,7 +510,7 @@ $('#imp_ok').onclick = async () => { const l = IMP.list.filter(m => !m.sheet); i
 
 /* ---------- 1.4.17: fotos de un individuo ordenadas de mejor a peor (comparar, ficha, imprimir) ---------- */
 const QORD = { B: 2, R: 1, M: 0 }, QCL = { B: 'qb', R: 'qr', M: 'qm' };
-const phKey = p => p.it.id;
+const phKey = p => String(p.it.id); // texto: se compara con data-key del HTML (con número nunca coincidía y no cargaban las fotos grandes ni las de imprimir)
 const phScore = p => ((p.o.tr || []).length ? 3 : 0) + (p.o.ref || p.ext ? 2 : 0) + (QORD[p.o.q] ?? 1) - (p.o.dud && !p.o.iv ? 2 : 0) - (p.o.fl === 'A' ? .5 : 0);
 function photosOf(id, fl) { return [...extRefs(id), ...indPhotos(id)].filter(p => !fl || p.o.fl === fl || (p.o.fl === 'A' && !p.ext)).sort((a, b) => phScore(b) - phScore(a)); }
 const phTime = p => !p.ext && goodTs(p.it) ? fixTs(p.it) : NaN;
@@ -517,7 +518,7 @@ const phWhen = p => { if (p.ext) return 'referencia importada'; const t = phTime
 const phBadges = p => `${p.o.ref || p.ext ? '<i title="Referencia">★</i>' : ''}${(p.o.tr || []).length ? `<i title="${p.o.tr.length} rosetas calcadas">✎</i>` : ''}${p.o.dud && !p.o.iv ? '<i class="w" title="Dudosa">?</i>' : ''}${QCL[p.o.q] ? `<i class="${QCL[p.o.q]}" title="Claridad ${QL[p.o.q].toLowerCase()}">●</i>` : ''}`;
 const phTitle = p => [p.ext ? 'Referencia importada' : (p.it.origName || p.it.name), p.ext ? '' : station(p.it), p.ext ? '' : phWhen(p), FL[p.o.fl] ? 'lado ' + FL[p.o.fl].toLowerCase() : '', p.o.q ? 'claridad ' + QL[p.o.q].toLowerCase() : '', (p.o.tr || []).length ? p.o.tr.length + ' rosetas calcadas' : ''].filter(Boolean).join(' · ');
 function phStrip(box, list, isOn, onPick) { box.textContent = ''; if (!list.length) { box.innerHTML = '<p class="hint tiny">Sin fotos de este lado.</p>'; return; }
-  for (const p of list) { const b = document.createElement('button'); b.className = 'phth' + (isOn(p) ? ' on' : ''); b.title = phTitle(p); b.innerHTML = `<img alt=""><span class="phbd">${phBadges(p)}</span>`; thumbAny(b.querySelector('img'), p.it); b.onclick = () => onPick(p); box.appendChild(b); }
+  for (const p of list) { const b = document.createElement('button'); b.className = 'phth' + (isOn(p) ? ' on' : ''); b.title = phTitle(p); b.innerHTML = `<img alt=""><span class="phbd">${phBadges(p)}</span>`; b.onclick = () => onPick(p); box.appendChild(b); thumbAny(b.querySelector('img'), p.it) /* 1.4.24: después de agregarla (sin conectar, la miniatura no se cargaba) */; }
   const on = box.querySelector('.on'); if (on) on.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
 const BASEC = new Map(); // imágenes reducidas (para la cuadrícula de comparar y la impresión)
 async function baseCanvas(p, max = 1400) { const key = phKey(p) + '|' + max; if (BASEC.has(key)) return BASEC.get(key);
@@ -598,7 +599,7 @@ function indTimeline(ph) { const pts = ph.filter(p => goodTs(p.it)).map(p => ({ 
   const sts = [...new Set(pts.map(p => p.s))].sort(), t0 = Math.min(...pts.map(p => p.t)), t1 = Math.max(...pts.map(p => p.t)), span = Math.max(t1 - t0, 864e5), W = 640, L = 110, R = 12, row = 24, H = sts.length * row + 26, X = t => L + (t - t0) / span * (W - L - R);
   let s = `<svg class="indtl" viewBox="0 0 ${W} ${H}" role="img" aria-label="Fechas y estaciones donde apareció">`;
   sts.forEach((st, i) => { const y = i * row + 12; s += `<text x="0" y="${y + 4}">${esc(st.length > 16 ? st.slice(0, 15) + '…' : st)}</text><line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}"/>`; pts.filter(p => p.s === st).forEach(p => s += `<circle cx="${X(p.t).toFixed(1)}" cy="${y}" r="4.5" data-key="${esc(p.k)}"><title>${ymd(p.t)} · ${esc(st)}</title></circle>`); });
-  const n = 5; for (let i = 0; i < n; i++) { const t = t0 + span * i / (n - 1); s += `<text x="${X(t).toFixed(1)}" y="${H - 3}" text-anchor="${i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}">${ymd(t)}</text>`; }
+  const n = Math.min(5, Math.floor(span / 864e5) + 1); for (let i = 0; i < n; i++) { const t = t0 + span * i / (n - 1); s += `<text x="${X(t).toFixed(1)}" y="${H - 3}" text-anchor="${i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}">${ymd(t)}</text>`; }
   return s + '</svg><p class="hint tiny">Cada punto es una foto, en la fila de su estación.</p>'; }
 
 /* ---------- Panel «Individuos» ---------- */
@@ -640,12 +641,40 @@ function renderIndPane() {
   box.querySelectorAll('[data-ns]').forEach(b => b.onclick = () => show(ns[+b.dataset.ns].it));
   box.querySelectorAll('[data-ala]').forEach(b => b.onclick = () => show(al[+b.dataset.ala].a)); box.querySelectorAll('[data-alb]').forEach(b => b.onclick = () => show(al[+b.dataset.alb].b));
 }
-$('#indmore').onclick = e => { e.stopPropagation(); if (closeMenu()) return; const all = [...new Set([...S.indSp, ...S.cats.filter(c => c !== GH)])]; // marcadas: especies que se identifican por individuo (botón de huella)
-  const m = menuAt(e.currentTarget, [...all.map(c => [c, () => { S.indSp = indOn(c) ? S.indSp.filter(x => norm(x) !== norm(c)) : [...S.indSp, c]; sv('bt_indsp', S.indSp); S.indDirty = true; saveReg(); renderIndPane(); if (S.cur) renderObs(S.cur); }, 'Marcada: esta especie se identifica por individuo', indOn(c)]),
-    null, ['Identificar pendientes', () => goQueue('pend'), 'Abre la primera foto sin individuo y, al decidir, pasa sola a la siguiente'], ['Revisar dudosas', () => goQueue('dud'), 'Repasa una por una las identificaciones dudosas'], ['Comparar dos individuos', () => openCompare(), 'Para encontrar duplicados en el catálogo'],
-    null, ['Importar ya identificados…', openImport, 'Imágenes de individuos conocidos (p. ej. exportadas de Canva), con sus rosetas'], ['Importar paquete (.zip)…', () => $('#filepkg').click()],
-    ['Fotos con rosetas (.zip)', () => indSpPick(exportCards), 'Una imagen por individuo y lado, con las rosetas dibujadas'], ['Lámina del catálogo (izquierdo)', () => indSpPick(sp => exportSheet(sp, 'I'))], ['Lámina del catálogo (derecho)', () => indSpPick(sp => exportSheet(sp, 'D'))], ['Paquete del catálogo (.zip)', exportPackage, 'Datos, imágenes de referencia y rosetas, para otra computadora'],
-    null, ['Ordenar fotos en carpetas por individuo', sortIndFolders, 'Mueve las fotos con individuo a Clasificadas/<Especie>/<Individuo>/ (las identificadas antes de la 1.4.14)'], ['Exportar catálogo', exportCatalog], ['Importar catálogo', () => $('#fileind').click()], ['Imprimir catálogo', () => { const l = Object.keys(S.ind.list).sort(); if (!l.length) return toast('El catálogo está vacío.', 3000); printInd(l); }]]); const hd = document.createElement('b'); hd.className = 'pbh'; hd.textContent = 'Se identifican por individuo'; m.prepend(hd); };
+// 1.4.24: menú ⋯ de Individuos: lo diario arriba, importar y exportar en submenús, las especies como etiquetas
+$('#indmore').onclick = e => { e.stopPropagation(); if (closeMenu()) return; indMenu(e.currentTarget); };
+function richMenu(m, defs) { // [ícono, explicación, submenú] para cada botón directo del menú, en orden
+  m.addEventListener('click', e => e.stopPropagation()); // si no, el clic llega al documento y cierra el submenú recién abierto
+  [...m.querySelectorAll(':scope > button')].forEach((b, i) => { const [ic, sub, more, go] = defs[i] || [], t = b.textContent; if (go) b.onclick = go; if (!ic) return; b.classList.add('rich');
+    b.innerHTML = `<i class="ic sm">${icon(ic)}</i><span><b></b>${sub ? '<small></small>' : ''}</span>${more ? `<i class="ic sm">${icon('chevR')}</i>` : ''}`; b.querySelector('b').textContent = t; if (sub) b.querySelector('small').textContent = sub; }); }
+function indMenu(btn, back) { const old = swapMenu(back), n = f => S.indSp.reduce((a, c) => a + f(c).length, 0), np = n(pendList), nd = n(dudList);
+  const m = menuAt(btn, [['Identificar pendientes', () => goQueue('pend'), 'Abre la primera foto sin individuo y, al decidir, pasa sola a la siguiente'], ['Revisar dudosas', () => goQueue('dud'), 'Repasa una por una las identificaciones dudosas'], ['Comparar dos individuos', () => openCompare()],
+    null, ['Importar'], ['Exportar e imprimir'],
+    null, ['Ordenar fotos en carpetas por individuo', sortIndFolders, 'Mueve las fotos con individuo a Clasificadas/<Especie>/<Individuo>/ (las identificadas antes de la 1.4.14)']]); m.classList.add('indmenu');
+  richMenu(m, [['search', np ? `${fmtN(np)} foto${np === 1 ? '' : 's'} sin individuo` : 'Ninguna pendiente'], ['help', nd ? `${fmtN(nd)} por confirmar` : 'Ninguna dudosa'], ['split', 'Para encontrar duplicados'], ['download', '', 1, () => indSub(btn, 'imp')], ['share', '', 1, () => indSub(btn, 'exp')], ['folder']]);
+  const hd = document.createElement('div'), box = document.createElement('div'), ch = document.createElement('button'); hd.className = 'indsps'; hd.innerHTML = '<b class="pbh">Especies con individuos</b>';
+  S.indSp.forEach(c => { const s = document.createElement('span'); s.textContent = c; box.appendChild(s); });
+  ch.textContent = S.indSp.length ? 'Cambiar' : 'Elegir especies'; ch.title = 'Marca qué especies se identifican por individuo'; ch.onclick = () => indSpMenu(btn); box.appendChild(ch); hd.appendChild(box); m.prepend(hd); place(m, old); }
+function toggleIndSp(c) { S.indSp = indOn(c) ? S.indSp.filter(x => norm(x) !== norm(c)) : [...S.indSp, c]; sv('bt_indsp', S.indSp); S.indDirty = true; saveReg(); renderIndPane(); if (S.cur) renderObs(S.cur); }
+function indSpMenu(btn) { const old = swapMenu(1), all = [...new Set([...S.indSp, ...S.cats.filter(c => c !== GH)])];
+  const m = menuAt(btn, [['Volver'], null, ...all.map(c => [c, null, 'Marcada: esta especie se identifica por individuo', indOn(c)])]); m.classList.add('spmenu'); richMenu(m, [['chevL', '', 0, () => indMenu(btn, 1)]]);
+  [...m.querySelectorAll(':scope > button')].slice(1).forEach((b, k) => { const c = all[k]; b.onclick = () => { toggleIndSp(c); b.className = indOn(c) ? 'chk' : 'unchk'; }; }); // marcar no cierra ni redibuja el menú
+  place(m, old); }
+function indSub(btn, k) { const old = swapMenu(1), back = ['Volver'], vb = ['chevL', '', 0, () => indMenu(btn, 1)];
+  if (k === 'imp') { const m = menuAt(btn, [back, null, ['Imágenes ya identificadas…', openImport], ['Paquete de otra computadora (.zip)…', () => $('#filepkg').click()], ['Solo los datos (.json)…', () => $('#fileind').click()]]); m.classList.add('indmenu');
+    richMenu(m, [vb, ['image', 'Exportadas de Canva u otro programa'], ['download', 'Datos, imágenes y rosetas'], ['sheet', 'Catálogo sin imágenes']]); return place(m, old); }
+  const m = menuAt(btn, [back, null, ['Paquete para otra computadora', exportPackage], ['Fotos con rosetas', () => indSpPick(exportCards)], ['Imprimir fichas', () => { const l = Object.keys(S.ind.list).sort(); if (!l.length) return toast('El catálogo está vacío.', 3000); printInd(l); }], ['Solo los datos', exportCatalog]]); m.classList.add('indmenu');
+  richMenu(m, [vb, ['share', '.zip con datos, imágenes y rosetas'], ['image', 'Una imagen por individuo y lado (.zip)'], ['ind', 'Una hoja por individuo'], ['sheet', 'Catálogo en .json, sin imágenes']]);
+  const row = document.createElement('div'); row.className = 'indlam'; row.innerHTML = `<i class="ic sm">${icon('chart')}</i><span><b>Lámina del catálogo</b><small>Todos en una página, por lado</small></span>`;
+  [['I', 'Izq.'], ['D', 'Der.']].forEach(([s, t]) => { const b = document.createElement('button'); b.textContent = t; b.title = `Lámina del lado ${s === 'I' ? 'izquierdo' : 'derecho'}`; b.onclick = () => { closeMenu(); indSpPick(sp => exportSheet(sp, s)); }; row.appendChild(b); });
+  m.insertBefore(row, m.querySelectorAll(':scope > button')[3]); place(m, old); }
+const refit = m => { m.style.top = Math.max(8, Math.min(parseFloat(m.style.top), innerHeight - m.offsetHeight - 8)) + 'px'; m.style.left = Math.max(8, Math.min(parseFloat(m.style.left), innerWidth - m.offsetWidth - 8)) + 'px'; };
+// submenús: la ventana se queda (sin cerrarse ni moverse) y solo cambia su contenido
+const swapMenu = on => { const o = on && $('#cmenu'); if (o) { o._w = o.offsetWidth; o.id = 'cmenu0'; } return o; }; // el ancho se mide antes: sin el id pierde sus estilos // sin el id, menuAt no la cierra
+function place(m, old) { if (!old) return refit(m); // 1.4.24: cambia el contenido y repite la misma entrada que al abrir con ⋯
+  old.style.width = old._w + 'px'; // mismo ancho que el menú de ⋯ en todos los submenús
+  old.replaceChildren(...m.childNodes); old.className = m.className; old.id = 'cmenu'; m.remove(); refit(old);
+  if (MOTION) old.animate([{ opacity: 0, transform: 'scale(.97)' }, { opacity: 1, transform: 'none' }], { duration: 360, easing: 'cubic-bezier(.16,1,.3,1)' }); }
 
 function indSpPick(fn) { const l = [...new Set(Object.values(S.ind.list).map(r => r.sp).filter(Boolean))]; if (!l.length) return toast('El catálogo está vacío.', 3000); fn(l.find(c => S.cur && hasCat(S.cur, c)) || l[0]); }
 $('#filepkg').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) importPackage(f); };
@@ -687,13 +716,14 @@ function renderFicha() {
     <div class="ficg">${L.map((p, i) => `<button class="ficph" data-i="${i}" title="${esc(phTitle(p))}"><img alt=""><span class="phbd">${phBadges(p)}</span><small>${p.ext ? 'Referencia importada' : esc(station(p.it)) + ' · ' + esc(phWhen(p))}</small></button>`).join('') || '<p class="hint tiny">Ninguna foto con este filtro.</p>'}</div>`;
   if (ts.length) h += `<h3>Dónde y cuándo apareció</h3>${indTimeline(ph)}`;
   if (sts.size) h += `<div class="ficcols"><div><h3>Estaciones</h3><table class="fictab"><thead><tr><th>Estación</th><th>Fotos</th><th>Primera</th><th>Última</th></tr></thead><tbody>${[...sts].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([s, r]) => `<tr><td><button class="lnk2" data-st="${esc(s)}">${esc(s)}</button></td><td>${r.n}</td><td>${isFinite(r.t0) ? dmy(r.t0) : '—'}</td><td>${isFinite(r.t1) ? dmy(r.t1) : '—'}</td></tr>`).join('')}</tbody></table></div>
-    <div><h3>Actividad por hora</h3>${ts.length ? `<div class="indhrs ficbig" title="Fotos por hora del día">${hrs.map((v, i) => `<i style="height:${Math.round(v / mx * 100)}%" title="${pad(i)}:00 · ${v}"></i>`).join('')}</div><p class="hint tiny">0 a 23 h · ${night > ts.length / 2 ? 'más activo de noche' : 'más activo de día'} (${Math.round(night / ts.length * 100)}% entre 18 y 6 h).</p>` : '<p class="hint tiny">Sin fechas utilizables.</p>'}</div></div>`;
+    <div><h3>Actividad por hora</h3>${ts.length ? `<div class="indhrs ficbig" title="Fotos por hora del día">${hrs.map((v, i) => `<i style="height:${Math.round(v / mx * 100)}%" title="${pad(i)}:00 · ${v}"></i>`).join('')}</div><p class="hint tiny">0 a 23 h · ${night * 2 === ts.length ? 'igual de día que de noche' : night > ts.length / 2 ? 'más activo de noche' : 'más activo de día'} (${Math.round(night / ts.length * 100)}% entre 18 y 6 h).</p>` : '<p class="hint tiny">Sin fechas utilizables.</p>'}</div></div>`;
   h += `<h3>Visto con</h3>${wth.length ? `<div class="ficwith">${wth.slice(0, 8).map(w => `<button data-ver="${esc(w.id)}"><img alt=""><span><b>${esc(w.id)}</b><small>${[w.rel, w.same ? `${w.same} vez/veces en la misma foto` : '', w.n - w.same > 0 ? `${w.n - w.same} vez/veces a menos de 1 h en la misma estación` : ''].filter(Boolean).join(' · ')}</small></span></button>`).join('')}</div>` : '<p class="hint tiny">No ha salido con otro individuo en la misma foto ni a menos de 1 hora en la misma estación.</p>'}`;
   const hist = [[rec.creado || '', `entró al catálogo${rec.importado ? ' (importado con sus rosetas)' : ''}`], ...(ts.length ? [[dmy(ts[0]), `primera foto, en ${station(ph.find(p => goodTs(p.it) && fixTs(p.it) === ts[0]).it)}`]] : []), ...ph.filter(p => p.o.if).map(p => [p.o.if, `identificada una foto de ${station(p.it)}${p.o.ib ? ' por ' + p.o.ib : ''}${p.o.dud && !p.o.iv ? ' (dudosa)' : ''}`]), ...(rec.merges || []).map((m, k) => [m.fecha || '', `${m.from} se unió a ${id} (${m.photos.length} foto(s)) <button class="lnk2" data-undo="${k}">Deshacer</button>`, 1])].filter(x => x[0]).sort((a, b) => a[0] < b[0] ? -1 : 1);
   const hshow = hist.length > 12 ? [...hist.slice(0, 4), ['…', `${hist.length - 8} registro(s) más`], ...hist.slice(-4)] : hist;
   h += `<h3>Historial</h3><ul class="fichist">${hshow.map(([d, t, raw]) => `<li><span>${esc(d)}</span> ${raw ? t.replace(/^[^<]*/, s => esc(s)) : esc(t)}</li>`).join('') || '<li>Sin registros.</li>'}</ul></div>`;
   box.innerHTML = h; box.parentElement.scrollTop = FI.scroll || 0; FI.scroll = 0;
-  box.querySelectorAll('.ficrf[data-key]').forEach(d => { const p = all.find(q => phKey(q) === d.dataset.key); fullUrl(p).then(u => d.querySelector('img').src = u).catch(() => thumbAny(d.querySelector('img'), p.it));
+  box.querySelectorAll('.ficrf[data-key]').forEach(d => { const p = all.find(q => phKey(q) === d.dataset.key); const im = d.querySelector('img'), why = m => { console.warn('Ficha: no se pudo abrir', p.it.name, m); if (!d.querySelector('.ficerr')) d.insertAdjacentHTML('beforeend', `<small class="ficerr">No se pudo abrir ${esc(p.it.name)}: ${esc(m)}</small>`); }; im.onerror = () => why('el navegador no pudo mostrar la imagen'); // 1.4.24: dice por qué en vez de quedarse en negro
+    fullUrl(p).then(u => im.src = u).catch(e => { why(e.message || e.name); thumbAny(im, p.it); });
     d.onclick = () => { FI.filt = 'T'; FI.st = ''; FI.open = ficList(id).findIndex(q => phKey(q) === d.dataset.key); renderFicha(); }; });
   box.querySelectorAll('.ficph').forEach(b => { const p = L[+b.dataset.i]; thumbAny(b.querySelector('img'), p.it); b.onclick = () => { FI.scroll = box.parentElement.scrollTop; FI.open = +b.dataset.i; renderFicha(); }; });
   box.querySelectorAll('.ficwith [data-ver]').forEach(b => { const p = photosOf(b.dataset.ver)[0]; if (p) thumbAny(b.querySelector('img'), p.it); });
@@ -749,7 +779,7 @@ addEventListener('keydown', e => { // 1.4.17: ← → recorren las fotos del ind
   if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') ficMove(e.key === 'ArrowRight' ? 1 : -1); else if (e.key === 'Escape') { FI.open = -1; renderFicha(); } else return;
   e.preventDefault(); e.stopImmediatePropagation(); }, true);
 function sortIndFolders() { // 1.4.14: para las fotos identificadas antes de que existieran las subcarpetas
-  const l = S.items.filter(it => it.cat && !it.tagOnly && it.parts[0] === ROOT && it.parts.join('/') !== [ROOT, folder(it.cat), ...(indOf(it) ? [indOf(it)] : [])].join('/'));
+  const l = S.items.filter(it => it.cat && !it.tagOnly && it.parts[0] === ROOT && it.parts.join('/') !== [ROOT, catDir(it.cat), ...(indOf(it) ? [indOf(it)] : [])].join('/'));
   if (!l.length) return toast('Todas las fotos ya están en la carpeta de su individuo.', 3000);
   if (noMove()) return toast('En este modo las fotos no se mueven.', 3000);
   if (!confirm(`Se moverán ${l.length} foto(s) a la carpeta de su individuo, dentro de Clasificadas/<Especie>/ de su estación. ¿Continuar?`)) return;
@@ -805,7 +835,7 @@ function priRender() { const scr = $('#pri_col').closest('.idcol').scrollTop, to
   const jobs = [];
   prev.querySelectorAll('.prpage').forEach(pg => { const id = pg.dataset.id, list = [...extRefs(id), ...indPhotos(id)];
     pg.querySelectorAll('figure[data-key]').forEach(f => { const p = list.find(q => phKey(q) === f.dataset.key); if (!p) return;
-      jobs.push(baseCanvas(p, PRO.size === 'L' || PRO.cols === 1 ? 1800 : 1200).then(bc => { if (tok === PRI.tok) f.querySelector('.primg').appendChild(tracedCanvas(bc, p.o.tr, { tr: PRO.tr, color: TRC[PRO.color], num: PRO.num })); }).catch(() => f.querySelector('.primg').classList.add('bad'))); }); });
+      jobs.push(baseCanvas(p, PRO.size === 'L' || PRO.cols === 1 ? 1800 : 1200).then(bc => { if (tok === PRI.tok) f.querySelector('.primg').appendChild(tracedCanvas(bc, p.o.tr, { tr: PRO.tr, color: TRC[PRO.color], num: PRO.num })); }).catch(e => { console.warn('Imprimir: no se pudo abrir', p.it.name, e); const g = f.querySelector('.primg'); g.classList.add('bad'); g.textContent = `No se pudo abrir ${p.it.name}: ${e.message || e.name}`; })); }); });
   PRI.ready = Promise.all(jobs);
   const seg = (k, opts) => `<div class="idseg${opts.length === 3 ? ' c3' : ''}" data-o="${k}">${opts.map(([v, t]) => `<button data-v="${v}" class="${String(PRO[k]) === String(v) ? 'on' : ''}">${t}</button>`).join('')}</div>`;
   col.innerHTML = `<p class="idk">Individuos</p><div class="idseg" id="pri_m"><button data-v="0" class="${PRI.many ? '' : 'on'}">Este individuo</button><button data-v="1" class="${PRI.many ? 'on' : ''}">Varios</button></div>
@@ -835,13 +865,15 @@ function printInd(ids) { openPrint(ids, ids.length > 1); } // nombre anterior
 /* ---------- Resumen: sección «Individuos» ---------- */
 function indSummaryHtml() {
   const by = new Map();
-  for (const it of sumData.its) for (const c of allCats(it)) { const o = it.obs && it.obs[c]; if (!o || !o.id) continue; if (!by.has(o.id)) by.set(o.id, { c, days: new Set(), st: new Map() });
+  for (const it of sumData.its) for (const c of allCats(it)) { const o = it.obs && it.obs[c]; if (!o || !o.id) continue; if (!by.has(o.id)) by.set(o.id, { c, days: new Set(), st: new Map(), it }); // it: su primera foto, para la miniatura (1.4.24)
     const r = by.get(o.id); if (goodTs(it)) r.days.add(ymd(fixTs(it))); r.st.set(station(it), (r.st.get(station(it)) || 0) + 1); }
   if (!by.size) return xsec('ss-ind', 'Individuos', 'Individuos identificados por sus marcas', `<p class="hint tiny">Todavía no hay individuos identificados. Especies con identificación: ${esc(S.indSp.join(', ') || 'ninguna')} (se cambia en el panel «Individuos»).</p>`);
-  const ids = [...by.keys()].sort(), sts = sumData.stations.filter(s => ids.some(id => by.get(id).st.has(s))), rec = ids.filter(id => by.get(id).days.size >= 2).length;
+  const ids = [...by.keys()].sort(), rec = ids.filter(id => by.get(id).days.size >= 2).length; // 1.4.24: cifras arriba y una fila por individuo (sexo, fotos, estaciones y cuándo se vio)
+  const fot = ids.reduce((a, id) => a + [...by.get(id).st.values()].reduce((x, y) => x + y, 0), 0), dud = S.indSp.reduce((a, c) => a + dudList(c).length, 0), MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  const rng = days => { const d = [...days].sort(), f = x => `${MES[+x.slice(5, 7) - 1]} ${x.slice(0, 4)}`; if (!d.length) return '—'; const a = f(d[0]), b = f(d[d.length - 1]); return a === b ? a : `${a} – ${b}`; };
   return xsec('ss-ind', 'Individuos', 'Individuos identificados por sus marcas',
-    `<p class="sumhead"><b>${ids.length}</b> individuo(s) identificado(s) · <b>${rec}</b> recapturado(s) (vistos en 2 días o más)</p><div class="tw"><table class="st"><thead><tr><th>Individuo</th><th>Especie</th>${sts.map(s => `<th>${esc(s)}</th>`).join('')}<th>Días con registro</th></tr></thead><tbody>`
-    + ids.map(id => { const r = by.get(id); return `<tr><td>${esc(id)}</td><td>${esc(r.c)}</td>${sts.map(s => `<td>${r.st.get(s) || '<span class="mu">—</span>'}</td>`).join('')}<td>${r.days.size}</td></tr>`; }).join('')
+    `<div class="sumnums"><div><b>${ids.length}</b><span>individuos</span></div><div><b>${rec}</b><span>recapturados (2 días o más)</span></div><div><b>${fot}</b><span>fotos identificadas</span></div>${dud ? `<div><b class="warnc">${dud}</b><span>dudosas</span></div>` : ''}</div><div class="tw"><table class="st indsum"><thead><tr><th></th><th>Individuo</th><th>Especie</th><th>Sexo</th><th>Fotos</th><th>Estaciones</th><th>Visto</th><th>Días</th></tr></thead><tbody>`
+    + ids.map(id => { const r = by.get(id), d = S.ind.list[id] || {}, n = [...r.st.values()].reduce((x, y) => x + y, 0); return `<tr data-ficha="${esc(id)}" title="Abrir la ficha"><td class="indthw"><img class="indth" alt="" data-ix="${r.it.id}"></td><td><b>${esc(id)}</b>${d.nombre ? `<br><small class="mu">${esc(d.nombre)}</small>` : ''}</td><td>${esc(r.c)}</td><td>${esc(d.sexo || '—')}</td><td>${n}</td><td>${[...r.st.keys()].map(s => `<span class="stchip">${esc(s)}</span>`).join(' ')}</td><td class="mu">${rng(r.days)}</td><td>${r.days.size}</td></tr>`; }).join('')
     + `</tbody></table></div><p class="hint tiny">Números: fotos de cada individuo en cada estación. La historia de captura para secr y la tabla para camtrapR están en Exportar.</p>`);
 }
 

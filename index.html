@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BioTrampa 1.4</title>
 <link rel="icon" href="data:,"><!-- sin ícono por ahora (icono.svg queda en la carpeta para más adelante) -->
-<link rel="stylesheet" href="css/styles.css?v=1.4.22.1">
+<link rel="stylesheet" href="css/styles.css?v=1.4.26.1">
 </head>
 <body class="home">
 <div id="app">
@@ -132,7 +132,7 @@
         <section id="hlast" hidden></section>
         <section class="hprojs"><h2>Proyectos</h2><div id="homelist"><button id="open2" class="hnew"><i class="ic" data-ic="plus"></i><b>Nuevo proyecto</b><span>Haz clic o suelta aquí la carpeta de una cámara</span></button></div></section>
         <span class="sp"></span>
-        <p class="hfoot">También puedes arrastrar una carpeta a esta ventana · Versión 1.4.22</p>
+        <p class="hfoot">También puedes arrastrar una carpeta a esta ventana · Versión 1.4.26</p>
       </div><div id="grid"></div></section>
     <div id="lb" hidden>
       <button id="unfocus" title="Mostrar controles (H o Esc)">Mostrar controles</button>
@@ -146,6 +146,7 @@
           </div>
           <div id="fbar"></div>
           <nav class="lbcats" id="lbcats" aria-label="Especies y sus teclas"></nav>
+          <button id="lbadd" title="Nueva especie" aria-label="Nueva especie"><i class="ic sm" data-ic="plus"></i></button>
           <div class="pop" id="lbmore"><button id="lbmorebtn" aria-expanded="false" title="Buscar o crear una especie (tecla /)"></button>
             <div class="popbox up" id="lbside" hidden role="dialog" aria-label="Buscar especie">
               <label class="lbql"><i class="ic sm" data-ic="search"></i><input id="lbq" type="search" placeholder="Escribe para buscar…" aria-label="Buscar especie" autocomplete="off"></label>
@@ -171,35 +172,21 @@
 <div id="multi" hidden><span id="mcount"></span><span id="mbtns"></span><button id="mclear" class="ghost" aria-label="Cancelar la selección"><i class="ic" data-ic="x"></i></button></div>
 <div id="dropov" hidden><div><b>Suelta aquí las carpetas de las cámaras</b><span>Cada carpeta se agrega como una estación del proyecto.</span></div></div>
 <div id="help" class="over" hidden><div class="panel" role="dialog" aria-modal="true" aria-labelledby="h_help"><div class="ptop"><h2 id="h_help">Atajos de teclado</h2><span class="sp"></span><button id="helpprint" title="Imprimir esta tabla para tenerla a la mano">Imprimir</button><button class="pclose" title="Cerrar (Esc)" aria-label="Cerrar"><i class="ic" data-ic="x"></i></button></div><div class="keytable"></div></div></div>
-<div id="sum" class="over" hidden><div class="panel wide" role="dialog" aria-modal="true" aria-labelledby="h_sum"><div class="ptop"><h2 id="h_sum">Resumen</h2><span class="sp"></span><button id="sumcsv" title="Un archivo CSV por tabla (fotos, eventos, individuos, abundancia relativa, lista de eventos, actividad por hora y estaciones) dentro de un .zip">Guardar tablas</button><button id="sumprint" title="Imprimir el resumen (también puedes elegir Guardar como PDF en la ventana de impresión)">Imprimir o PDF</button><button class="pclose" title="Cerrar (Esc)" aria-label="Cerrar"><i class="ic" data-ic="x"></i></button></div><div id="sumbody"></div></div></div>
-<div id="setdlg" class="over" hidden><div class="panel" role="dialog" aria-modal="true" aria-labelledby="h_set"><div class="ptop"><h2 id="h_set">Ajustes</h2><span class="sp"></span><button class="pclose" title="Cerrar (Esc)" aria-label="Cerrar"><i class="ic" data-ic="x"></i></button></div>
-  <div class="form">
-    <h3>Clasificar</h3>
-    <label class="chk" title="Si lo desactivas, te quedas en la misma foto después de clasificarla. Las fotos siempre se mueven a su carpeta."><input type="checkbox" id="adv" checked> Pasar a la siguiente foto al clasificar</label>
-    <label class="chk"><input type="checkbox" id="confirm"> Confirmar cada clasificación</label>
-    <label class="chk" title="Al abrir una foto se oculta la barra lateral para que la foto ocupe todo el espacio. Al volver a la galería regresa."><input type="checkbox" id="autohide" checked> Ocultar la barra lateral al abrir una foto</label>
-    <p class="hint tiny">El orden de las fotos y las ráfagas se cambian a la derecha de las pestañas de la galería.</p>
-    <h3>Reproducir ráfagas (tecla P)</h3>
-    <div class="two"><label>Velocidad <select id="bspeed"><option value="500">2 fotos por segundo</option><option value="330">3 fotos por segundo</option><option value="200">5 fotos por segundo</option></select></label>
-    <label class="chk" style="align-self:end"><input type="checkbox" id="bloop"> Repetir hasta pulsar una tecla</label></div>
-    <h3>Estaciones</h3>
-    <label class="chk"><input type="checkbox" id="autost"> Al agregar una estación, llenar sus fechas y su GPS con los de sus fotos</label>
-    <p class="hint tiny">Se pueden corregir en Resumen → Estaciones. Las fechas de instalación y retiro se usan para los días-trampa.</p>
-    <h3>Resumen</h3>
-    <label title="Fotos de la misma especie en la misma estación separadas por menos de este tiempo cuentan como un solo registro (evento). Se usa para la abundancia relativa, la actividad y los individuos.">Eventos independientes <select id="evint"><option value="0">Cada foto cuenta por separado</option><option value="5">5 minutos</option><option value="15">15 minutos</option><option value="30">30 minutos (lo más usado)</option><option value="60">60 minutos</option></select></label>
-    <h3>Exportar <small>opcionales; la estación de cada foto es su carpeta</small></h3>
-    <label>Proyecto <input id="proj"></label>
-    <label title="Con varias estaciones se usa la cámara escrita en los datos de cada estación">ID de cámara <input id="cam"></label>
-    <label class="chk"><input type="checkbox" id="expPend"> Incluir pendientes al exportar</label>
-    <h3>Revisión</h3>
-    <label>Nombre de quien revisa <input id="reviewer" placeholder="para el modo revisor y la revisión a ciegas"></label>
-    <label class="chk" title="Otra persona revisa las mismas fotos sin ver la clasificación. Sus respuestas se anotan y no se mueve ningún archivo. Los desacuerdos están en Exportar → Doble revisión."><input type="checkbox" id="blind"> Doble revisión a ciegas (no muestra la clasificación ni mueve fotos)</label>
-    <div class="row"><button id="setreset" class="lnk2">Restablecer los ajustes</button><span class="sp"></span></div>
-  </div></div></div>
+<div id="sum" class="over" hidden><div class="panel wide sumpanel" role="dialog" aria-modal="true" aria-labelledby="h_sum"><nav class="sumside noprint" id="sumside"><h2 id="h_sum">Resumen</h2><button data-sec="ss-tab"><i class="ic sm" data-ic="paw"></i><span><b>Especies y estaciones</b><small>Fotos, eventos, abundancia</small></span></button><button data-sec="ss-act"><i class="ic sm" data-ic="clock"></i><span><b>Horas de actividad</b><small>Eventos por hora del día</small></span></button><button data-sec="ss-st"><i class="ic sm" data-ic="pin"></i><span><b>Estaciones</b><small>Fechas, coordenadas y cámara</small></span></button><button data-sec="ss-fun"><i class="ic sm" data-ic="cal"></i><span><b>Funcionamiento</b><small>Días sin funcionar</small></span></button><button data-sec="ss-acu"><i class="ic sm" data-ic="chart"></i><span><b>Acumulación</b><small>Especies por esfuerzo</small></span></button><button data-sec="ss-tras"><i class="ic sm" data-ic="overlap"></i><span><b>Traslape</b><small>Horarios de dos especies</small></span></button><button data-sec="ss-ind"><i class="ic sm" data-ic="ind"></i><span><b>Individuos</b><small>Catálogo y avistamientos</small></span></button><span class="sp"></span><hr><button id="sumcsv" title="Un archivo CSV por tabla (fotos, eventos, individuos, abundancia relativa, lista de eventos, actividad por hora y estaciones) dentro de un .zip"><i class="ic sm" data-ic="download"></i><span><b>Guardar tablas</b></span></button><button id="sumprint" title="Imprimir el resumen (también puedes elegir Guardar como PDF en la ventana de impresión)"><i class="ic sm" data-ic="sheet"></i><span><b>Imprimir o PDF</b></span></button></nav><div class="summain" id="summain"><button class="pclose" title="Cerrar (Esc)" aria-label="Cerrar"><i class="ic" data-ic="x"></i></button><div id="sumbody"></div></div></div></div>
+<div id="setdlg" class="over" hidden><div class="panel wide sumpanel setpanel" role="dialog" aria-modal="true" aria-labelledby="h_set"><nav class="sumside" id="setside"><h2 id="h_set">Ajustes</h2><button data-sec="cls"><i class="ic sm" data-ic="paw"></i><span><b>Clasificar</b><small>Fotos y ráfagas</small></span></button><button data-sec="ind"><i class="ic sm" data-ic="ind"></i><span><b>Individuos</b><small>Especies por individuo</small></span></button><button data-sec="res"><i class="ic sm" data-ic="chart"></i><span><b>Resumen</b><small>Eventos y estaciones</small></span></button><button data-sec="exp"><i class="ic sm" data-ic="share"></i><span><b>Exportar</b><small>Incluir pendientes</small></span></button><button data-sec="rev"><i class="ic sm" data-ic="eye"></i><span><b>Revisión</b><small>Revisor y doble a ciegas</small></span></button><button data-sec="apa"><i class="ic sm" data-ic="sun"></i><span><b>Apariencia</b><small>Tema y miniaturas</small></span></button><button data-sec="ata"><i class="ic sm" data-ic="keyboard"></i><span><b>Atajos de teclado</b><small>Tabla de teclas</small></span></button><span class="sp"></span><hr><button id="setreset" class="danger"><i class="ic sm" data-ic="undo"></i><span><b>Restablecer ajustes</b></span></button></nav><div class="summain"><button class="pclose" title="Cerrar (Esc)" aria-label="Cerrar"><i class="ic" data-ic="x"></i></button>
+<section class="setsec" data-sec="cls"><h3>Clasificar</h3><p class="ssub">Qué pasa cuando eliges la especie de una foto</p><label class="setrow"><span><b>Pasar a la siguiente foto</b><small>Al clasificar, abre sola la siguiente. Las fotos siempre se mueven a su carpeta.</small></span><input type="checkbox" class="swi" id="adv" checked></label><label class="setrow"><span><b>Ocultar la barra lateral al abrir una foto</b><small>Deja más espacio para la foto; al volver a la galería regresa</small></span><input type="checkbox" class="swi" id="autohide" checked></label><p class="setsub">Ráfagas · tecla P <span class="qhelp" tabindex="0" aria-label="Qué son las ráfagas" data-tip="Una ráfaga son las fotos que la cámara toma seguidas en un mismo disparo. Al abrir una, la tecla P la reproduce como un video corto.">?</span></p><div class="setrow"><span><b>Velocidad</b><small>Segundos que dura cada foto al reproducir una ráfaga</small></span><div class="seg setseg" id="bspeed"><button data-v="200">0.2 s</button><button data-v="330">0.3 s</button><button data-v="500">0.5 s</button><button data-v="1000">1 s</button><button data-v="2000">2 s</button></div></div><label class="setrow"><span><b>Repetir</b><small>Sigue hasta que pulses una tecla</small></span><input type="checkbox" class="swi" id="bloop"></label><p class="hint tiny">El orden de las fotos y las ráfagas se cambian a la derecha de las pestañas de la galería.</p></section>
+<section class="setsec" data-sec="ind"><h3>Individuos</h3><p class="ssub">Especies que se identifican por sus marcas (manchas, rosetas, cicatrices)</p><div id="setindsp"></div></section>
+<section class="setsec" data-sec="res"><h3>Resumen</h3><p class="ssub">Cómo se cuentan los registros y los días-trampa</p><label class="setrow"><span><b>Eventos independientes</b><small>Fotos de la misma especie y estación separadas por menos de este tiempo cuentan como un solo registro</small></span><select id="evint"><option value="0">Cada foto cuenta por separado</option><option value="5">5 minutos</option><option value="15">15 minutos</option><option value="30">30 minutos (lo más usado)</option><option value="60">60 minutos</option></select></label><label class="setrow"><span><b>Llenar fechas y GPS al agregar una estación</b><small>Con los de sus fotos; se corrigen en Resumen → Estaciones</small></span><input type="checkbox" class="swi" id="autost"></label></section>
+<section class="setsec" data-sec="exp"><h3>Exportar</h3><p class="ssub">Qué entra en los archivos que exportas</p><label class="setrow"><span><b>Incluir pendientes</b><small>Agrega al CSV las fotos sin clasificar</small></span><input type="checkbox" class="swi" id="expPend"></label></section>
+<section class="setsec" data-sec="rev"><h3>Revisión</h3><p class="ssub">Para que otra persona revise las fotos</p><label class="setrow"><span><b>Nombre de quien revisa</b><small>Para el modo revisor y la revisión a ciegas</small></span><input id="reviewer" placeholder="para el modo revisor y la revisión a ciegas"></label><label class="setrow"><span><b>Doble revisión a ciegas</b><small>No muestra la clasificación ni mueve fotos; los desacuerdos están en Exportar → Doble revisión</small></span><input type="checkbox" class="swi" id="blind"></label></section>
+<section class="setsec" data-sec="apa"><h3>Apariencia</h3><p class="ssub">Cómo se ve BioTrampa en esta computadora</p><div class="setrow"><span><b>Tema</b><small>«Sistema» sigue el modo claro u oscuro de tu computadora</small></span><div class="seg setseg" id="settheme"><button data-v="light">Claro</button><button data-v="dark">Oscuro</button><button data-v="sys">Sistema</button></div></div><label class="setrow"><span><b>Tamaño de las miniaturas</b><small>En la galería (también con Ctrl + rueda)</small></span><input type="range" id="thsize" min="200" max="360" step="10"></label></section>
+<section class="setsec" data-sec="ata"><h3>Atajos de teclado</h3><p class="ssub">Todas las teclas de BioTrampa</p><button id="setkeys" class="main">Abrir la tabla de atajos</button><p class="hint tiny">También se abre con la tecla ?.</p></section>
+</div></div></div>
 <div id="nsdlg" class="over" hidden><div class="panel small" role="dialog" aria-modal="true" aria-labelledby="h_ns"><div class="ptop"><h2 id="h_ns">Especie nueva</h2><span class="sp"></span><button class="pclose" title="Cerrar (Esc)" aria-label="Cerrar"><i class="ic" data-ic="x"></i></button></div>
   <div class="form">
     <label>Nombre de la especie <input id="ns_name" placeholder="p. ej. Ocelote" autocomplete="off"></label>
     <label><span>Nombre científico <small>(opcional)</small></span><input id="ns_sci" placeholder="p. ej. Leopardus pardalis" autocomplete="off"></label>
+    <div class="nsdir" id="ns_dirw"><span>La carpeta se llama</span><div class="idseg" id="ns_dir"><button data-v="">Nombre común</button><button data-v="1">Nombre científico</button></div><small id="ns_path"></small></div>
     <p class="hint tiny" id="ns_hint"></p>
     <div class="row"><span class="sp"></span><button id="ns_cancel">Cancelar</button><button id="ns_ok" class="main">Aceptar</button></div>
   </div></div></div>
@@ -299,8 +286,8 @@
 <div id="tour" hidden><div id="tourhole"></div><div id="tourbox"><div id="tourtxt"></div><div class="row"><span id="tourn"></span><span class="sp"></span><button id="tourskip" class="lnk2">Saltar</button><button id="tourprev">Anterior</button><button id="tournext" class="main">Siguiente</button></div></div></div>
 <input id="filest" type="file" accept=".csv,text/csv" hidden><input id="fileimp" type="file" accept=".json,application/json" hidden><input id="filecsv" type="file" accept=".csv,text/csv" multiple hidden><input id="filebak" type="file" accept=".zip,.json,application/zip,application/json" hidden><input id="filerev" type="file" accept=".csv,text/csv" hidden><input id="fileind" type="file" accept=".json,application/json" hidden><input id="filepkg" type="file" accept=".zip,application/zip" hidden>
 <div id="toast" role="status" aria-live="polite" hidden></div>
-<script src="js/app.js?v=1.4.22.1"></script>
-<script src="js/estudio.js?v=1.4.22.1"></script>
-<script src="js/individuos.js?v=1.4.22.1"></script>
+<script src="js/app.js?v=1.4.26.1"></script>
+<script src="js/estudio.js?v=1.4.26.1"></script>
+<script src="js/individuos.js?v=1.4.26.1"></script>
 </body>
 </html>

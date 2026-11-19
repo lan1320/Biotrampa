@@ -27,6 +27,7 @@ const IC = {
   more: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
   contrast: '<circle cx="12" cy="12" r="9"/><path d="M12 17a5 5 0 0 0 0-10v10z"/>',
   image: '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', pin: '<path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>', cal: '<rect x="3" y="5" width="18" height="15" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>', overlap: '<circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/>',
   paw: '<circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/>',
   cam: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>', // 1.4.10: título Estaciones
   ind: '<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/>', // 1.4.10: Individuos (barra y visor)
@@ -61,8 +62,9 @@ const sv = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch
 GH = ls('bt_gh', 'Fantasmas');
 const S = { srcs: [], pending: [], proj: null, mapCfg: null, stations: {}, presets: ls('bt_presets', []), revMode: false, rate: [], empty: null, ro: false, busy: false, items: [], view: [], sig: null, cur: null, act: null, multi: new Set(), cats: ls('bt_cats', DEF), keys: ls('bt_keys', {}), sci: Object.assign({}, SCI, ls('bt_sci', {})), offsets: {},
   f: { q: '', st: 'all', cat: 'all', dn: 'all', moon: 'all', src: null }, reg: {}, hist: [], redo: [], groups: new Map(), sort: ls('bt_sort', 'date'), burst: ls('bt_burst', 10),
-  spSort: ls('bt_spsort', 'keys'), created: ls('bt_created', {}), used: ls('bt_used', {}), split: new Set(ls('bt_split', [])), vkeep: ls('bt_vkeep', {}), kf: null };
+  spSort: ls('bt_spsort', 'keys'), created: ls('bt_created', {}), used: ls('bt_used', {}), split: new Set(ls('bt_split', [])), vkeep: ls('bt_vkeep', {}), kf: null, fsci: ls('bt_fsci', {}) }; // fsci (1.4.24): especies cuya carpeta usa el nombre científico
 const folder = c => c.trim().replace(/[\\/:*?"<>|.]/g, '').replace(/\s+/g, '_');
+const catDir = c => folder(S.fsci[c] && S.sci[c] ? S.sci[c] : c); // carpeta de la especie: nombre común o científico (1.4.24)
 function toast(m, ms = 4000, undoBtn = false) { // undoBtn: muestra un botón "Deshacer" dentro del aviso
   const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(toast.t);
   if (undoBtn && S.hist.length) { const b = document.createElement('button'); b.textContent = 'Deshacer'; b.className = 'tundo'; b.onclick = e => { e.stopPropagation(); t.hidden = true; locked(undo); }; t.appendChild(b); ms = Math.max(ms, 6000); }
@@ -135,7 +137,8 @@ async function loadMeta(it) {
   if (it.meta) return it.meta;
   try {
     const f = await it.h.getFile(); it.size = f.size; it.mod = f.lastModified; if (!it.origMod && !it.cat) it.origMod = f.lastModified;
-    it.meta = /jpe?g$/i.test(it.name) ? exif(await f.slice(0, 262144).arrayBuffer()) : isVideo(it.name) ? await videoMeta(f) : {};
+    const k = 'm|' + tkey(it), c = await tget(k); if (c) return it.meta = c; // 1.4.24: la segunda vez sale de la caché, sin leer la foto
+    it.meta = /jpe?g$/i.test(it.name) ? exif(await f.slice(0, 131072).arrayBuffer()) : isVideo(it.name) ? await videoMeta(f) : {}; tput(k, it.meta); // el EXIF (APP1) mide 64 KB como máximo
   } catch (e) { it.meta = {}; }
   return it.meta;
 }
@@ -151,7 +154,7 @@ async function videoMeta(f) {
 async function loadAllMeta(list) {
   let i = 0, n = 0; const tot = list.length;
   const worker = async () => { while (i < tot) { const it = list[i++]; await loadMeta(it); if (++n % 40 === 0) toast(`Leyendo fechas de captura… ${n}/${tot}`, 0); } };
-  await Promise.all([worker(), worker(), worker(), worker()]);
+  await Promise.all(Array.from({ length: 12 }, worker)); // 1.4.24: 12 lecturas a la vez (antes 4)
 }
 const needMeta = () => S.sort === 'date' || S.burst || S.f.dn !== 'all' || S.f.st === 'susp';
 async function prepare(force) { if (!S.items.length || !(force || needMeta())) return; if (S.items.every(i => i.meta)) return; await loadAllMeta(S.items); $('#toast').hidden = true; }
@@ -347,10 +350,10 @@ const uniqLabel = (l, except) => { let k = 1, x = l; while (S.srcs.some(s => s !
 // 1.4.13: cada proyecto guarda su propia lista de especies (con teclas, nombres científicos y especies con individuos).
 // Los proyectos de antes no la tenían: usan la lista que había al estrenar la 1.4.13 (se guarda una sola vez).
 if (!ls('bt_sp_legacy', null)) sv('bt_sp_legacy', { cats: S.cats, sci: S.sci, keys: S.keys, created: S.created, used: S.used });
-const spState = () => ({ cats: S.cats, sci: S.sci, keys: S.keys, created: S.created, used: S.used, indSp: S.indSp });
+const spState = () => ({ cats: S.cats, sci: S.sci, keys: S.keys, created: S.created, used: S.used, indSp: S.indSp, fsci: S.fsci });
 function setSpecies(p) { // proyecto nuevo: setSpecies({ indSp: [] }) = sin especies (solo Fantasmas) y ninguna marcada para individuos
-  S.cats = [...(p.cats || [])]; S.sci = Object.assign({}, p.sci); S.keys = Object.assign({}, p.keys); S.created = Object.assign({}, p.created); S.used = Object.assign({}, p.used); S.indSp = [...(p.indSp || S.indSp || [])];
-  sv('bt_cats', S.cats); sv('bt_sci', S.sci); sv('bt_keys', S.keys); sv('bt_created', S.created); sv('bt_used', S.used); sv('bt_indsp', S.indSp); renderSide();
+  S.cats = [...(p.cats || [])]; S.sci = Object.assign({}, p.sci); S.keys = Object.assign({}, p.keys); S.created = Object.assign({}, p.created); S.used = Object.assign({}, p.used); S.indSp = [...(p.indSp || S.indSp || [])]; S.fsci = Object.assign({}, p.fsci);
+  sv('bt_cats', S.cats); sv('bt_sci', S.sci); sv('bt_keys', S.keys); sv('bt_created', S.created); sv('bt_used', S.used); sv('bt_indsp', S.indSp); sv('bt_fsci', S.fsci); renderSide();
 }
 function resetAll() {
   closeLb(); S.srcs = []; S.pending = []; S.items = []; S.multi.clear(); S.f.src = null; S.f.cat = 'all'; S.empty = null; S.rate = []; S.stations = {}; S.offsets = {}; S.mapCfg = null; S.proj = null; S.ind = { list: {}, act: 0 }; S.indDirty = false; resetThumbs();
@@ -429,11 +432,12 @@ $('#pj_ok').onclick = async () => {
 // Arrastrar carpetas a la ventana: cada una se agrega como estación
 let dragN = 0;
 const isFolderDrag = e => e.dataTransfer && [...e.dataTransfer.items || []].some(i => i.kind === 'file');
-addEventListener('dragenter', e => { if (!isFolderDrag(e) || !window.showDirectoryPicker) return; dragN++; $('#dropov').hidden = false; });
+addEventListener('dragenter', e => { if (!isFolderDrag(e) || !window.showDirectoryPicker || !$('#impdlg').hidden) return; dragN++; $('#dropov').hidden = false; });
 addEventListener('dragleave', () => { if (--dragN <= 0) { dragN = 0; $('#dropov').hidden = true; } });
 addEventListener('dragover', e => { if (isFolderDrag(e)) e.preventDefault(); });
 addEventListener('drop', async e => {
   if (!isFolderDrag(e)) return; e.preventDefault(); dragN = 0; $('#dropov').hidden = true;
+  if (!$('#impdlg').hidden) return impFiles([...e.dataTransfer.files]); // 1.4.24: en Importar, las imágenes sueltas son referencias
   if (!window.showDirectoryPicker) return toast('Este navegador no permite agregar carpetas arrastrándolas. Usa Chrome o Edge.', 5000);
   if (S.busy) return toast('Espera a que termine de moverse la foto.');
   const hs = (await Promise.all([...e.dataTransfer.items].filter(i => i.kind === 'file' && i.getAsFileSystemHandle).map(i => i.getAsFileSystemHandle().catch(() => null)))).filter(Boolean);
@@ -549,13 +553,13 @@ async function renderHome() { // inicio: saludo, el último proyecto en grande y
     box.appendChild(c); }
 }
 $('#open2').onclick = () => { if (S.proj && !S.items.length) resetAll(); addStation(); }; // «Nuevo proyecto»
-$('#htour').onclick = () => startTour('main'); $('#hset').onclick = () => openOver('#setdlg');
+$('#htour').onclick = () => startTour('main'); $('#hset').onclick = () => openSet();
 $('#projbtn').addEventListener('click', () => renderProjMenu());
 
 /* ---------- Escanear ---------- */
 function catFor(parts) {
   if (parts[0] !== ROOT || !parts[1]) return null; const fn = parts[1];
-  return folder(GH).toLowerCase() === fn.toLowerCase() ? GH : (S.cats.find(c => folder(c).toLowerCase() === fn.toLowerCase()) || fn.replace(/_/g, ' '));
+  return folder(GH).toLowerCase() === fn.toLowerCase() ? GH : (S.cats.find(c => [folder(c), catDir(c), S.sci[c] ? folder(S.sci[c]) : ''].some(x => x && x.toLowerCase() === fn.toLowerCase())) || fn.replace(/_/g, ' ')); // 1.4.24: también la carpeta con el nombre científico
 }
 const REFD = 'Referencias de individuos'; // 1.4.15: imágenes de referencia importadas (no son fotos del proyecto)
 const isPhoto = n => /\.(jpe?g|png|mp4|mov|m4v|webm|avi)$/i.test(n) && !n.startsWith('._'); // fotos y videos; ._ = archivos ocultos que macOS crea en tarjetas SD
@@ -615,13 +619,27 @@ function pump() { // primero las miniaturas que se acaban de ver; las que ya que
     running++; thumb(img).finally(() => { running--; pump(); }); } }
 function badThumb(img) { img.alt = 'No se pudo leer'; img.parentNode.classList.add('err'); img.parentNode.title = 'No se pudo leer la imagen (archivo dañado o no es una foto)'; }
 /* Las miniaturas se generan en un hilo aparte para que la galería no se trabe; si el navegador no lo permite, se hacen aquí */
-const WCODE = `self.onmessage = async e => { const { id, file, w, fit } = e.data; try {
+/* 1.4.25: JPG dañado en la cámara: Chrome se rinde en la primera marca de reinicio (RST) rota y rellena de gris. Se arregla una copia en memoria:
+   las marcas raras del escaneo pasan a RST si caen donde tocaba una (si no, se anulan) y todas se renumeran en orden. El archivo nunca se toca. */
+function fixJpeg(u) {
+  let d0 = 0; for (let o = 2; o < u.length - 4;) { if (u[o] !== 0xFF) return 0; const m = u[o + 1], L = (u[o + 2] << 8) | u[o + 3]; if (m === 0xDA) { d0 = o + 2 + L; break; } o += 2 + L; }
+  if (!d0) return 0; const lens = []; let last = d0, k = 0, ch = 0;
+  for (let i = d0; i < u.length - 1; i++) if (u[i] === 0xFF) { const m = u[i + 1]; if (m >= 0xD0 && m <= 0xD7) { lens.push(i - last); last = i + 2; } if (m) i++; }
+  if (lens.length < 8) return 0; const med = lens.sort((a, b) => a - b)[lens.length >> 1]; last = d0;
+  for (let i = d0; i < u.length - 1; i++) { if (u[i] !== 0xFF) continue; const m = u[i + 1]; if (m === 0xFF) continue; if (!m) { i++; continue; } if (m === 0xD9) break;
+    if (!(m >= 0xD0 && m <= 0xD7) && !(i - last > med * .6 && i - last < med * 1.6)) { u[i + 1] = 0; ch++; i++; continue; }
+    const w = 0xD0 + (k++ % 8); if (m !== w) { u[i + 1] = w; ch++; } last = i + 2; i++; }
+  return ch;
+}
+const WCODE = `${fixJpeg}
+self.onmessage = async e => { const { id, file, w, fit } = e.data; let fx = null; try {
+  const dec = async o => { try { return await createImageBitmap(file, o); } catch (err) { const u = new Uint8Array(await file.arrayBuffer()); if (!fixJpeg(u)) throw err; fx = new Blob([u], { type: 'image/jpeg' }); return createImageBitmap(fx, o); } };
   let bmp;
-  if (fit) { bmp = await createImageBitmap(file); const k = Math.min(1, fit[0] / bmp.width, fit[1] / bmp.height); if (k > .85) { bmp.close(); return self.postMessage({ id, same: true }); }
+  if (fit) { bmp = await dec(); const k = Math.min(1, fit[0] / bmp.width, fit[1] / bmp.height); if (k > .85) { bmp.close(); return self.postMessage({ id, same: true, fx }); }
     const b2 = await createImageBitmap(bmp, { resizeWidth: Math.round(bmp.width * k), resizeHeight: Math.round(bmp.height * k), resizeQuality: 'high' }); bmp.close(); bmp = b2; }
-  else bmp = await createImageBitmap(file, { resizeWidth: w, resizeQuality: 'medium' });
+  else bmp = await dec({ resizeWidth: w, resizeQuality: 'medium' });
   const c = new OffscreenCanvas(bmp.width, bmp.height); c.getContext('2d').drawImage(bmp, 0, 0); bmp.close();
-  self.postMessage({ id, b: await c.convertToBlob({ type: 'image/jpeg', quality: fit ? .92 : .72 }) });
+  self.postMessage({ id, fx, b: await c.convertToBlob({ type: 'image/jpeg', quality: fit ? .92 : .72 }) });
 } catch (err) { self.postMessage({ id, err: String(err && err.message || err) }); } };`;
 let wOk = typeof OffscreenCanvas !== 'undefined', wId = 0; const wWait = new Map(), WK = {};
 function worker(kind) { // 'thumb' o 'view': dos hilos para que las miniaturas no retrasen el visor
@@ -637,7 +655,7 @@ const wJob = (kind, msg) => { const wk = worker(kind === 'thumb' ? 'thumb' + (wR
 function thumbBlob(f) { return wJob('thumb', { file: f, w: 280 }).then(d => d.b).catch(e => e.message === 'worker' ? thumbBlobMain(f) : Promise.reject(e)); }
 /* Versión del tamaño de la pantalla para el visor: se dibuja al instante; la foto completa se carga solo al hacer zoom o con la lupa */
 function fitSize() { const r = $('.imgwrap').getBoundingClientRect(), d = Math.max(1, devicePixelRatio || 1); return [Math.ceil(Math.max(r.width, 600) * d), Math.ceil(Math.max(r.height, 400) * d)]; }
-async function screenUrl(f) { try { const d = await wJob('view', { file: f, fit: fitSize() }); return d.b ? URL.createObjectURL(d.b) : null; } catch (e) { return null; } }
+async function screenUrl(f) { try { const d = await wJob('view', { file: f, fit: fitSize() }); return [d.b ? URL.createObjectURL(d.b) : null, d.fx]; } catch (e) { return [null]; } } // [versión de pantalla, copia reparada si estaba dañada]
 async function thumbBlobMain(f) {
   const bmp = await createImageBitmap(f, { resizeWidth: 280, resizeQuality: 'low' });
   const c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height; c.getContext('2d').drawImage(bmp, 0, 0); bmp.close();
@@ -834,7 +852,7 @@ function gridMove(key) {
 function catBtn(c) {
   const d = document.createElement('div'); d.className = 'cat' + (c === GH ? ' gh' : '') + (S.f.cat === c ? ' on' : ''); d.dataset.cat = c; d.tabIndex = 0; d.setAttribute('role', 'button');
   if (c !== GH && S.spSort === 'keys') d.classList.add('mv'); // arrastrar solo en el orden de las teclas
-  d.innerHTML = '<kbd></kbd><span class="cn"></span><b></b><button class="dots" title="Opciones: renombrar, eliminar, tecla, nombre científico" aria-label="Opciones">…</button>';
+  d.innerHTML = '<kbd></kbd><span class="cn"></span><b></b><button class="dots" title="Opciones: renombrar, eliminar, tecla, nombre científico" aria-label="Opciones">' + icon('more') + '</button>'; // 1.4.24: ícono centrado en vez de «…» (que queda abajo, en la línea del texto)
   d.children[0].textContent = keyOf(c); d.children[1].textContent = c; d.title = (S.sci[c] ? S.sci[c] + ' · ' : '') + 'Clic: ver sus fotos (otro clic: ver todas)' + (c !== GH && S.spSort === 'keys' ? ' · Arrastra para cambiar el orden y la tecla' : '') + ' · Clic derecho o …: más opciones';
   d.children[2].textContent = (S.counts && S.counts.get(c)) || 0; return d;
 }
@@ -865,18 +883,26 @@ function sortedCats() {
 function menuAt(btn, ops) { // menú pequeño debajo de un botón: [[texto, función, título, marcado]]
   closeMenu(); const m = document.createElement('div'); m.id = 'cmenu';
   ops.forEach(o => { if (!o) { m.appendChild(document.createElement('hr')); return; } const [t, f, ti, chk] = o, b = document.createElement('button'); b.textContent = t; if (ti) b.title = ti; if (chk !== undefined) b.className = chk ? 'chk' : 'unchk'; b.onclick = () => { closeMenu(); f(); }; m.appendChild(b); });
-  document.body.appendChild(m); const r = btn.getBoundingClientRect(); m.style.left = Math.max(8, Math.min(r.left, innerWidth - m.offsetWidth - 8)) + 'px'; m.style.top = Math.min(r.bottom + 4, innerHeight - m.offsetHeight - 8) + 'px'; return m;
+  document.body.appendChild(m); const r = btn.getBoundingClientRect(), side = btn.closest('aside:not(#obs)'), x = side ? side.getBoundingClientRect().right + 8 : r.left, y = side ? r.top - 6 : r.bottom + 4; // 1.4.24: los de la barra izquierda salen a su lado
+  m.style.left = Math.max(8, Math.min(x, innerWidth - m.offsetWidth - 8)) + 'px'; m.style.top = Math.max(8, Math.min(y, innerHeight - m.offsetHeight - 8)) + 'px'; return m;
 }
 // «…» de Especies: importar, exportar, ordenar y plegar
-$('#spmore').onclick = e => { e.stopPropagation(); if (closeMenu()) return; menuAt(e.currentTarget, [['Importar lista de especies (.json)…', spImport, 'Carga una lista exportada por BioTrampa'], ['Cargar la lista de ejemplo: fauna del noreste de México', () => loadExampleList(false), `${NE_LIST.length} especies con su nombre científico`], ['Exportar la lista de especies', () => spExport(), 'Nombres, nombres científicos y teclas, para compartirla'], null,
-  ...Object.entries(SPSORT).map(([k, t]) => [t, () => { S.spSort = k; sv('bt_spsort', k); renderSide(); if (k !== 'keys') toast('Las teclas de cada especie no cambian; solo cambia cómo se ve la lista. Para cambiar teclas vuelve a «Orden de las teclas» y arrastra.', 5000); }, '', S.spSort === k]), null, ['Plegar o desplegar todo', foldAll]]); };
-const foldAll = () => { const secs = [...document.querySelectorAll('#sfiles .fsec')], close = secs.some(s => !s.classList.contains('closed')); secs.forEach(s => { s.classList.toggle('closed', close); folds[s.dataset.fold] = close; }); sv('bt_fold', folds); indSync(); };
+// 1.4.24: ⋯ de Especies con el mismo estilo que Individuos: lo frecuente arriba, ordenar e importar en submenús
+$('#spmore').onclick = e => { e.stopPropagation(); if (closeMenu()) return; spListMenu(e.currentTarget); };
+function spListMenu(btn, back) { // ⋯ de Especies (spMenu es el menú de clasificar con clic derecho)
+  const old = swapMenu(back), m = menuAt(btn, [['Nueva especie', () => openNewSp()], ['Ordenar la lista'], null, ['Importar'], ['Exportar la lista', () => spExport()]]); m.classList.add('indmenu');
+  richMenu(m, [['plus', 'Con su tecla y nombre científico'], ['sort', SPSORT[S.spSort].replace(/ \(.*/, ''), 1, () => spSortMenu(btn)], ['download', '', 1, () => spImpMenu(btn)], ['share', 'Nombres, científicos y teclas, para compartirla']]); place(m, old); }
+function spSortMenu(btn) { const old = swapMenu(1), ks = Object.keys(SPSORT), m = menuAt(btn, [['Volver'], null, ...ks.map(k => [SPSORT[k], null, '', S.spSort === k])]); m.classList.add('indmenu'); richMenu(m, [['chevL', '', 0, () => spListMenu(btn, 1)]]);
+  const bs = [...m.querySelectorAll(':scope > button')].slice(1); bs.forEach((b, i) => b.onclick = () => { const k = ks[i]; S.spSort = k; sv('bt_spsort', k); renderSide(); bs.forEach((x, j) => x.className = j === i ? 'chk' : 'unchk'); if (k !== 'keys') toast('Las teclas de cada especie no cambian; solo cambia cómo se ve la lista. Para cambiar teclas vuelve a «Orden de las teclas» y arrastra.', 5000); });
+  place(m, old); }
+function spImpMenu(btn) { const old = swapMenu(1), m = menuAt(btn, [['Volver'], null, ['Lista de especies (.json)…', spImport], ['Lista de ejemplo', () => loadExampleList(false)]]); m.classList.add('indmenu');
+  richMenu(m, [['chevL', '', 0, () => spListMenu(btn, 1)], ['sheet', 'Exportada por BioTrampa'], ['paw', `Fauna del noreste de México · ${NE_LIST.length} especies`]]); place(m, old); }
 function renderStations() { // avance por estación (primer nivel de carpetas)
   const m = S.stCount;
   const box = $('#stations'); box.textContent = '';
   for (const [s, [d, t]] of [...m].sort((a, b) => a[0].localeCompare(b[0]))) {
     const b = document.createElement('button'); b.className = 'stn' + (S.f.src === s ? ' on' : ''); b.dataset.src = s;
-    b.innerHTML = '<span class="cn"></span><b></b><span class="dots sdots" title="Datos de la estación (coordenadas, fechas, cámara)">…</span>'; b.children[0].textContent = s; b.children[1].textContent = `${fmtN(d)} / ${fmtN(t)}`;
+    b.innerHTML = '<span class="cn"></span><b></b><span class="dots sdots" title="Datos de la estación (coordenadas, fechas, cámara)">' + icon('more') + '</span>'; b.children[0].textContent = s; b.children[1].textContent = `${fmtN(d)} / ${fmtN(t)}`;
     const st = S.stations[s]; b.title = `${d} clasificadas de ${t} · Clic: ver solo esta estación · … o clic derecho: datos de la estación` + (st && st.start ? `\nInstalada ${st.start}${st.end ? ', retirada ' + st.end : ''}` : '\nSin datos de instalación'); box.appendChild(b);
   }
 }
@@ -884,7 +910,7 @@ $('#stations').onclick = e => { const b = e.target.closest('.stn'); if (!b) retu
 $('#stations').oncontextmenu = e => { const b = e.target.closest('.stn'); if (!b) return; e.preventDefault(); openStation(b.dataset.src); };
 $('aside').onclick = e => {
   const d = e.target.closest('.dots'); if (d) { e.stopPropagation(); catMenu(d, d.closest('.cat').dataset.cat); return; }
-  const b = e.target.closest('.cat'); if (!b || b.dataset.cat === undefined) return; if (!$('#lb').hidden) closeLb(); // 1.4.16: los botones de Individuos (ficha, dudosas…) no son filtros: antes dejaban la galería vacía S.f.cat = S.f.cat === b.dataset.cat ? 'all' : b.dataset.cat; applyFilters(); $('#gal').scrollTop = 0; // otro clic en lo mismo: ver todas
+  const b = e.target.closest('.cat'); if (!b || b.dataset.cat === undefined) return; if (!$('#lb').hidden) closeLb(); S.f.cat = S.f.cat === b.dataset.cat ? 'all' : b.dataset.cat; applyFilters(); $('#gal').scrollTop = 0; // 1.4.16: Individuos no son filtros; otro clic en lo mismo: ver todas
 };
 $('aside').oncontextmenu = e => { const b = e.target.closest('.cat'), c = b && b.dataset.cat;
   if (c && (c === GH || S.cats.includes(c))) { e.preventDefault(); e.stopPropagation(); catMenu(b, c); } };
@@ -926,18 +952,11 @@ function closePops(except) { let c = false; document.querySelectorAll('.popbox')
 document.querySelectorAll('.pop > button').forEach(b => b.onclick = e => { e.stopPropagation(); const box = b.nextElementSibling; closePops(box); box.hidden = !box.hidden; b.setAttribute('aria-expanded', !box.hidden); });
 document.querySelectorAll('.popbox').forEach(p => p.onclick = e => e.stopPropagation());
 document.addEventListener('click', () => { closeMenu(); closePops(); });
-function catMenu(btn, c) {
-  closeMenu(); const m = document.createElement('div'); m.id = 'cmenu';
-  const ops = [['Renombrar', () => locked(() => renameCat(c))], ['Nombre científico', () => setSci(c)]];
-  if (S.cats.indexOf(c) >= 9) ops.push(['Cambiar tecla', () => setKey(c)]);
-  ops.push(['Eliminar', () => locked(() => deleteCat(c))]);
-  ops.forEach(([t, f]) => { const b = document.createElement('button'); b.textContent = t; if (t === 'Eliminar') b.className = 'danger'; b.onclick = () => { closeMenu(); f(); }; m.appendChild(b); });
-  document.body.appendChild(m); const r = btn.getBoundingClientRect();
-  m.style.left = Math.max(8, Math.min(r.left, innerWidth - m.offsetWidth - 8)) + 'px'; m.style.top = Math.min(r.bottom + 2, innerHeight - m.offsetHeight - 8) + 'px';
-}
-function setSci(c) {
-  const v = prompt(`Nombre científico de "${c}" (déjalo vacío para quitarlo):`, S.sci[c] || ''); if (v === null) return;
-  if (v.trim()) S.sci[c] = v.trim().replace(/\s+/g, ' '); else delete S.sci[c]; sv('bt_sci', S.sci); saveReg(); renderSide(); toast(v.trim() ? `"${c}" = ${S.sci[c]}` : 'Nombre científico quitado.');
+function catMenu(btn, c) { // 1.4.24: editar (nombre, científico y carpeta), tecla, individuos y eliminar
+  const k = S.cats.indexOf(c) >= 9, ind = c !== GH, ops = [['Editar especie', () => openNewSp(null, c)], ...(k ? [['Cambiar tecla', () => setKey(c)]] : []), ...(ind ? [['Identificar por individuo']] : []), null, ['Eliminar', () => locked(() => deleteCat(c))]];
+  const m = menuAt(btn, ops); m.classList.add('indmenu'); richMenu(m, [['pen'], ...(k ? [['keyboard']] : []), ...(ind ? [['ind']] : []), ['trash']]);
+  const bs = m.querySelectorAll(':scope > button'); bs[bs.length - 1].classList.add('danger');
+  if (ind) { const b = bs[k ? 2 : 1], sw = document.createElement('span'); sw.className = 'sw' + (indOn(c) ? ' on' : ''); b.appendChild(sw); b.onclick = () => { toggleIndSp(c); sw.classList.toggle('on', indOn(c)); }; } // no cierra el menú
 }
 function setKey(c) {
   const v = (prompt(`Letra para "${c}". Disponibles: ${LETTERS.split('').join(' ')}`, keyOf(c)) || '').trim().toUpperCase(); if (!v) return;
@@ -984,15 +1003,28 @@ document.querySelectorAll('.fsec').forEach(sec => { const k = sec.dataset.fold; 
   const h = sec.querySelector('h2.fold'), tg = () => { sec.classList.toggle('closed'); folds[k] = sec.classList.contains('closed'); sv('bt_fold', folds); indSync(); };
   h.onclick = tg; h.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tg(); } }; });
 indSync();
-$('#setbtn').onclick = () => openOver('#setdlg');
+$('#setbtn').onclick = () => openSet();
+function setSec(id) { if (id) sv('bt_setsec', id); let cur = ls('bt_setsec', 'cls'); if (!document.querySelector(`#setdlg .setsec[data-sec="${cur}"]`)) cur = 'cls'; document.querySelectorAll('#setdlg .setsec').forEach(x => x.hidden = x.dataset.sec !== cur); document.querySelectorAll('#setside [data-sec]').forEach(b => b.classList.toggle('on', b.dataset.sec === cur)); } // 1.4.24: Ajustes con barra lateral, una sección a la vez
+document.querySelectorAll('#setside [data-sec]').forEach(b => b.onclick = () => setSec(b.dataset.sec)); setSec();
 // Ajustes que se guardan en este navegador; "Restablecer" vuelve a los valores de fábrica (no toca fotos, especies ni proyectos)
 $('#autost').checked = ls('bt_autost', true); $('#autost').onchange = e => sv('bt_autost', e.target.checked);
-$('#bspeed').value = String(ls('bt_bspeed', 330)); $('#bspeed').onchange = e => { sv('bt_bspeed', +e.target.value); e.target.blur(); };
+// 1.4.24: botones de segmento en Ajustes (velocidad de ráfagas y tema)
+const segSet = (id, v) => $('#' + id).querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === String(v)));
+segSet('bspeed', ls('bt_bspeed', 330)); $('#bspeed').onclick = e => { const b = e.target.closest('button'); if (!b) return; sv('bt_bspeed', +b.dataset.v); segSet('bspeed', b.dataset.v); };
+segSet('settheme', ls('bt_theme', null) || 'sys'); $('#settheme').onclick = e => { const b = e.target.closest('button'); if (!b) return; const v = b.dataset.v;
+  if (v === 'sys') { try { localStorage.removeItem('bt_theme'); } catch (x) {} setTheme(sysDark.matches ? 'dark' : 'light', false); } else setTheme(v); segSet('settheme', v); };
+$('#thsize').value = TH.v; $('#thsize').oninput = e => { TH.v = +e.target.value; $('#grid').style.setProperty('--th', TH.v + 'px'); sv('bt_size', TH.v); };
+$('#setkeys').onclick = () => { renderKeys(true); openOver('#help'); };
+function openSet() { // las especies con individuos y el tema pueden haber cambiado desde otro lugar
+  const box = $('#setindsp'); box.textContent = ''; const cs = S.cats.filter(c => c !== GH);
+  if (!cs.length) box.innerHTML = '<p class="hint tiny">Todavía no hay especies.</p>';
+  for (const c of cs) { const l = document.createElement('label'); l.className = 'setrow'; l.innerHTML = '<span><b></b><small></small></span><input type="checkbox" class="swi">'; l.querySelector('b').textContent = c; l.querySelector('small').textContent = S.sci[c] || ''; const i = l.querySelector('input'); i.checked = indOn(c); i.onchange = () => toggleIndSp(c); box.appendChild(l); }
+  segSet('settheme', ls('bt_theme', null) || 'sys'); $('#thsize').value = TH.v; openOver('#setdlg'); }
 $('#bloop').checked = ls('bt_bloop', false); $('#bloop').onchange = e => sv('bt_bloop', e.target.checked);
 $('#setreset').onclick = () => { if (!confirm('¿Volver a los ajustes de fábrica? No se tocan fotos, especies, proyectos ni datos de estaciones.')) return;
   ['bt_adv', 'bt_autost', 'bt_bspeed', 'bt_bloop', 'bt_ev', 'bt_sort', 'bt_burst', 'bt_obs', 'bt_focus', 'bt_size', 'bt_autohide', 'bt_spsort', 'bt_lupesz'].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
   try { localStorage.removeItem('bt_confirm'); } catch (e) {} toast('Ajustes restablecidos. Se recarga la página…', 2000); setTimeout(() => location.reload(), 900); };
-for (const [id, k] of [['proj', 'bt_proj'], ['cam', 'bt_cam']]) { $('#' + id).value = ls(k, ''); $('#' + id).oninput = e => sv(k, e.target.value); }
+
 
 /* ---------- Tabla de atajos (en Opciones y con la tecla ?) ---------- */
 let keySig = '';
@@ -1025,8 +1057,8 @@ document.querySelectorAll('.over').forEach(o => o.onclick = e => { if (e.target 
 let bigUrl = null, pre = []; // pre = fotos precargadas [{it, url}]
 $('#big').onerror = () => { if ($('#big').getAttribute('src')) $('#lbmsg').textContent = 'No se puede mostrar: el archivo está dañado o no es una foto.'; };
 async function urlFor(it) { // { url: foto completa, surl: versión de pantalla (o null) }, ya decodificada para no trabar la pantalla
-  const p = pre.find(x => x.it === it && x.h === it.h); if (p) { pre = pre.filter(x => x !== p); await p.ready; if (p.url) return { url: p.url, surl: p.surl }; }
-  const f = await it.h.getFile(), url = URL.createObjectURL(f), surl = await screenUrl(f), im = new Image(); im.src = surl || url; await im.decode().catch(() => {}); return { url, surl };
+  const p = pre.find(x => x.it === it && x.h === it.h); if (p) { pre = pre.filter(x => x !== p); await p.ready; if (p.url) return { url: p.url, surl: p.surl, fx: p.fx }; }
+  const f = await it.h.getFile(), [surl, fx] = await screenUrl(f), url = URL.createObjectURL(fx || f), im = new Image(); im.src = surl || url; await im.decode().catch(() => {}); return { url, surl, fx: !!fx };
 }
 function dropPre(o) { if (o.url) URL.revokeObjectURL(o.url); if (o.surl) URL.revokeObjectURL(o.surl); }
 function useFull() { // cambia a la foto completa (zoom, lupa o ventana más grande) sin congelar: primero la decodifica
@@ -1038,7 +1070,7 @@ let bigSUrl = null, fullLoading = false;
 function preload(list) { // precarga la foto siguiente y la anterior para que el visor cambie al instante
   for (const it of list) { if (!it || pre.some(x => x.it === it)) continue;
     const e = { it, h: it.h, url: null, surl: null, im: null }; pre.push(e); while (pre.length > 3) dropPre(pre.shift());
-    e.ready = it.h.getFile().then(async f => { e.url = URL.createObjectURL(f); e.surl = await screenUrl(f); e.im = new Image(); e.im.src = e.surl || e.url; return e.im.decode().catch(() => {}); }).catch(() => { pre = pre.filter(x => x !== e); }); }
+    e.ready = it.h.getFile().then(async f => { const [s, fx] = await screenUrl(f); e.surl = s; e.fx = !!fx; e.url = URL.createObjectURL(fx || f); e.im = new Image(); e.im.src = e.surl || e.url; return e.im.decode().catch(() => {}); }).catch(() => { pre = pre.filter(x => x !== e); }); }
 }
 async function jpegCut(it) { // un JPG completo termina con la marca FF D9; si falta al final, el archivo está cortado (tarjeta retirada a mitad de escritura, copia incompleta…)
   if (!/\.jpe?g$/i.test(it.name)) return false;
@@ -1053,7 +1085,7 @@ function setViewer(on) { // la galería y el visor comparten el área de trabajo
 async function show(it) {
   const same = S.cur === it, prevSt = S.cur ? station(S.cur) : null; S.cur = it; if (!same) obsTemp = null; closePops(); $('#lb').hidden = false; endCompare(); setViewer(true);
   if (!same) noteSeen(it);
-  if (!same) { $('#lbmsg').textContent = 'Cargando…'; V.z = 1; V.x = V.y = 0; const vk = S.vkeep[station(it)]; if (vk) { V.b = vk[0]; V.c = vk[1]; } else if (prevSt && S.vkeep[prevSt]) { V.b = V.c = 1; } $('#bri').value = V.b; $('#con').value = V.c; $('#vkeep').checked = !!vk; applyV(); S.act = it.cat; S.shownAt = performance.now(); }
+  if (!same) { $('#lbmsg').textContent = ''; $('.imgwrap').classList.add('ld'); V.z = 1; V.x = V.y = 0; const vk = S.vkeep[station(it)]; if (vk) { V.b = vk[0]; V.c = vk[1]; } else if (prevSt && S.vkeep[prevSt]) { V.b = V.c = 1; } $('#bri').value = V.b; $('#con').value = V.c; $('#vkeep').checked = !!vk; applyV(); S.act = it.cat; S.shownAt = performance.now(); }
   if (!hasCat(it, S.act)) S.act = it.cat;
   $('#lb').classList.toggle('focus', focusOn);
   const i = S.view.indexOf(it), g = groupOf(it);
@@ -1065,13 +1097,15 @@ async function show(it) {
   const bb = $('#lbburst'); bb.hidden = g.length < 2; if (g.length > 1) bb.textContent = `Ráfaga · ${g.indexOf(it) + 1} de ${g.length}`;
   $('#fbar').textContent = [it.origName || it.name, catsTxt(it), pi >= 0 ? `pendiente ${pi + 1} de ${pv.length}` : `${pv.length} pendientes`].join(' · ');
   const vid = isVideo(it.name); $('#big').hidden = vid; $('#bigv').hidden = !vid; if (vid) setLupe(false, true);
+  const tu = !same && !vid && thumbs.get(it); if (tu && tu !== 'err') { $('#big').src = tu; $('.imgwrap').classList.remove('ld'); } // 1.4.24: miniatura mientras carga la grande
   if (!same || !(vid ? $('#bigv').getAttribute('src') : $('#big').getAttribute('src'))) {
     try { const u = vid ? { url: URL.createObjectURL(await it.h.getFile()), surl: null } : await urlFor(it), url = u.url;
       if (S.cur !== it) { URL.revokeObjectURL(url); if (u.surl) URL.revokeObjectURL(u.surl); return; }
       if (bigUrl) URL.revokeObjectURL(bigUrl); if (bigSUrl) URL.revokeObjectURL(bigSUrl); bigUrl = url; bigSUrl = u.surl; fullLoading = false;
       if (vid) { $('#big').removeAttribute('src'); $('#bigv').src = url; $('#lbmsg').textContent = /\.avi$/i.test(it.name) ? 'Chrome no reproduce videos AVI; puedes clasificarlo igual.' : ''; }
-      else { $('#bigv').removeAttribute('src'); $('#big').src = bigSUrl || bigUrl; $('#lbmsg').textContent = ''; jpegCut(it).then(cut => { if (cut && S.cur === it && !$('#lbmsg').textContent) $('#lbmsg').textContent = 'Esta foto parece incompleta (el archivo termina antes de tiempo): se muestra solo la parte que se pudo leer.'; }); if (V.z > 1 || lupeOn) useFull(); if (!burstPlay && !matchMedia('(prefers-reduced-motion: reduce)').matches) $('#big').animate([{ opacity: .55 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' }); } }
+      else { $('#bigv').removeAttribute('src'); $('#big').src = bigSUrl || bigUrl; $('#lbmsg').textContent = ''; if (u.fx) toast('Foto dañada en la cámara: se muestra reparada. Las líneas son del daño; el archivo no se modifica.', 4000); jpegCut(it).then(cut => { if (cut && S.cur === it && !$('#lbmsg').textContent) $('#lbmsg').textContent = 'Esta foto parece incompleta (el archivo termina antes de tiempo): se muestra solo la parte que se pudo leer.'; }); if (V.z > 1 || lupeOn) useFull(); if (!burstPlay && !matchMedia('(prefers-reduced-motion: reduce)').matches) $('#big').animate([{ opacity: .55 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' }); } }
     catch (e) { $('#big').removeAttribute('src'); $('#lbmsg').textContent = 'No se pudo leer: ' + e.message; }
+    $('.imgwrap').classList.remove('ld');
   }
   preload([S.view[i + 1], S.view[i - 1]].filter(x => x && !isVideo(x.name)));
   renderPresets(it); if (!ls('bt_tour2', false) && $('#tour').hidden) setTimeout(() => startTour('viewer'), 400);
@@ -1088,7 +1122,7 @@ async function show(it) {
     .forEach(([k, v]) => { const d = document.createElement('div'); d.className = 'm'; d.innerHTML = '<dt></dt><dd></dd>'; d.children[0].textContent = k; d.children[1].textContent = v; $('#det').appendChild(d); });
   renderObs(it);
   // Fila de especies con su tecla, siempre a la vista; las que no caben en 2 renglones pasan a «Más especies» (tecla /)
-  const row = $('#lbcats'), list = $('#lbslist'), more = $('#lbmore'); row.textContent = ''; // «Más especies» vive al final de la fila list.textContent = ''; if (!same) $('#lbq').value = '';
+  const row = $('#lbcats'), list = $('#lbslist'), more = $('#lbmore'), add = $('#lbadd'); list.textContent = ''; if (!same) $('#lbq').value = ''; row.textContent = ''; // «Más especies» vive al final de la fila: el buscador se limpia antes de vaciarla (1.4.25)
   catCnt = new Map(); for (const x of S.items) if (station(x) === station(it)) for (const c of allCats(x)) catCnt.set(c, (catCnt.get(c) || 0) + 1);
   const mk = c => { const b = document.createElement('button'), k = keyOf(c), extra = (it.extras || []).some(x => x.cat === c);
     b.innerHTML = '<kbd></kbd><span></span>'; b.children[0].textContent = k || ''; b.children[1].textContent = c; b.dataset.cat = c;
@@ -1096,27 +1130,50 @@ async function show(it) {
     b.title = c + (S.sci[c] ? ` (${S.sci[c]})` : '') + (k ? ` · tecla ${k}` : '') + ' · ' + (it.cat === c ? 'Especie principal. Clic para quitar la clasificación (U)' : extra ? 'Especie adicional. Clic para quitarla' : 'Clic: clasificar · Shift+clic: añadir como especie adicional');
     b.onclick = e => { closePops(); if (S.blind) return it.bl === c ? unclassifyCur() : classifyCur(c); if (it.cat === c) unclassifyCur(); else if (extra || e.shiftKey) toggleExtraCur(c); else classifyCur(c); }; return b; };
   for (const c of [...S.cats, GH]) { row.appendChild(mk(c)); const r = mk(c); r.classList.add('srow'); list.appendChild(r); }
-  row.appendChild(more); fitCats();
+  row.appendChild(add); row.appendChild(more); fitCats();
 }
 let catCnt = new Map();
-function fitCats() { // máximo 2 renglones: se esconden primero las menos usadas en esta estación (nunca Fantasmas ni las de esta foto)
+function fitCats() { // 1.4.24: una sola fila, máx. 9 especies + agregar + buscar; se esconden primero las menos usadas en esta estación (nunca Fantasmas ni las de esta foto)
   const row = $('#lbcats'), more = $('#lbmore'), btns = [...row.querySelectorAll(':scope > button[data-cat]')]; if (!btns.length) return; // el buscador también vive dentro de la fila
   btns.forEach(b => b.hidden = false);
-  const label = () => { const n = btns.filter(b => b.hidden).length; $('#lbmorebtn').innerHTML = (n ? `Más especies · ${n}` : 'Buscar o crear') + '<kbd>/</kbd>'; };
+  const label = () => { const n = btns.filter(b => b.hidden).length; $('#lbmorebtn').innerHTML = `<i class="ic sm">${icon('search')}</i>${n ? `<span>${n}</span>` : ''}<kbd>/</kbd>`; $('#lbmorebtn').title = (n ? `Buscar entre las ${n} especies que no caben` : 'Buscar o crear especie') + ' (tecla /)'; };
   const order = btns.filter(b => b.dataset.cat !== GH && !/\bon2?\b/.test(b.className)).sort((a, b) => (catCnt.get(a.dataset.cat) || 0) - (catCnt.get(b.dataset.cat) || 0) || S.cats.indexOf(b.dataset.cat) - S.cats.indexOf(a.dataset.cat));
   label(); const h = btns[0].offsetHeight;
-  for (const b of order) { if (more.offsetTop - row.offsetTop < h * 1.8) break; b.hidden = true; label(); } // la fila baja al encogerse: se mide cada vez
+  for (const b of order) { if (btns.filter(x => !x.hidden).length <= 9 && more.offsetTop - row.offsetTop < h * .5) break; b.hidden = true; label(); } // la fila baja al encogerse: se mide cada vez
   $('#lbslist').querySelectorAll('.srow').forEach(r => r.classList.toggle('vis', !row.querySelector(`:scope > button[data-cat="${CSS.escape(r.dataset.cat)}"]`).hidden));
   filterLbq();
 }
-function openNewSp(it) {
-  $('#ns_name').value = ''; $('#ns_sci').value = ''; $('#ns_hint').textContent = it ? 'La foto que estás viendo se clasificará en esta especie.' : 'Se añade a la lista con la siguiente tecla libre.'; openOver('#nsdlg'); setTimeout(() => $('#ns_name').focus(), 0);
-  $('#ns_ok').onclick = () => { const name = $('#ns_name').value, sci = $('#ns_sci').value.trim().replace(/\s+/g, ' ');
-    if (!name.trim()) { toast('Escribe el nombre de la especie.', 2500); return $('#ns_name').focus(); }
+function openNewSp(it, c) { // 1.4.24: con c, la misma ventana edita la especie; en ambas se elige si la carpeta usa el nombre común o el científico
+  const ed = c != null, n = ed ? S.items.filter(i => hasCat(i, c)).length : 0; let fs = ed && !!S.fsci[c];
+  $('#h_ns').textContent = ed ? 'Editar especie' : 'Especie nueva'; $('#ns_ok').textContent = ed ? 'Guardar' : 'Aceptar'; $('#ns_dirw').hidden = c === GH;
+  $('#ns_name').value = ed ? c : ''; $('#ns_sci').value = ed ? S.sci[c] || '' : ''; $('#ns_hint').textContent = ed ? '' : it ? 'La foto que estás viendo se clasificará en esta especie.' : 'Se añade a la lista con la siguiente tecla libre.';
+  const val = () => [$('#ns_name').value.trim().replace(/\s+/g, ' '), $('#ns_sci').value.trim().replace(/\s+/g, ' ')];
+  const upd = () => { const [nm, sci] = val(), d = folder(fs && sci ? sci : nm); $('#ns_dir').querySelectorAll('button').forEach(b => b.classList.toggle('on', !!b.dataset.v === (fs && !!sci))); $('#ns_dir [data-v="1"]').disabled = !sci;
+    $('#ns_path').textContent = d ? `Clasificadas/${d}/` + (ed && n && !noMove() && d.toLowerCase() !== catDir(c).toLowerCase() ? ` · se moverán ${n} foto(s)` : '') : ''; };
+  $('#ns_dir').querySelectorAll('button').forEach(b => b.onclick = () => { fs = !!b.dataset.v; upd(); }); $('#ns_name').oninput = $('#ns_sci').oninput = upd; upd();
+  openOver('#nsdlg'); setTimeout(() => $('#ns_name').focus(), 0);
+  $('#ns_ok').onclick = () => { const [name, sci] = val(), useSci = fs && !!sci && c !== GH;
+    if (!name) { toast('Escribe el nombre de la especie.', 2500); return $('#ns_name').focus(); }
+    if (ed) { if (name !== c && (!folder(name) || [GH, ...S.cats].some(x => x !== c && folder(x).toLowerCase() === folder(name).toLowerCase()))) { toast(folder(name) ? 'Ya existe una especie con ese nombre de carpeta.' : 'Escribe un nombre válido (sin \\ / : * ? " < > |).', 3000); return $('#ns_name').focus(); }
+      const from = catDir(c), to = folder(useSci ? sci : name); if (n && !noMove() && from.toLowerCase() !== to.toLowerCase() && !confirm(`Se moverán ${n} fotografía(s) de "${from}" a "${to}". ¿Continuar?`)) return;
+      closeOver(); return locked(() => editSp(c, name, sci, useSci)); }
     const had = S.cats.length, v = addSpecies(name); if (!v) return $('#ns_name').focus();
-    if (sci && v !== GH && !S.sci[v]) { S.sci[v] = sci; sv('bt_sci', S.sci); saveReg(); }
+    if (sci && v !== GH && !S.sci[v]) { S.sci[v] = sci; sv('bt_sci', S.sci); }
+    if (useSci && S.cats.length > had) { S.fsci[v] = true; sv('bt_fsci', S.fsci); } saveReg();
     closeOver(); if (S.cats.length > had) toast(`"${v}" creada con la tecla ${keyOf(v) || '(ninguna libre)'}.`, 2500); else toast(`"${v}" ya existía; se usó esa especie.`, 2500);
     if (it && S.cur === it) classifyCur(v); else renderSide(); };
+}
+async function editSp(c, nn, sci, fs) { // nombre, nombre científico y carpeta; cada paso usa los movimientos de siempre (sin perder ni duplicar fotos)
+  let at = catDir(c);
+  if (nn !== c) { if (S.fsci[c]) { delete S.fsci[c]; await refolder(c, at); at = catDir(c); } await renameCat(c, nn, true); if (!S.cats.includes(nn) && GH !== nn) return; c = nn; at = folder(nn); }
+  if (sci) S.sci[c] = sci; else delete S.sci[c]; if (fs) S.fsci[c] = true; else delete S.fsci[c]; sv('bt_sci', S.sci); sv('bt_fsci', S.fsci);
+  await refolder(c, at); saveReg(); applyFilters(); if (S.cur) show(S.cur); toast(`«${c}» guardada · carpeta Clasificadas/${catDir(c)}/`, 3000);
+}
+async function refolder(c, from) { // mueve las fotos de c a la carpeta que le toca y borra la anterior solo si quedó vacía
+  const to = catDir(c); if (noMove() || from.toLowerCase() === to.toLowerCase()) return; const bad = [];
+  for (const it of S.items.filter(i => hasCat(i, c))) { try { if (it.cat === c) await indFolder(it);
+      for (const x of it.extras.filter(y => y.cat === c && y.h && y.parts[1] !== to)) await relocate(x, await subdir(it.src.h, [ROOT, to]), [ROOT, to], x.name); saveReg(); } catch (e) { bad.push(`${it.name}: ${e.message}`); } }
+  await dropFolder(c, from); if (bad.length) toast(`Fallaron ${bad.length}: ${bad[0]}`, 9000);
 }
 function filterLbq() { // sin texto: las especies que no caben en la fila; con texto: todas las que coinciden (nombre o nombre científico)
   const raw = $('#lbq').value.trim(), q = norm(raw); let n = 0;
@@ -1130,6 +1187,7 @@ $('#lbq').onkeydown = e => { e.stopPropagation(); const rows = [...$('#lbslist')
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (!rows.length) return; const nx = rows[(i + (e.key === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length]; rows.forEach(r => r.classList.remove('act')); nx.classList.add('act'); nx.scrollIntoView({ block: 'nearest' }); }
   else if (e.key === 'Enter') { e.preventDefault(); const r = rows[i] || rows[0]; if (r) { $('#lbq').value = ''; $('#lbq').blur(); r.click(); } else newSpFromSearch(); }
   else if (e.key === 'Escape') { $('#lbq').value = ''; $('#lbq').blur(); closePops(); } };
+$('#lbadd').onclick = () => { closePops(); openNewSp(S.cur); };
 $('#lbmorebtn').addEventListener('click', () => { if (!$('#lbside').hidden) { filterLbq(); setTimeout(() => $('#lbq').focus(), 0); } });
 new ResizeObserver(() => { if (!$('#lb').hidden) fitCats(); }).observe($('.lbstage')); // la ventana, la barra lateral o el panel Observación cambian el ancho
 // Reproducir la ráfaga (tecla P): pasa sus fotos a unas 3 por segundo y vuelve a la primera
@@ -1483,7 +1541,7 @@ async function relocate(it, destDir, destParts, baseName) {
   Object.assign(it, { h: nh, dir: destDir, name, parts: destParts, mod: (await nh.getFile()).lastModified });
 }
 const subCache = new WeakMap(); // carpeta de la estación → { 'Clasificadas/Coyote': carpeta }: evita pedirle al disco la misma carpeta en cada foto
-async function moveItem(it, cat) { const fn = folder(cat), key = ROOT + '/' + fn; let m = subCache.get(it.src.h); if (!m) subCache.set(it.src.h, m = new Map()); // Clasificadas/ dentro de la carpeta de SU estación
+async function moveItem(it, cat) { const fn = catDir(cat), key = ROOT + '/' + fn; let m = subCache.get(it.src.h); if (!m) subCache.set(it.src.h, m = new Map()); // Clasificadas/ dentro de la carpeta de SU estación
   for (let intento = 0; ; intento++) {
     try { let d = m.get(key); if (!d) m.set(key, d = await subdir(it.src.h, [ROOT, fn])); return await relocate(it, d, [ROOT, fn], it.name); }
     catch (e) { m.delete(key); if (intento || (e.name !== 'NotFoundError' && e.name !== 'InvalidStateError')) throw e; } // la carpeta cambió fuera de BioTrampa: se vuelve a pedir una vez
@@ -1494,7 +1552,7 @@ const indOf = it => { const o = it.cat && it.cat !== GH && it.obs && it.obs[it.c
 async function dropEmptyInd(src, ps) { if (ps.length !== 3 || ps[0] !== ROOT) return; try { let d = src.h; for (const n of ps.slice(0, 2)) d = await d.getDirectoryHandle(n); await d.removeEntry(ps[2]); } catch (e) {} } // sin «recursive»: si tiene algo dentro, no se borra
 async function indFolder(it) {
   if (!it.cat || it.tagOnly || noMove() || it.parts[0] !== ROOT) return;
-  const want = [ROOT, folder(it.cat), ...(indOf(it) ? [indOf(it)] : [])], old = it.parts; if (old.join('/') === want.join('/')) return;
+  const want = [ROOT, catDir(it.cat), ...(indOf(it) ? [indOf(it)] : [])], old = it.parts; if (old.join('/') === want.join('/')) return;
   await relocate(it, await subdir(it.src.h, want), want, it.name); await dropEmptyInd(it.src, old);
 }
 async function indFolders(items) { // tras asignar, quitar o unir individuos
@@ -1551,8 +1609,7 @@ async function classify(items, cat, silent) {
   if (!S.srcs.length) return; if (S.blind && !S.blindOff) return blindSet(items, cat); const touched = [...items, ...S.multi]; // tarjetas a actualizar (también las seleccionadas)
   items = items.filter(i => i.cat !== cat); if (!items.length) return;
   if (items.length >= 5 && !silent && !confirm(`¿Clasificar ${items.length} fotografías como "${cat}"${noMove() ? '' : ' y moverlas a su carpeta'}?`)) return; // con pocas fotos no se pregunta: se puede deshacer
-  if (items.length === 1 && $('#confirm').checked && !confirm(`¿Clasificar "${items[0].name}" como "${cat}"?`)) return;
-  const cur = S.cur, idx = S.view.indexOf(cur), ix = items.map(i => S.view.indexOf(i)).concat(idx).filter(i => i >= 0), nxt = cur ? (S.view[Math.max(...ix) + 1] || S.view[Math.min(...ix) - 1]) : null;
+    const cur = S.cur, idx = S.view.indexOf(cur), ix = items.map(i => S.view.indexOf(i)).concat(idx).filter(i => i >= 0), nxt = cur ? (S.view[Math.max(...ix) + 1] || S.view[Math.min(...ix) - 1]) : null;
   let ok = 0; const bad = [], ch = [], stB = new Map();
   for (const it of items) { const st = station(it); if (!stB.has(st)) stB.set(st, S.items.filter(i => station(i) === st && !i.cat).length); }
   for (const it of items) {
@@ -1584,13 +1641,12 @@ function renderMulti() {
 $('#mclear').title = 'Cancelar la selección'; $('#mclear').onclick = () => { S.multi.clear(); refreshCards(); };
 
 /* ---------- Desmarcar, renombrar y eliminar categorías (todas, incluida Fantasmas) ---------- */
-async function dropFolder(c) { // solo borra la carpeta si está vacía (removeEntry sin recursivo falla si tiene archivos)
-  let any = false; for (const src of S.srcs) { try { const r = await src.h.getDirectoryHandle(ROOT); await r.removeEntry(folder(c)); any = true; } catch (e) {} } return any;
+async function dropFolder(c, fn = catDir(c)) { // solo borra la carpeta si está vacía (removeEntry sin recursivo falla si tiene archivos)
+  let any = false; for (const src of S.srcs) { try { const r = await src.h.getDirectoryHandle(ROOT); await r.removeEntry(fn); any = true; } catch (e) {} } return any;
 }
 async function unclassify(items, silent) {
   if (S.blind && !S.blindOff) return blindSet(items, null); const touched = [...items, ...S.multi]; items = items.filter(i => i.cat); if (!items.length || !S.srcs.length) return;
   if (items.length >= 5 && !silent && !confirm(`¿Quitar la clasificación de ${items.length} fotografías${S.ro ? '' : ' y devolverlas a su carpeta original'}?`)) return;
-  if (items.length === 1 && $('#confirm').checked && !confirm(`¿Quitar la clasificación de "${items[0].name}"?`)) return;
   const cur = S.cur, idx = S.view.indexOf(cur), nxt = cur ? (S.view[idx + 1] || S.view[idx - 1]) : null; let ok = 0; const bad = [], ch = [];
   for (const it of items) { const s = snap(it); try { await unclassifyOne(it); ok++; ch.push(s); if (items.length > 1) saveReg(); } catch (e) { bad.push(`${it.name}: ${e.message}`); } }
   pushHist(ch); if (ch.length) saveReg();
@@ -1598,13 +1654,13 @@ async function unclassify(items, silent) {
   if (S.cur) { if (S.view.includes(cur)) show(cur); else if (nxt && S.view.includes(nxt)) show(nxt); else closeLb(); }
   toast(bad.length ? `Fallaron ${bad.length}: ${bad[0]}` : `${ok} fotografía(s) desmarcada(s)${S.ro ? '' : ' y devuelta(s) a su carpeta'}.`, bad.length ? 9000 : 3000, !bad.length && !S.undoing);
 }
-async function renameCat(old) {
-  const nn = (prompt(`Nuevo nombre para "${old}":`, old) || '').trim().replace(/\s+/g, ' ');
+async function renameCat(old, given, asked) { // given/asked (1.4.24): nombre que viene de Editar especie, que ya pidió confirmación
+  const nn = (given ?? prompt(`Nuevo nombre para "${old}":`, old) ?? '').trim().replace(/\s+/g, ' ');
   if (!nn || nn === old) return;
   if (!folder(nn)) return toast('Escribe un nombre válido (sin \\ / : * ? " < > |).');
   if ([GH, ...S.cats].some(c => c !== old && folder(c).toLowerCase() === folder(nn).toLowerCase())) return toast('Ya existe una categoría con ese nombre de carpeta.');
   const its = S.items.filter(i => hasCat(i, old)), same = folder(nn).toLowerCase() === folder(old).toLowerCase();
-  if (its.length && !noMove() && !same && !confirm(`Se moverán ${its.length} fotografía(s) de "${folder(old)}" a "${folder(nn)}". ¿Continuar?`)) return;
+  if (its.length && !noMove() && !same && !asked && !confirm(`Se moverán ${its.length} fotografía(s) de "${folder(old)}" a "${folder(nn)}". ¿Continuar?`)) return;
   let ok = 0; const bad = [];
   for (const it of its) { try {
     if (it.cat === old) { const op = it.parts; if (!noMove() && !same && it.parts[0] === ROOT) { await moveItem(it, nn); await dropEmptyInd(it.src, op); } it.cat = nn; }
@@ -1658,7 +1714,7 @@ async function exportMainCsv() {
     const m = await loadMeta(it), mod = modOf(it), off = offOf(it), ft = fixTs(it), per = period(it), sun = sunOf(it), moon = m.date ? moonOf(ft) : null;
     const origin = it.origParts ? [it.src.name, ...it.origParts].join('/') : '';
     const row = (cat, typ, dest) => { const o = (it.obs && it.obs[cat]) || {};
-      return [$('#proj').value || projName(), station(it), it.src.pair ? camOf(it) : (S.stations[station(it)] || {}).cam || (S.srcs.length > 1 ? '' : $('#cam').value), it.name, it.origParts ? it.origName : '', isVideo(it.name) ? 'Video' : 'Foto', cat || '', cat ? S.sci[cat] || '' : '', typ, o.n || '', o.sex || '', o.age || '', o.beh || '', o.id || '', it.note || '',
+      return [projName(), station(it), it.src.pair ? camOf(it) : (S.stations[station(it)] || {}).cam || '', it.name, it.origParts ? it.origName : '', isVideo(it.name) ? 'Video' : 'Foto', cat || '', cat ? S.sci[cat] || '' : '', typ, o.n || '', o.sex || '', o.age || '', o.beh || '', o.id || '', it.note || '',
         m.date, m.time, offTxt(off), m.date ? ymd(ft) : '', m.date ? hms(ft) : '', per ? PER[per] : '', sun ? hms(sun.rise).slice(0, 5) : '', sun ? hms(sun.set).slice(0, 5) : '', moon ? moon.name : '', moon ? moon.ill : '', suspect(it) ? 'Sí' : '',
         mod ? ymd(mod) : '', m.lat, m.lon, m.model, station(it), origin, dest, it.cls, it.cat ? (it.tagOnly ? 'Etiquetada (sin mover)' : 'Clasificada') : 'Pendiente', it.rev ? 'Sí' : '', it.rev ? it.revWhy || '' : '', it.ver || '', it.verBy || '',
         FL[o.fl] || '', QL[o.q] || '', o.ref ? 'Sí' : '', o.dud ? 'Sí' : '', o.ns ? 'Sí' : '', o.ib || '', o.if || '', o.iv || '', camOf(it), it.bl || '', it.bb || '', o.rc || '']; };
@@ -1728,6 +1784,10 @@ function buildEvents(items) { // por especie y estación: fotos separadas por me
   return out;
 }
 
+/* 1.4.24: el Resumen muestra una sección a la vez, elegida en su barra lateral (al imprimir salen todas) */
+function sumSec(id) { if (id) sv('bt_sumsec', id); const ds = [...document.querySelectorAll('#sumbody details.ssec')], ids = ds.map(d => d.id); let cur = ls('bt_sumsec', 'ss-tab'); if (!ids.includes(cur)) cur = 'ss-tab';
+  ds.forEach(d => { d.open = true; d.classList.toggle('on', d.id === cur); }); document.querySelectorAll('#sumside [data-sec]').forEach(b => { b.hidden = !ids.includes(b.dataset.sec); b.classList.toggle('on', b.dataset.sec === cur); }); if (id) $('#summain').scrollTop = 0; }
+document.querySelectorAll('#sumside [data-sec]').forEach(b => b.onclick = () => sumSec(b.dataset.sec));
 /* ---------- Resumen ---------- */
 const sumF = { only: false };
 const SUMM = [['f', 'Fotos'], ['e', 'Eventos'], ['i', 'Individuos'], ['r', 'Abundancia relativa']];
@@ -1746,48 +1806,48 @@ function renderSummary() {
     return c ? (s ? M[m][c][s] || 0 : tot(m, c)) : (s ? colTot(m, s) : cats.reduce((a, x) => a + tot(m, x), 0)); };
   sumData = { stations, cats, val, td, tdTot, evs, its };
   const fmt = (m, v) => m === 'r' ? (v == null ? '<span class="mu">—</span>' : v.toFixed(1)) : (v ? v : '<span class="mu">—</span>');
+  const hmax = {}; for (const m of ['f', 'e', 'i', 'r']) hmax[m] = Math.max(0, ...cats.flatMap(c => stations.map(s => val(m, c, s) || 0))); // 1.4.24: mapa de calor (más oscuro = más)
+  const hc = (m, v) => { const a = v && hmax[m] ? v / hmax[m] : 0; return `<td class="h${a > .55 ? ' hd' : ''}" style="--a:${Math.round(8 + a * 82)}%">${fmt(m, v)}</td>`; };
   const tdLbl = s => `<br><small class="mu">${td[s].days} d${td[s].est ? '*' : ''}</small>`;
   const spLbl = c => `${esc(c)}${S.sci[c] ? `<br><i class="mu">${esc(S.sci[c])}</i>` : ''}`;
   const rot = ls('bt_sumrot', false), sel = ls('bt_summ', 'e'), folds = ls('bt_sumfold', {});
   const table = m => { const R = m === 'r';
-    if (!rot) return `<table class="st"><thead><tr><th>Especie</th>${stations.map(s => `<th>${esc(s)}${R ? tdLbl(s) : ''}</th>`).join('')}<th>Total${R ? `<br><small class="mu">${tdTot} d</small>` : ''}</th></tr></thead><tbody>`
-      + cats.map(c => `<tr><td>${spLbl(c)}</td>${stations.map(s => `<td>${fmt(m, val(m, c, s))}</td>`).join('')}<td>${fmt(m, val(m, c, null))}</td></tr>`).join('')
+    if (!rot) return `<table class="st heat"><thead><tr><th>Especie</th>${stations.map(s => `<th>${esc(s)}${R ? tdLbl(s) : ''}</th>`).join('')}<th>Total${R ? `<br><small class="mu">${tdTot} d</small>` : ''}</th></tr></thead><tbody>`
+      + cats.map(c => `<tr><td>${spLbl(c)}</td>${stations.map(s => hc(m, val(m, c, s))).join('')}<td>${fmt(m, val(m, c, null))}</td></tr>`).join('')
       + `<tr class="tot"><td>Todas las especies</td>${stations.map(s => `<td>${fmt(m, val(m, null, s))}</td>`).join('')}<td>${fmt(m, val(m, null, null))}</td></tr></tbody></table>`;
-    return `<table class="st"><thead><tr><th>Estación</th>${cats.map(c => `<th>${esc(c)}</th>`).join('')}<th>Todas</th></tr></thead><tbody>`
-      + stations.map(s => `<tr><td>${esc(s)}${R ? tdLbl(s) : ''}</td>${cats.map(c => `<td>${fmt(m, val(m, c, s))}</td>`).join('')}<td>${fmt(m, val(m, null, s))}</td></tr>`).join('')
+    return `<table class="st heat"><thead><tr><th>Estación</th>${cats.map(c => `<th>${esc(c)}</th>`).join('')}<th>Todas</th></tr></thead><tbody>`
+      + stations.map(s => `<tr><td>${esc(s)}${R ? tdLbl(s) : ''}</td>${cats.map(c => hc(m, val(m, c, s))).join('')}<td>${fmt(m, val(m, null, s))}</td></tr>`).join('')
       + `<tr class="tot"><td>Total${R ? `<br><small class="mu">${tdTot} d</small>` : ''}</td>${cats.map(c => `<td>${fmt(m, val(m, c, null))}</td>`).join('')}<td>${fmt(m, val(m, null, null))}</td></tr></tbody></table>`; };
   const nodate = evs.filter(e => e.nodate).length, ev = evMin();
   const warn = { susp: its.filter(suspect).length, nodate: its.filter(i => isNaN(capTs(i))).length, rev: its.filter(i => i.rev).length, nost: stations.filter(s => !(S.stations[s] && S.stations[s].start && S.stations[s].end)).length };
-  const sec = (id, title, tip, body) => `<details class="ssec" id="${id}"${folds[id] ? '' : ' open'}><summary title="${esc(tip)}">${title}</summary>${body}</details>`;
+  const sec = (id, title, tip, body) => `<details class="ssec" id="${id}"${folds[id] ? '' : ' open'}><summary title="${esc(tip)}">${title}</summary><p class="ssub">${esc(tip)}</p>${body}</details>`; // 1.4.24: la explicación va bajo el título
   const pct = its.length ? Math.floor(done / its.length * 100) : 0;
-  let h = `<div class="printhead"><h1>${esc(projName())}</h1><p>Resumen de cámaras trampa · ${stations.length} estación(es)${first ? ` · del ${ymd(first)} al ${ymd(last)}` : ''} · generado el ${ymd(Date.now())} con BioTrampa</p></div>`
-    + `<div class="bignums"><div><b>${cats.length}</b><span>especies</span></div><div><b>${evs.length}</b><span>eventos independientes</span></div><div><b>${tdTot}</b><span>días-trampa</span></div><div><b>${pct} %</b><span>clasificado</span></div></div>`
-    + `<p class="sumhead"><b>${esc(projName())}</b>${only ? ' (solo las fotos filtradas)' : ''} · ${its.length} fotos · ${done} clasificadas · ${its.length - done} pendientes · ${stations.length} estación(es)${first ? ` · ${ymd(first)} a ${ymd(last)}` : ''}</p>`
-    + `<p class="hint tiny">${esc(GH)} (disparos sin fauna): ${ghN} foto(s)${its.length ? `, ${Math.round(ghN / its.length * 100)} % de las fotos` : ''}.</p>`
-    + `<label class="chk sumonly noprint" title="${filtered ? 'Usa solo las fotos que dejan ver los filtros (embudo, especie o estación)' : 'Activa un filtro (embudo, especie o estación) para resumir solo una parte'}"><input type="checkbox" id="sumonly"${only ? ' checked' : ''}${filtered ? '' : ' disabled'}> Resumir solo las fotos que muestran los filtros (${S.view.length} de ${S.items.length})</label>`;
+  let h = `<div class="printhead"><h1>${esc(projName())}</h1><p>Resumen de cámaras trampa · ${stations.length} estación(es)${first ? ` · del ${ymd(first)} al ${ymd(last)}` : ''} · generado el ${ymd(Date.now())} con BioTrampa</p></div>`;
   const w = []; if (warn.susp) w.push(`<button class="lnk2" data-show="susp"><b>${warn.susp}</b> foto(s) con fecha sospechosa (cámara mal configurada o fuera de las fechas de la estación): verlas</button>`); if (warn.nodate) w.push(`<b>${warn.nodate}</b> sin fecha de captura${nodate ? ` (${nodate} evento(s) sin fecha cuentan por separado)` : ''}`);
   if (warn.rev) w.push(`<button class="lnk2" data-show="rev"><b>${warn.rev}</b> marcada(s) para revisar: verlas</button>`); if (warn.nost) w.push(`<button class="lnk2" data-go="ss-st"><b>${warn.nost}</b> estación(es) sin fechas de instalación y retiro (los días-trampa se estiman con las fotos): completarlas</button>`);
-  if (w.length) h += `<div class="warnbox noprint">${w.map(x => `<div>${x}</div>`).join('')}</div>`;
-  h += `<nav class="sumnav noprint"><button class="lnk2" data-go="ss-tab">Especies y estaciones</button> · <button class="lnk2" data-go="ss-act">Actividad</button> · <button class="lnk2" data-go="ss-st">Estaciones</button> · <button class="lnk2" data-go="ss-fun">Funcionamiento</button> · <button class="lnk2" data-go="ss-acu">Acumulación</button> · <button class="lnk2" data-go="ss-tras">Traslape</button> · <button class="lnk2" data-go="ss-ind">Individuos</button></nav>`;
+  // 1.4.24: cifras en una línea, avisos en un botón y «solo filtradas» como interruptor junto a la tabla
+  const top = `<div class="sumtop"><p class="sumstats">${cats.length} especies · ${evs.length} eventos · ${tdTot} días-trampa · ${pct} % clasificado<br><small>${esc(projName())}${only ? ' (solo las fotos filtradas)' : ''} · ${its.length} fotos · ${its.length - done} pendientes · ${stations.length} estación(es)${first ? ` · ${ymd(first)} a ${ymd(last)}` : ''}</small></p>${w.length ? `<button class="avisos noprint" id="sumwarnb"><i class="ic sm">${icon('help')}</i>${w.length} aviso${w.length > 1 ? 's' : ''}</button>` : ''}</div>`
+    + (w.length ? `<div class="warnbox noprint" id="sumwarn" hidden>${w.map(x => `<div>${x}</div>`).join('')}</div>` : '');
   h += sec('ss-tab', 'Especies y estaciones', 'Fotos, eventos independientes, individuos y abundancia relativa de cada especie en cada estación',
-    `<div class="mbar noprint"><div class="seg" id="mseg">${SUMM.map(([k, t]) => `<button data-m="${k}" class="${k === sel ? 'on' : ''}">${t}</button>`).join('')}</div><label class="chk"><input type="checkbox" id="mrot"${rot ? ' checked' : ''}> Estaciones en filas</label></div>`
+    top + `<div class="mbar noprint"><div class="seg" id="mseg">${SUMM.map(([k, t]) => `<button data-m="${k}" class="${k === sel ? 'on' : ''}">${t}</button>`).join('')}</div><span class="sp"></span><label class="swl"><input type="checkbox" class="swi" id="mrot"${rot ? ' checked' : ''}> Girar tabla</label><label class="swl" title="${filtered ? 'Usa solo las fotos que dejan ver los filtros (embudo, especie o estación)' : 'Activa un filtro (embudo, especie o estación) para resumir solo una parte'}"><input type="checkbox" class="swi" id="sumonly"${only ? ' checked' : ''}${filtered ? '' : ' disabled'}> Solo filtradas${filtered ? ` (${S.view.length})` : ''}</label></div>`
     + `<div id="mtabs">${SUMM.map(([k, t]) => `<div class="mt" data-m="${k}"${k === sel ? '' : ' hidden'}><p class="ptitle">${t}${k === 'r' ? ' (eventos por cada 100 días-trampa)' : ''}</p><div class="tw">${table(k)}</div></div>`).join('')}</div>`
-    + `<p class="hint tiny">${ev ? `<b>Evento</b>: fotos de la misma especie en la misma estación separadas por menos de ${ev} min` : '<b>Evento</b>: cada foto cuenta por separado'} (se cambia en Ajustes). <b>Individuos</b>: el máximo visto en una sola foto de cada evento; si no se anotó, cuenta 1. <b>Abundancia relativa</b>: eventos por cada 100 días-trampa.${stations.some(s => td[s].est) ? ' * días-trampa estimados con la primera y la última foto.' : ''}</p>`);
-  h += sec('ss-act', 'Horas de actividad', 'Eventos independientes por hora del día (hora corregida)', `<label class="sm noprint">Especie <select id="sumsp"><option value="">Todas las especies</option>${cats.map(c => `<option>${esc(c)}</option>`).join('')}</select></label><div id="actchart"></div>`);
+    + `<p class="hint tiny">${ev ? `<b>Evento</b>: fotos de la misma especie en la misma estación separadas por menos de ${ev} min` : '<b>Evento</b>: cada foto cuenta por separado'} (se cambia en Ajustes). ${esc(GH)} (disparos sin fauna): ${ghN} foto(s)${its.length ? `, ${Math.round(ghN / its.length * 100)} %` : ''}. <b>Individuos</b>: el máximo visto en una sola foto de cada evento; si no se anotó, cuenta 1. <b>Abundancia relativa</b>: eventos por cada 100 días-trampa.${stations.some(s => td[s].est) ? ' * días-trampa estimados con la primera y la última foto.' : ''}</p>`);
+  h += sec('ss-act', 'Horas de actividad', 'Eventos independientes por hora del día (hora corregida)', `<div class="chips noprint" id="sumsp"><button data-c="" class="on">Todas</button>${cats.map(c => `<button data-c="${esc(c)}">${esc(c)}</button>`).join('')}</div><div id="actchart"></div>`);
   const stRows = stations.map((s, i) => { const l = S.items.filter(it => station(it) === s), c = stCoords(s), st = S.stations[s] || {}, dc = l.filter(it => it.cat).length;
-    const inp = (k, type, ph) => `<input class="sti" id="si-${i}-${k}" data-st="${esc(s)}" data-k="${k}" type="${type}" value="${esc(st[k] == null ? '' : st[k])}"${ph ? ` placeholder="${esc(ph)}"` : ''}>`;
-    return `<tr><td>${esc(s)}</td><td>${l.length}</td><td>${dc} (${l.length ? Math.round(dc / l.length * 100) : 0} %)</td><td>${inp('start', 'date')}</td><td>${inp('end', 'date')}</td><td>${td[s].days ? td[s].days + (td[s].est ? '*' : '') : '—'}</td>`
+    const inp = (k, type, ph) => `<input class="sti${(k === 'start' || k === 'end') && !st[k] ? ' miss' : ''}" id="si-${i}-${k}" data-st="${esc(s)}" data-k="${k}" type="${type}" value="${esc(st[k] == null ? '' : st[k])}"${ph ? ` placeholder="${esc(ph)}"` : ''}>`;
+    return `<tr><td><b>${esc(s)}</b></td><td class="stprog">${dc} de ${l.length}<span><i style="width:${l.length ? Math.round(dc / l.length * 100) : 0}%"></i></span></td><td>${inp('start', 'date')}</td><td>${inp('end', 'date')}</td><td>${td[s].days ? td[s].days + (td[s].est ? '*' : '') : '—'}</td>`
       + `<td>${inp('lat', 'text', c && c[2] ? c[0].toFixed(5) + ' (GPS)' : '')}</td><td>${inp('lon', 'text', c && c[2] ? c[1].toFixed(5) + ' (GPS)' : '')}</td><td>${inp('cam', 'text', '')}</td><td>${esc(offsOf(s)) || '—'}</td>`
-      + `<td><button class="stedit" data-st="${esc(s)}" title="Altura, cebo y notas">Más…</button></td></tr>`; }).join('');
+      + `<td><button class="stedit ib sm" data-st="${esc(s)}" title="Altura, cebo y notas" aria-label="Altura, cebo y notas">${icon('more')}</button></td></tr>`; }).join('');
   h += sec('ss-st', 'Estaciones', 'Fechas, coordenadas y cámara de cada estación. Se escriben directamente en la tabla y se guardan solas.',
-    `<div class="stbtns noprint"><button id="st_alld" title="Para las estaciones sin fechas, usa la primera y la última foto">Fechas de las fotos donde falten</button><button id="st_allg" title="Para las estaciones sin coordenadas, usa el promedio del GPS de sus fotos">GPS de las fotos donde falte</button><button id="st_imp" title="Cargar un CSV con columnas: estación, latitud, longitud, instalación, retiro, cámara, altura, cebo, notas">Importar estaciones (CSV)</button><button id="st_tpl" class="lnk2">Descargar plantilla</button></div>`
-    + `<div class="tw"><table class="st sttab"><thead><tr><th>Estación</th><th>Fotos</th><th>Clasificadas</th><th>Instalación</th><th>Retiro</th><th>Días-trampa</th><th>Latitud</th><th>Longitud</th><th>Cámara</th><th>Corrección de hora</th><th></th></tr></thead><tbody>${stRows}</tbody></table></div>`
+    (warn.nost ? `<button class="warnrow noprint" onclick="document.getElementById('st_alld').click()"><i class="ic sm">${icon('help')}</i><span><b>${warn.nost} estación(es)</b> sin fechas de instalación y retiro: los días-trampa se estiman con las fotos</span><b>Usar las fechas de las fotos</b></button>` : '')
+    + `<div class="stbtns noprint"><button id="st_alld" title="Para las estaciones sin fechas, usa la primera y la última foto">Fechas de las fotos donde falten</button><button id="st_allg" title="Para las estaciones sin coordenadas, usa el promedio del GPS de sus fotos">GPS de las fotos donde falte</button><button id="st_imp" title="Cargar un CSV con columnas: estación, latitud, longitud, instalación, retiro, cámara, altura, cebo, notas">Importar estaciones (CSV)</button><button id="st_tpl" class="lnk2">Descargar plantilla</button></div>`
+    + `<div class="tw"><table class="st sttab"><thead><tr><th>Estación</th><th>Clasificadas</th><th>Instalación</th><th>Retiro</th><th>Días-trampa</th><th>Latitud</th><th>Longitud</th><th>Cámara</th><th>Corrección de hora</th><th></th></tr></thead><tbody>${stRows}</tbody></table></div>`
     + `<p class="hint tiny">Los cambios se guardan solos. Con las fechas de instalación y retiro se calculan los días-trampa; nada de esto modifica las fotos.</p>`);
   h += extraSummary(); // funcionamiento de las cámaras, acumulación, traslape e individuos
-  const sc = $('#sum').scrollTop; $('#sumbody').innerHTML = h; $('#sum').scrollTop = sc;
-  $('#sumsp').onchange = () => drawActivity($('#sumsp').value); drawActivity(''); bindExtraSummary();
+  const sc = $('#summain').scrollTop; $('#sumbody').innerHTML = h; $('#summain').scrollTop = sc; sumSec(); if ($('#sumwarnb')) $('#sumwarnb').onclick = () => { $('#sumwarn').hidden = !$('#sumwarn').hidden; };
+  $('#sumsp').onclick = e => { const b = e.target.closest('button'); if (!b) return; $('#sumsp').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); drawActivity(b.dataset.c); }; drawActivity(''); bindExtraSummary(); // 1.4.24: especie con botones
   document.querySelectorAll('#sumbody details.ssec').forEach(d => d.ontoggle = () => { const f = ls('bt_sumfold', {}); f[d.id] = !d.open; sv('bt_sumfold', f); });
-  document.querySelectorAll('#sumbody [data-go]').forEach(b => b.onclick = () => { const d = $('#' + b.dataset.go); d.open = true; d.scrollIntoView({ block: 'start', behavior: 'smooth' }); });
+  document.querySelectorAll('#sumbody [data-go]').forEach(b => b.onclick = () => sumSec(b.dataset.go));
   document.querySelectorAll('#sumbody [data-show]').forEach(b => b.onclick = () => { closeOver(true); closeLb(); S.f.st = b.dataset.show; $('#st').value = S.f.st === 'susp' ? 'susp' : 'all'; updFilt(); applyFilters(); $('#gal').scrollTop = 0; });
   $('#mseg').onclick = e => { const b = e.target.closest('button'); if (!b) return; sv('bt_summ', b.dataset.m); document.querySelectorAll('#mseg button').forEach(x => x.classList.toggle('on', x === b)); document.querySelectorAll('#mtabs .mt').forEach(x => x.hidden = x.dataset.m !== b.dataset.m); };
   $('#mrot').onchange = e => { sv('bt_sumrot', e.target.checked); renderSummary(); };
@@ -1837,10 +1897,10 @@ function drawActivity(c) {
   const hf = ts => { const d = new Date(ts); return d.getHours() + d.getMinutes() / 60; }, suns = l.map(e => sunOf(e.it)).filter(Boolean);
   const rise = suns.length ? suns.reduce((a, s) => a + hf(s.rise), 0) / suns.length : 6, set = suns.length ? suns.reduce((a, s) => a + hf(s.set), 0) / suns.length : 19, hm = x => `${pad(Math.floor(x))}:${pad(Math.round(x % 1 * 60) % 60)}`;
   let s = `<svg viewBox="0 0 ${W} ${H + 34}" role="img" aria-label="Eventos por hora del día"><rect x="0" y="0" width="${bw * rise}" height="${H}" class="nightbg"/><rect x="${bw * set}" y="0" width="${bw * (24 - set)}" height="${H}" class="nightbg"/>`;
-  hrs.forEach((v, i) => { const bh = v / mx * (H - 18); s += `<rect x="${i * bw + 3}" y="${H - bh}" width="${bw - 6}" height="${bh}" class="bar"><title>${pad(i)}:00–${pad(i)}:59 · ${v} evento(s)</title></rect>${v ? `<text x="${i * bw + bw / 2}" y="${H - bh - 4}" class="v">${v}</text>` : ''}`; });
+  hrs.forEach((v, i) => { const bh = v / mx * (H - 18); s += `<rect x="${i * bw + 3}" y="${H - bh}" width="${bw - 6}" height="${bh}" rx="3" class="bar"><title>${pad(i)}:00–${pad(i)}:59 · ${v} evento(s)</title></rect>${v ? `<text x="${i * bw + bw / 2}" y="${H - bh - 4}" class="v">${v}</text>` : ''}`; });
   for (let i = 0; i < 24; i += 3) s += `<text x="${i * bw}" y="${H + 16}" class="ax"${i ? '' : ' style="text-anchor:start"'}>${pad(i)}:00</text>`;
   const t = l.length || 1;
-  s += `<line x1="0" y1="${H}" x2="${W}" y2="${H}" class="base"/></svg><p class="hint tiny">${l.length} evento(s) con fecha · <b>día ${Math.round(per.day / t * 100)} %</b> · <b>crepúsculo ${Math.round(per.crep / t * 100)} %</b> · <b>noche ${Math.round(per.night / t * 100)} %</b>. `
+  s += `<line x1="0" y1="${H}" x2="${W}" y2="${H}" class="base"/></svg><p class="hint tiny">${l.length} evento(s) con fecha${l.length ? ` · <b>más activa ${pad(hrs.indexOf(mx))}:00</b>` : ''} · <b>día ${Math.round(per.day / t * 100)} %</b> · <b>crepúsculo ${Math.round(per.crep / t * 100)} %</b> · <b>noche ${Math.round(per.night / t * 100)} %</b>. `
     + (suns.length ? `Zona sombreada: noche, entre la puesta (${hm(set)}) y la salida del sol (${hm(rise)}) promedio de estos registros.` : 'Zona sombreada: noche aproximada (19:00 a 6:00); escribe las coordenadas de las estaciones para usar la salida y puesta del sol reales.') + '</p>';
   $('#actchart').innerHTML = s;
 }
@@ -1884,7 +1944,8 @@ const depId = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0
 const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
 function zipStore(files) { // .zip sin compresión, hecho a mano (sin librerías)
   const enc = new TextEncoder(), parts = [], cen = []; let off = 0;
-  for (const [name, text] of files) { const nb = enc.encode(name), data = typeof text === 'string' ? enc.encode(text) : text; // 1.4.15: también imágenes (Uint8Array) let c = 0xFFFFFFFF; for (const x of data) c = CRC[(c ^ x) & 255] ^ (c >>> 8); c = (c ^ 0xFFFFFFFF) >>> 0;
+  for (const [name, text] of files) { const nb = enc.encode(name), data = typeof text === 'string' ? enc.encode(text) : text; let c = 0xFFFFFFFF; // 1.4.15: también imágenes (Uint8Array)
+    for (const x of data) c = CRC[(c ^ x) & 255] ^ (c >>> 8); c = (c ^ 0xFFFFFFFF) >>> 0;
     const h = new DataView(new ArrayBuffer(30)); h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint32(14, c, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, nb.length, true);
     const ch = new DataView(new ArrayBuffer(46)); ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint32(16, c, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, nb.length, true); ch.setUint32(42, off, true);
     parts.push(h.buffer, nb, data); cen.push(ch.buffer, nb); off += 30 + nb.length + data.length; }
@@ -1905,8 +1966,8 @@ async function exportCamtrapDP() {
     med.push([id, dId, 'activityDetection', t, pathOf(it), 'false', it.name, mt, it.note || '']);
     for (const c of allCats(it)) { const o = (it.obs && it.obs[c]) || {}, sci = S.sci[c] || '', type = c === GH ? 'blank' : sci ? 'animal' : /sin identificar/i.test(c) ? 'unknown' : 'animal'; if (sci) taxa.set(sci, c);
       obs.push(['o' + (++no), dId, id, t, t, 'media', type, c === GH ? '' : sci, c === GH ? '' : o.n || '', LIFE[o.age] || '', SEXV[o.sex] || '', o.beh || '', o.id || '', 'human', it.verBy || '', it.cls ? isoLocal(Date.parse(it.cls + 'T12:00:00')) : '', c === GH ? '' : c]); } }
-  const pkg = { profile: BASE + 'camtrap-dp-profile.json', name: depId(projName()).toLowerCase(), title: $('#proj').value || projName(), created: new Date().toISOString(), contributors: [{ title: $('#reviewer').value || 'BioTrampa', role: 'contributor' }],
-    project: { title: $('#proj').value || projName(), samplingDesign: 'opportunistic', captureMethod: ['activityDetection'], individualAnimals: S.items.some(i => Object.values(i.obs || {}).some(o => o.id)), observationLevel: ['media'] },
+  const pkg = { profile: BASE + 'camtrap-dp-profile.json', name: depId(projName()).toLowerCase(), title: projName(), created: new Date().toISOString(), contributors: [{ title: $('#reviewer').value || 'BioTrampa', role: 'contributor' }],
+    project: { title: projName(), samplingDesign: 'opportunistic', captureMethod: ['activityDetection'], individualAnimals: S.items.some(i => Object.values(i.obs || {}).some(o => o.id)), observationLevel: ['media'] },
     taxonomic: [...taxa].map(([sci, c]) => ({ scientificName: sci, vernacularNames: { spa: c } })),
     resources: [['deployments', 'deployments-table-schema.json'], ['media', 'media-table-schema.json'], ['observations', 'observations-table-schema.json']].map(([n, sc]) => ({ name: n, path: n + '.csv', profile: 'tabular-data-resource', format: 'csv', mediatype: 'text/csv', encoding: 'utf-8', schema: BASE + sc })) };
   download(zipStore([['datapackage.json', JSON.stringify(pkg, null, 2)], ['deployments.csv', plainCsv(dep)], ['media.csv', plainCsv(med)], ['observations.csv', plainCsv(obs)]]), `camtrapdp_${depId(projName())}_${ymd(Date.now())}.zip`);
@@ -2101,11 +2162,11 @@ async function selfCheck() {
       if (it2.name !== 'IMG_1_1.JPG' || (await it.h.getFile()).size !== 1234 || (await it2.h.getFile()).size !== 999) fail.push('nombres repetidos en Clasificadas');
       await moveBack(it2); await moveBack(it);
       if (it.parts.join('/') !== 'DCIM' || it2.parts.join('/') !== 'DCIM/B' || it2.name !== 'IMG_1.JPG' || (await it2.h.getFile()).size !== 999) fail.push('nombres repetidos: volver cada una a su carpeta'); }
-    { // fila de especies del visor: 40 especies falsas caben en 2 renglones y el resto se cuenta en «Más especies»
+    { // fila de especies del visor: de 40 especies falsas caben máx. 9 en 1 renglón y el resto se cuenta en «Más especies»
       const lb = $('#lb'), row = $('#lbcats'), more = $('#lbmore'), mp = more.parentNode, mn = more.nextSibling, was = lb.hidden, keep = [...row.childNodes]; lb.hidden = false; row.textContent = '';
       for (let i = 0; i < 40; i++) { const b = document.createElement('button'); b.dataset.cat = 'x' + i; b.innerHTML = `<kbd>1</kbd><span>Especie de prueba ${i}</span>`; row.appendChild(b); }
       row.appendChild(more); fitCats(); const vis = [...row.querySelectorAll(':scope > button')].filter(b => !b.hidden), lines = new Set([...vis, more].map(b => b.offsetTop)).size;
-      if (lines > 2 || !$('#lbmorebtn').textContent.includes('· ' + (40 - vis.length))) fail.push(`fila de especies (${lines} renglones, ${$('#lbmorebtn').textContent})`);
+      if (lines > 1 || vis.length > 9 || !$('#lbmorebtn').textContent.startsWith(String(40 - vis.length))) fail.push(`fila de especies (${lines} renglones, ${$('#lbmorebtn').textContent})`);
       row.textContent = ''; keep.forEach(k => row.appendChild(k)); mp.insertBefore(more, mn); lb.hidden = was; }
   } catch (e) { fail.push('error: ' + e.message); }
   try { await root.removeEntry(n, { recursive: true }); } catch (e) {}
