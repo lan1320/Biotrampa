@@ -632,3 +632,5 @@ table.st.heat{border-collapse:separate;border-spacing:4px}table.st.heat td.h{hei
 .qhelp:hover::after,.qhelp:focus::after{content:attr(data-tip);position:absolute;left:26px;top:-8px;width:300px;padding:8px 12px;border-radius:8px;background:var(--tx);color:var(--bg);font-size:12px;font-weight:400;line-height:1.5;z-index:5;box-shadow:var(--pop)}
 .setseg button{padding:5px 11px!important;font-size:13px!important}.setrow input[type=range]{accent-color:var(--ac)}
 .setseg{flex:none}.setseg button{flex:none;white-space:nowrap}
+.setrow.sub{padding-left:22px}.setrow.col{flex-direction:column;align-items:stretch;gap:10px;cursor:default}.setrowin{display:flex}.setrowin>span{display:flex;flex-direction:column;gap:3px}#askn{margin:0}#askn select{width:auto;border-radius:16px;font-size:13px;padding:4px 10px} /* 1.4.24 */
+body.nonight .card.night::before,body.nonight .card.crep::before{display:none}body.allnames .card .nm{opacity:1}body.nonote .card.noted .nm::before{display:none}

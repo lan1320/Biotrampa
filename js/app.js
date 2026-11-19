@@ -592,6 +592,7 @@ async function afterScan(msg) {
   if (msg) toast(msg, 6000); else if (msg !== '') { const nv = S.items.filter(i => isVideo(i.name)).length; toast(S.items.length ? `${S.items.length} fotografías encontradas${nv ? ` (incluye ${nv} video${nv > 1 ? 's' : ''})` : ''}.` : 'Las estaciones no contienen fotos ni videos.', 5000); }
   applyFilters();
   if (needMeta()) { await prepare(); applyFilters(); }
+  if (ls('bt_autoempty', false) && S.items.length) { await findEmpty(); applyFilters(); } // 1.4.24: opción de Ajustes
 }
 $('#open').onclick = addStation;
 if (!window.showDirectoryPicker) { // alternativa de solo lectura (Firefox, Safari, etc.): cada carpeta elegida se suma como estación
@@ -1014,12 +1015,23 @@ segSet('bspeed', ls('bt_bspeed', 330)); $('#bspeed').onclick = e => { const b = 
 segSet('settheme', ls('bt_theme', null) || 'sys'); $('#settheme').onclick = e => { const b = e.target.closest('button'); if (!b) return; const v = b.dataset.v;
   if (v === 'sys') { try { localStorage.removeItem('bt_theme'); } catch (x) {} setTheme(sysDark.matches ? 'dark' : 'light', false); } else setTheme(v); segSet('settheme', v); };
 $('#thsize').value = TH.v; $('#thsize').oninput = e => { TH.v = +e.target.value; $('#grid').style.setProperty('--th', TH.v + 'px'); sv('bt_size', TH.v); };
-$('#setkeys').onclick = () => { renderKeys(true); openOver('#help'); };
-function openSet() { // las especies con individuos y el tema pueden haber cambiado desde otro lugar
-  const box = $('#setindsp'); box.textContent = ''; const cs = S.cats.filter(c => c !== GH);
-  if (!cs.length) box.innerHTML = '<p class="hint tiny">Todavía no hay especies.</p>';
-  for (const c of cs) { const l = document.createElement('label'); l.className = 'setrow'; l.innerHTML = '<span><b></b><small></small></span><input type="checkbox" class="swi">'; l.querySelector('b').textContent = c; l.querySelector('small').textContent = S.sci[c] || ''; const i = l.querySelector('input'); i.checked = indOn(c); i.onchange = () => toggleIndSp(c); box.appendChild(l); }
-  segSet('settheme', ls('bt_theme', null) || 'sys'); $('#thsize').value = TH.v; openOver('#setdlg'); }
+function openSet() { segSet('settheme', ls('bt_theme', null) || 'sys'); $('#thsize').value = TH.v; segSet('setsort', S.sort); $('#setburst').value = String(S.burst); segSet('setlupe', lupeR); $('#setfocus').checked = focusOn; $('#setgap').value = String(ls('bt_gap', 7)); renderAskN(); openOver('#setdlg'); }
+// 1.4.24: opciones nuevas de Ajustes (cada una guarda su valor en el navegador)
+const setOpt = (id, k, def, fn) => { const e = $('#' + id); e.checked = ls(k, def); e.onchange = () => { sv(k, e.checked); fn && fn(e.checked); }; };
+const cardOpts = () => { document.body.classList.toggle('nonight', !ls('bt_shownight', true)); document.body.classList.toggle('allnames', ls('bt_showname', false)); document.body.classList.toggle('nonote', !ls('bt_shownote', true)); };
+setOpt('onlypend', 'bt_onlypend', false); setOpt('vkeepall', 'bt_vkeepall', false); setOpt('clsnd', 'bt_clsnd', false); setOpt('autoempty', 'bt_autoempty', false);
+setOpt('obsalways', 'bt_obsalways', false, on => { if (on) { sv('bt_obs', true); obsTemp = null; if (S.cur) renderObs(S.cur); } });
+for (const k of ['shownight', 'showname', 'shownote']) setOpt(k, 'bt_' + k, k !== 'showname', cardOpts); cardOpts();
+$('#setsort').onclick = e => { const b = e.target.closest('button'); if (!b) return; $('#sort').value = b.dataset.v; $('#sort').onchange({ target: $('#sort') }); segSet('setsort', b.dataset.v); };
+$('#setburst').onchange = e => { $('#burst').value = e.target.value; $('#burst').onchange({ target: $('#burst') }); segSet('setsort', S.sort); };
+$('#setlupe').onclick = e => { const b = e.target.closest('button'); if (!b) return; $('#lupesz').value = b.dataset.v; $('#lupesz').oninput({ target: $('#lupesz') }); segSet('setlupe', b.dataset.v); };
+$('#setfocus').onchange = e => setFocus(e.target.checked);
+$('#setgap').onchange = e => sv('bt_gap', +e.target.value);
+segSet('csvsep', ls('bt_csvsep', ',')); $('#csvsep').onclick = e => { const b = e.target.closest('button'); if (!b) return; sv('bt_csvsep', b.dataset.v); segSet('csvsep', b.dataset.v); };
+function renderAskN() { const box = $('#askn'), l = ls('bt_askn', []); box.textContent = '';
+  for (const c of l) { const b = document.createElement('button'); b.className = 'on'; b.textContent = c + ' ×'; b.title = 'Quitar'; b.onclick = () => { sv('bt_askn', ls('bt_askn', []).filter(x => x !== c)); renderAskN(); }; box.appendChild(b); }
+  const sel = document.createElement('select'); sel.innerHTML = '<option value="">+ Especie</option>' + S.cats.filter(c => c !== GH && !l.includes(c)).map(c => `<option>${esc(c)}</option>`).join(''); sel.onchange = () => { if (sel.value) { sv('bt_askn', [...l, sel.value]); renderAskN(); } }; box.appendChild(sel); }
+let actx = null; function clickSound() { try { actx = actx || new AudioContext(); const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime; o.frequency.value = 880; g.gain.setValueAtTime(.12, t); g.gain.exponentialRampToValueAtTime(.001, t + .08); o.connect(g).connect(actx.destination); o.start(t); o.stop(t + .09); } catch (e) {} } // el tema pudo cambiar con el botón de arriba
 $('#bloop').checked = ls('bt_bloop', false); $('#bloop').onchange = e => sv('bt_bloop', e.target.checked);
 $('#setreset').onclick = () => { if (!confirm('¿Volver a los ajustes de fábrica? No se tocan fotos, especies, proyectos ni datos de estaciones.')) return;
   ['bt_adv', 'bt_autost', 'bt_bspeed', 'bt_bloop', 'bt_ev', 'bt_sort', 'bt_burst', 'bt_obs', 'bt_focus', 'bt_size', 'bt_autohide', 'bt_spsort', 'bt_lupesz'].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
@@ -1235,7 +1247,7 @@ $('#obsbtn').onclick = () => { const on = $('#obs').hidden; sv('bt_obs', on); ob
 const SEXIC = { Macho: '<circle cx="10" cy="14" r="5"/><path d="M14 10l6-6M15 4h5v5"/>', Hembra: '<circle cx="12" cy="9" r="5"/><path d="M12 14v7M9 18h6"/>', Desconocido: '<path d="M9 9a3 3 0 1 1 4 2.8c-.6.3-1 .9-1 1.6V15"/><circle cx="12" cy="19" r=".6" fill="currentColor"/>' };
 function renderObs(it) {
   const box = $('#obsf'), cnt = $('#cnt'), nb = $('#obsn'), cats = allCats(it); box.textContent = ''; cnt.textContent = ''; nb.textContent = '';
-  const open = obsTemp ?? ls('bt_obs', null) ?? (S.items.some(hasData) || hasData(it) || indOn(it.cat)); // lo último que eligió el usuario manda; si nunca eligió: abierto si el proyecto ya usa datos de observación o si la especie se identifica por individuo
+  const open = obsTemp ?? (ls('bt_obsalways', false) || null) ?? ls('bt_obs', null) ?? (S.items.some(hasData) || hasData(it) || indOn(it.cat)); // lo último que eligió el usuario manda; si nunca eligió: abierto si el proyecto ya usa datos de observación o si la especie se identifica por individuo
   $('#obs').hidden = !open; $('#obsbtn').classList.toggle('on', open); $('#obsbtn').setAttribute('aria-expanded', open);
   $('#obsbtn').title = 'Observación: sexo, edad, comportamiento, nota y datos de la foto' + (hasData(it) ? ' (esta foto tiene datos)' : '');
   $('#obsbtn').classList.toggle('has', hasData(it));
@@ -1474,7 +1486,7 @@ $('#bri').oninput = e => { V.b = +e.target.value; applyV(); }; $('#con').oninput
 $('#bri').onchange = $('#con').onchange = e => { e.target.blur(); keepV(); };
 $('#vreset').onclick = () => { V.b = V.c = 1; $('#bri').value = $('#con').value = 1; zoomTo(1, 0, 0); keepV(); };
 // Recordar brillo y contraste por estación (las fotos infrarrojas de una cámara suelen necesitar el mismo ajuste)
-function keepV() { if (!S.cur || !$('#vkeep').checked) return; S.vkeep[station(S.cur)] = [V.b, V.c]; sv('bt_vkeep', S.vkeep); }
+function keepV() { if (!S.cur || !($('#vkeep').checked || ls('bt_vkeepall', false))) return; S.vkeep[station(S.cur)] = [V.b, V.c]; sv('bt_vkeep', S.vkeep); }
 $('#vkeep').onchange = e => { if (!S.cur) return; const st = station(S.cur); if (e.target.checked) S.vkeep[st] = [V.b, V.c]; else delete S.vkeep[st]; sv('bt_vkeep', S.vkeep);
   toast(e.target.checked ? `El brillo y el contraste se aplicarán a todas las fotos de «${st}».` : `«${st}» ya no recuerda el brillo.`, 3500); };
 // Ajuste automático: lleva el brillo medio de la foto a un valor cómodo y estira el contraste si la foto es plana
@@ -1609,7 +1621,7 @@ async function classify(items, cat, silent) {
   if (!S.srcs.length) return; if (S.blind && !S.blindOff) return blindSet(items, cat); const touched = [...items, ...S.multi]; // tarjetas a actualizar (también las seleccionadas)
   items = items.filter(i => i.cat !== cat); if (!items.length) return;
   if (items.length >= 5 && !silent && !confirm(`¿Clasificar ${items.length} fotografías como "${cat}"${noMove() ? '' : ' y moverlas a su carpeta'}?`)) return; // con pocas fotos no se pregunta: se puede deshacer
-    const cur = S.cur, idx = S.view.indexOf(cur), ix = items.map(i => S.view.indexOf(i)).concat(idx).filter(i => i >= 0), nxt = cur ? (S.view[Math.max(...ix) + 1] || S.view[Math.min(...ix) - 1]) : null;
+    const cur = S.cur, idx = S.view.indexOf(cur), ix = items.map(i => S.view.indexOf(i)).concat(idx).filter(i => i >= 0), pend = x => !x.cat && !items.includes(x), nxt = cur ? ((ls('bt_onlypend', false) && (S.view.slice(Math.max(...ix) + 1).find(pend) || S.view.slice(0, Math.min(...ix)).reverse().find(pend))) || S.view[Math.max(...ix) + 1] || S.view[Math.min(...ix) - 1]) : null; // 1.4.24: «solo pendientes» salta las ya clasificadas
   let ok = 0; const bad = [], ch = [], stB = new Map();
   for (const it of items) { const st = station(it); if (!stB.has(st)) stB.set(st, S.items.filter(i => station(i) === st && !i.cat).length); }
   for (const it of items) {
@@ -1619,7 +1631,9 @@ async function classify(items, cat, silent) {
   }
   pushHist(ch); if (ch.length) { saveReg(); if (!S.undoing) { S.used[cat] = Date.now(); sv('bt_used', S.used); } }
   S.multi.clear(); applyFilters(touched);
-  if (S.cur) { if (!$('#adv').checked && S.view.includes(cur)) show(cur); else if (ok && nxt && S.view.includes(nxt) && nxt !== cur) show(nxt); else if (S.view.includes(cur)) show(cur); else closeLb(); }
+  const askN = ok && !S.undoing && cur && items.includes(cur) && ls('bt_askn', []).includes(cat); if (ok && !S.undoing && ls('bt_clsnd', false)) clickSound(); // 1.4.24: también con ráfagas (se anota en la foto abierta)
+  if (askN) { obsTemp = true; renderObs(cur); } // se abren sus datos para anotar cuántos hay (el aviso de «clasificada» llega después)
+  if (S.cur) { if ((askN || !$('#adv').checked) && S.view.includes(cur)) show(cur); else if (ok && nxt && S.view.includes(nxt) && nxt !== cur) show(nxt); else if (S.view.includes(cur)) show(cur); else closeLb(); }
   if (ok && !S.undoing) S.rate.push([Date.now(), ok]);
   toast(bad.length ? `${ok ? ok + ' movida(s). ' : ''}Fallaron ${bad.length}: ${bad[0]}` : `${ok} fotografía(s) → ${cat}${items.every(i => i.tagOnly) ? ' (solo etiquetada, sin mover)' : ''}`, bad.length ? 9000 : 2500, !bad.length && !S.undoing);
   if (bad.length) console.warn(bad);
@@ -1701,7 +1715,7 @@ const COLS = ['Proyecto', 'Estación', 'ID cámara', 'Nombre del archivo', 'Nomb
 const cesc = v => { v = v == null ? '' : String(v).replace(/\0/g, '');
   if (/^[=+@\t\r]/.test(v) || /^-(?!\d)/.test(v)) v = "'" + v; // evita que Excel lo tome como fórmula
   return /[",\n\r;]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
-const csvBlob = rows => new Blob(['\ufeff' + rows.map(r => r.map(cesc).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
+const csvBlob = rows => new Blob(['\ufeff' + rows.map(r => r.map(cesc).join(ls('bt_csvsep', ','))).join('\r\n')], { type: 'text/csv;charset=utf-8' }); // 1.4.24: separador elegido en Ajustes
 function download(blob, name) { const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
 async function exportMainCsv() {
   if (!S.items.length) return toast('Abre una carpeta primero.');
@@ -1905,7 +1919,7 @@ function drawActivity(c) {
   $('#actchart').innerHTML = s;
 }
 // Tablas del resumen: un CSV por tabla dentro de un .zip
-const csvText = rows => '﻿' + rows.map(r => r.map(cesc).join(',')).join('\r\n') + '\r\n';
+const csvText = rows => '﻿' + rows.map(r => r.map(cesc).join(ls('bt_csvsep', ','))).join('\r\n') + '\r\n';
 $('#sumcsv').onclick = () => { if (!sumData) return; const { stations, cats, val, td, tdTot, evs } = sumData, nm = { f: 'fotos', e: 'eventos', i: 'individuos', r: 'abundancia_relativa' };
   const f2 = (m, v) => m === 'r' ? (v == null ? '' : v.toFixed(2)) : v;
   const files = SUMM.map(([m, t]) => [`${nm[m]}.csv`, csvText([[t + (m === 'r' ? ' (eventos por 100 días-trampa)' : '') + ` · eventos separados por ${evMin()} min`], ['Especie', 'Nombre científico', ...stations, 'Total'], ...cats.map(c => [c, S.sci[c] || '', ...stations.map(s => f2(m, val(m, c, s))), f2(m, val(m, c, null))]), ['Todas las especies', '', ...stations.map(s => f2(m, val(m, null, s))), f2(m, val(m, null, null))], ...(m === 'r' ? [['Días-trampa', '', ...stations.map(s => td[s].days + (td[s].est ? ' (estimado)' : '')), tdTot]] : [])])]);
