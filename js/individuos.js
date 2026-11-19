@@ -139,9 +139,16 @@ function idHint() {
 async function loadSide(side, item) {
   const box = $('#idv_' + side), img = box.querySelector('img'), tok = IDV['t' + side] = (IDV['t' + side] || 0) + 1; // si se pide otra foto mientras carga, gana la última
   if (idUrls[side]) URL.revokeObjectURL(idUrls[side]); idUrls[side] = null; img.removeAttribute('src'); box.classList.toggle('empty', !item);
-  if (item) { try { const u = URL.createObjectURL(await item.h.getFile()); if (tok !== IDV['t' + side]) return URL.revokeObjectURL(u); idUrls[side] = u; img.src = u; await img.decode().catch(() => {}); } catch (e) { toast('No se pudo leer la foto: ' + e.message, 4000); } }
-  if (tok !== IDV['t' + side]) return; layoutId(); drawZones(side); idHint();
+  if (item) { try { let f = await item.h.getFile(), fx = null; // 1.4.27: video → un cuadro (para calcar); JPG dañado → copia reparada, como en el visor
+      if (isVideo(item.name)) { const bmp = await videoFrame(f, true, (sideObs(side) || {}).vt), c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height; c.getContext('2d').drawImage(bmp, 0, 0); bmp.close(); f = await canvasBlob(c); if (side === 'l') { const r = $('#idv_vt'); r.max = bmp.dur || 0; r.value = bmp.at; $('#idv_vtt').textContent = bmp.at.toFixed(1) + ' s'; } }
+      else fx = await wJob('view', { file: f, fit: [1e6, 1e6] }).then(d => d.fx, () => null);
+      const u = URL.createObjectURL(fx || f); if (tok !== IDV['t' + side]) return URL.revokeObjectURL(u); if (fx) toast('Foto dañada en la cámara: se muestra reparada. El archivo no se modifica.', 4000); idUrls[side] = u; img.src = u; await img.decode().catch(() => {}); } catch (e) { toast('No se pudo leer la foto: ' + e.message, 4000); } }
+  if (tok !== IDV['t' + side]) return; if (side === 'l') box.querySelector('.idvt').hidden = !(item && isVideo(item.name)); layoutId(); drawZones(side); idHint();
 }
+// 1.4.27: elegir el cuadro del video que se identifica (se guarda en la foto; las rosetas se calcan sobre ese cuadro)
+$('#idv_vt').oninput = e => { $('#idv_vtt').textContent = (+e.target.value).toFixed(1) + ' s'; };
+$('#idv_vt').onchange = e => { IDV.o.vt = +e.target.value; saveReg(); loadSide('l', IDV.it); };
+$('#idv_vt').parentNode.onpointerdown = e => e.stopPropagation(); // no arrastra la foto
 function layoutId() { // con una parte elegida, cada foto se agranda hasta que esa zona llena el recuadro: así da igual si el animal estaba cerca o lejos
   for (const side of ['l', 'r']) { const box = $('#idv_' + side), img = box.querySelector('img'), inn = box.querySelector('.idin'), W = img.naturalWidth, H = img.naturalHeight;
     if (!W || !img.getAttribute('src')) { inn.style.width = inn.style.height = '0px'; continue; }
@@ -199,7 +206,7 @@ function renderVerdict() {
     b.title = `Roseta ${i + 1}: toca una vez si coincide, dos si no (o la tecla ${i + 1})`; b.onclick = () => { IDV.m[i] = (m + 1) % 3; renderVerdict(); drawZones('r'); }; box.appendChild(b); });
   const y = IDV.m.filter(x => x === 1).length, n = IDV.m.filter(x => x === 2).length; same.textContent = id ? 'Es ' + id : 'Es el mismo'; same.disabled = !id; $('#idv_chipsw').hidden = !trs.length;
   if (!id) v.textContent = '';
-  else if (!p) { v.textContent = `De ${id} no hay fotos de este lado: no se puede comparar con esta.`; same.disabled = true; }
+  else if (!p) v.textContent = `Aviso: de ${id} no hay fotos del lado ${(FL[IDV.o.fl] || '').toLowerCase()}. No se puede comparar, pero puedes agregarla: será su primera de este lado.`; // 1.4.27: antes no dejaba
   else if (!trs.length) { v.textContent = `Esta foto de ${id} no tiene rosetas calcadas. Cálcalas con el lápiz, o compara a ojo (queda como dudosa).`; dud.checked = true; }
   else if (n) { v.innerHTML = `<b class="no">${n} no coincide${n > 1 ? 'n' : ''}.</b> Una roseta distinta basta: no es ${esc(id)}.`; same.disabled = true; }
   else if (y >= Math.min(TROK, trs.length)) { v.innerHTML = `<b class="ok">${y} coinciden.</b> Suficiente para decir que es el mismo.`; dud.checked = IDV.o.q === 'M'; }
@@ -470,7 +477,7 @@ addEventListener('keydown', e => { const d = CanvasEd.act; if (!d || !d.img || (
 const IMP = { list: [], sel: 0, ed: null };
 async function openImport() { if (S.ro || !S.srcs.length) return toast('Abre el proyecto (con permiso para escribir) antes de importar.', 4000);
   if (!S.indSp.length) return toast('Primero marca qué especies se identifican por individuo (menú ⋯ de Individuos).', 4000);
-  IMP.list = []; IMP.sel = 0; IMP.sp = S.indSp[0]; $('#imp_sp').innerHTML = S.indSp.map(c => `<option>${esc(c)}</option>`).join(''); openOver('#impdlg'); if (!IMP.ed) IMP.ed = CanvasEd($('#imp_stage'), { onchange: (d, colorOnly) => { const m = IMP.list[IMP.sel]; if (m && !colorOnly) { m.tr = d.tr; impForm(); } }, onzone: () => impForm() }); impRender(); }
+  IMP.list = []; IMP.sel = 0; const sps = S.indSp.filter(x => S.cats.some(c => norm(c) === norm(x))); if (!sps.length) return toast('Primero marca qué especies se identifican por individuo (menú ⋯ de Individuos).', 4000); IMP.sp = sps[0]; $('#imp_sp').innerHTML = sps.map(c => `<option>${esc(c)}</option>`).join(''); openOver('#impdlg'); if (!IMP.ed) IMP.ed = CanvasEd($('#imp_stage'), { onchange: (d, colorOnly) => { const m = IMP.list[IMP.sel]; if (m && !colorOnly) { m.tr = d.tr; impForm(); } }, onzone: () => impForm() }); impRender(); }
 function impRender() { const box = $('#imp_strip'); box.textContent = '';
   IMP.list.forEach((m, i) => { const b = document.createElement('button'); b.className = i === IMP.sel ? 'on' : ''; b.title = m.name; const c = document.createElement('canvas'), k = Math.min(140 / m.img.width, 96 / m.img.height); c.width = m.img.width * k; c.height = m.img.height * k; c.getContext('2d').drawImage(m.img, 0, 0, c.width, c.height);
     b.appendChild(c); b.insertAdjacentHTML('beforeend', `<small>${esc(m.sheet ? 'Página' : m.id || m.name)}</small>`); b.onclick = () => { IMP.sel = i; impRender(); }; box.appendChild(b); });
@@ -483,12 +490,13 @@ function impForm() { const m = IMP.list[IMP.sel], f = $('#imp_form'), n = IMP.li
     $('#imp_crop').onclick = impCrop; $('#imp_one').onclick = () => { m.sheet = false; m.id = impFree(); impRender(); }; return; }
   const ex = S.ind.list[m.id], seg = (opts, key) => `<div class="idseg c3" data-k="${key}">${opts.map(([v, t]) => `<button data-v="${v}" class="${m[key] === v ? 'on' : ''}">${t}</button>`).join('')}</div>`;
   f.innerHTML = `<div class="idrow2"><label class="idfld">Código<input id="imp_id" value="${esc(m.id)}"></label><label class="idfld">Nombre<input id="imp_n" value="${esc(m.nombre)}" placeholder="opcional"></label></div>
+    <label class="idfld">Individuo<select id="imp_ex"><option value="">Nuevo</option>${[...new Set([...Object.keys(S.ind.list).filter(k => norm(S.ind.list[k].sp) === norm(IMP.sp)).sort(), ...IMP.list.filter(x => x !== m && x.id && !S.ind.list[x.id]).map(x => x.id)])].map(k => `<option${k === m.id ? ' selected' : ''}>${esc(k)}</option>`).join('')}</select></label>
     ${ex ? `<p class="idwarn">${esc(m.id)} ya está en el catálogo: esta imagen se agrega como otra referencia suya (sus datos no cambian).</p>` : ''}
     <p class="idk">Lado</p><div class="idseg" data-k="fl"><button data-v="I" class="${m.fl === 'I' ? 'on' : ''}">Izquierdo</button><button data-v="D" class="${m.fl === 'D' ? 'on' : ''}">Derecho</button></div>
     ${ex ? '' : `<p class="idk">Sexo</p>${seg([['Macho', 'Macho'], ['Hembra', 'Hembra'], ['', 'Sin dato']], 'sexo')}<p class="idk">Edad</p>${seg(EDADES.map(e => [e, e]), 'edad')}`}
     <p class="idk">Rosetas</p><div class="idseg" data-k="dib"><button data-v="1" class="${m.dib ? 'on' : ''}">Ya vienen dibujadas</button><button data-v="" class="${m.dib ? '' : 'on'}">Calcarlas aquí</button></div>
     <button class="lnk2" id="imp_many">Esta imagen tiene varios individuos: separarlos</button><p class="hint tiny">${m.tr.length ? `${m.tr.length} roseta(s) calcada(s) encima.` : m.dib ? 'Se guarda la imagen tal cual. Si además calcas las rosetas encima con el lápiz, al comparar podrás marcar ✓/✗ una por una.' : `Calca al menos ${TROK} con el lápiz.`}</p><button class="lnk2" id="imp_del">Quitar esta imagen</button>`;
-  $('#imp_id').oninput = e => { m.id = e.target.value.trim().replace(/\s+/g, '-'); }; $('#imp_id').onchange = () => impForm(); $('#imp_n').oninput = e => m.nombre = e.target.value;
+  $('#imp_id').oninput = e => { m.id = e.target.value.trim().replace(/\s+/g, '-'); }; $('#imp_id').onchange = () => impForm(); $('#imp_n').oninput = e => m.nombre = e.target.value; $('#imp_ex').onchange = e => { m.id = e.target.value || impFree(); impRender(); };
   f.querySelectorAll('.idseg[data-k] button').forEach(b => b.onclick = () => { const k = b.parentElement.dataset.k, v = b.dataset.v; m[k] = k === 'dib' ? !!v : v; if (k === 'dib') IMP.ed.setTool(v ? 'pan' : 'pen'); impForm(); });
   $('#imp_many').onclick = () => { m.sheet = true; m.id = ''; m.tr = []; impRender(); };
   $('#imp_del').onclick = () => { IMP.list.splice(IMP.sel, 1); IMP.sel = Math.max(0, IMP.sel - 1); impRender(); }; }
@@ -499,7 +507,7 @@ $('#imp_file').onchange = e => { const fs = [...e.target.files]; e.target.value 
 async function impFiles(fs) { // 1.4.24: también al soltar imágenes sobre la ventana
   for (const f of fs) { try { const img = await createImageBitmap(f); impAdd(f.name, img, { file: f }); } catch (x) { toast(`No se pudo abrir ${f.name}.`, 3000); } }
   IMP.sel = Math.max(0, IMP.list.length - fs.length); impRender(); }
-$('#imp_sp').onchange = e => { IMP.sp = e.target.value; };
+$('#imp_sp').onchange = e => { IMP.sp = e.target.value; impForm(); };
 $('#imp_ok').onclick = async () => { const l = IMP.list.filter(m => !m.sheet); if (l.some(m => !m.id)) return toast('Falta el código de alguna imagen.', 3000);
   let nw = 0, more = 0; toast('Guardando las imágenes de referencia…', 0);
   for (const m of l) { try { const blob = m.file && !m.crop ? m.file : await new Promise(r => { const c = document.createElement('canvas'); c.width = m.img.width; c.height = m.img.height; c.getContext('2d').drawImage(m.img, 0, 0); c.toBlob(r, 'image/png'); });
@@ -653,10 +661,10 @@ function indMenu(btn, back) { const old = swapMenu(back), n = f => S.indSp.reduc
     null, ['Ordenar fotos en carpetas por individuo', sortIndFolders, 'Mueve las fotos con individuo a Clasificadas/<Especie>/<Individuo>/ (las identificadas antes de la 1.4.14)']]); m.classList.add('indmenu');
   richMenu(m, [['search', np ? `${fmtN(np)} foto${np === 1 ? '' : 's'} sin individuo` : 'Ninguna pendiente'], ['help', nd ? `${fmtN(nd)} por confirmar` : 'Ninguna dudosa'], ['split', 'Para encontrar duplicados'], ['download', '', 1, () => indSub(btn, 'imp')], ['share', '', 1, () => indSub(btn, 'exp')], ['folder']]);
   const hd = document.createElement('div'), box = document.createElement('div'), ch = document.createElement('button'); hd.className = 'indsps'; hd.innerHTML = '<b class="pbh">Especies con individuos</b>';
-  S.indSp.forEach(c => { const s = document.createElement('span'); s.textContent = c; box.appendChild(s); });
+  S.indSp.filter(c => S.cats.some(x => norm(x) === norm(c))).forEach(c => { const s = document.createElement('span'); s.textContent = c; box.appendChild(s); });
   ch.textContent = S.indSp.length ? 'Cambiar' : 'Elegir especies'; ch.title = 'Marca qué especies se identifican por individuo'; ch.onclick = () => indSpMenu(btn); box.appendChild(ch); hd.appendChild(box); m.prepend(hd); place(m, old); }
 function toggleIndSp(c) { S.indSp = indOn(c) ? S.indSp.filter(x => norm(x) !== norm(c)) : [...S.indSp, c]; sv('bt_indsp', S.indSp); S.indDirty = true; saveReg(); renderIndPane(); if (S.cur) renderObs(S.cur); }
-function indSpMenu(btn) { const old = swapMenu(1), all = [...new Set([...S.indSp, ...S.cats.filter(c => c !== GH)])];
+function indSpMenu(btn) { const old = swapMenu(1), all = S.cats.filter(c => c !== GH); // 1.4.27: solo las especies que existen (las eliminadas ya no salen)
   const m = menuAt(btn, [['Volver'], null, ...all.map(c => [c, null, 'Marcada: esta especie se identifica por individuo', indOn(c)])]); m.classList.add('spmenu'); richMenu(m, [['chevL', '', 0, () => indMenu(btn, 1)]]);
   [...m.querySelectorAll(':scope > button')].slice(1).forEach((b, k) => { const c = all[k]; b.onclick = () => { toggleIndSp(c); b.className = indOn(c) ? 'chk' : 'unchk'; }; }); // marcar no cierra ni redibuja el menú
   place(m, old); }

@@ -694,11 +694,11 @@ async function thumb(img) {
     thumbs.set(it, url); thumbUrls.push(url); if (img.isConnected) img.src = url;
   } catch (e) { thumbs.set(it, 'err'); badThumb(img); if (isVideo(it.name)) { img.parentNode.classList.add('novid'); img.parentNode.title = 'Video sin vista previa (el navegador no puede leer este formato)'; } }
 }
-function videoFrame(f) { // un cuadro del video como miniatura
+function videoFrame(f, full, at) { // un cuadro del video como miniatura (full: a tamaño real, para identificar; at: segundo elegido)
   return new Promise((res, rej) => { const v = document.createElement('video'), url = URL.createObjectURL(f), end = e => { URL.revokeObjectURL(url); clearTimeout(t); e ? rej(e) : 0; };
     const t = setTimeout(() => end(new Error('tiempo agotado')), 8000); v.muted = true; v.preload = 'auto'; v.src = url;
-    v.onloadedmetadata = () => { v.currentTime = Math.min(1, (v.duration || 2) / 2); };
-    v.onseeked = () => { const w = 280, h = Math.round(w * (v.videoHeight || 3) / (v.videoWidth || 4)), c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(v, 0, 0, w, h); end(); createImageBitmap(c).then(res, rej); };
+    v.onloadedmetadata = () => { v.currentTime = at != null ? Math.min(at, v.duration || 0) : Math.min(1, (v.duration || 2) / 2); };
+    v.onseeked = () => { const w = full ? v.videoWidth || 1280 : 280, h = Math.round(w * (v.videoHeight || 3) / (v.videoWidth || 4)), c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(v, 0, 0, w, h); end(); createImageBitmap(c).then(b => { b.dur = v.duration; b.at = v.currentTime; res(b); }, rej); };
     v.onerror = () => end(new Error('formato no compatible')); });
 }
 
@@ -745,6 +745,8 @@ function cardState(d, it) {
   if (!d.classList.contains('err')) d.title = (S.srcs.length > 1 ? station(it) + ' · ' : '') + it.name + (g ? ` (ráfaga de ${g.length})` : '') + (done ? '' : ' (pendiente)') + (per ? ' · ' + PER[per] : '') + (it.rev ? ' · marcada para revisar' : '') + (it.ver ? ' · verificada' : '') + (it.note ? ' · nota: ' + it.note : '');
   const t = d.querySelector('.tag'); t.title = done ? 'Clic para quitar la clasificación' : 'Pendiente';
   t.textContent = done ? (S.blind ? it.bl : allCats(it).join(' + ') + (it.tagOnly ? ' (sin mover)' : '')) : '';
+  const ids = S.blind ? [] : [...new Set(allCats(it).map(c => it.obs && it.obs[c] && it.obs[c].id).filter(Boolean))], it2 = d.querySelector('.itag'); // 1.4.28: individuo ya identificado
+  if (it2) { it2.textContent = ids.join(' + '); it2.title = ids.length ? 'Individuo: ' + ids.join(', ') : ''; }
 }
 function refreshCards(only) { // only: actualizar solo las tarjetas de esas fotos (rápido con miles)
   const ds = only ? [...new Set(only.map(i => groupOf(i)[0]))].map(h => $(`#grid .card[data-id="${h.id}"]`)).filter(Boolean) : $('#grid').querySelectorAll('.card');
@@ -767,7 +769,7 @@ function renderGrid() {
     if (!chunk || nIn === CH) { chunk = document.createElement('div'); chunk.className = 'gchunk'; chunk.style.containIntrinsicSize = `auto ${Math.round(estH)}px`; frag.appendChild(chunk); nIn = 0; }
     nIn++;
     const d = document.createElement('div'); d.dataset.id = it.id;
-    d.innerHTML = '<img alt="" decoding="async" draggable="false"><span class="tag"></span><span class="nm"></span>' + (gr ? '<span class="cnt"></span>' : '');
+    d.innerHTML = '<img alt="" decoding="async" draggable="false"><span class="tag"></span><span class="itag"></span><span class="nm"></span>' + (gr ? '<span class="cnt"></span>' : '');
     d.querySelector('.nm').textContent = it.name; if (gr) d.querySelector('.cnt').textContent = gr.length;
     cardState(d, it);
     const img = d.querySelector('img'); img.dataset.id = it.id; io.observe(img);
@@ -1114,7 +1116,7 @@ async function show(it) {
     try { const u = vid ? { url: URL.createObjectURL(await it.h.getFile()), surl: null } : await urlFor(it), url = u.url;
       if (S.cur !== it) { URL.revokeObjectURL(url); if (u.surl) URL.revokeObjectURL(u.surl); return; }
       if (bigUrl) URL.revokeObjectURL(bigUrl); if (bigSUrl) URL.revokeObjectURL(bigSUrl); bigUrl = url; bigSUrl = u.surl; fullLoading = false;
-      if (vid) { $('#big').removeAttribute('src'); $('#bigv').src = url; $('#lbmsg').textContent = /\.avi$/i.test(it.name) ? 'Chrome no reproduce videos AVI; puedes clasificarlo igual.' : ''; }
+      if (vid) { $('#big').removeAttribute('src'); $('#bigv').controls = false; $('#bigv').src = url; $('#lbmsg').textContent = /\.avi$/i.test(it.name) ? 'Chrome no reproduce videos AVI; puedes clasificarlo igual.' : ''; }
       else { $('#bigv').removeAttribute('src'); $('#big').src = bigSUrl || bigUrl; $('#lbmsg').textContent = ''; if (u.fx) toast('Foto dañada en la cámara: se muestra reparada. Las líneas son del daño; el archivo no se modifica.', 4000); jpegCut(it).then(cut => { if (cut && S.cur === it && !$('#lbmsg').textContent) $('#lbmsg').textContent = 'Esta foto parece incompleta (el archivo termina antes de tiempo): se muestra solo la parte que se pudo leer.'; }); if (V.z > 1 || lupeOn) useFull(); if (!burstPlay && !matchMedia('(prefers-reduced-motion: reduce)').matches) $('#big').animate([{ opacity: .55 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' }); } }
     catch (e) { $('#big').removeAttribute('src'); $('#lbmsg').textContent = 'No se pudo leer: ' + e.message; }
     $('.imgwrap').classList.remove('ld');
@@ -1406,6 +1408,8 @@ async function startCompare() {
 function endCompare() { if (!cmpUrl) return; URL.revokeObjectURL(cmpUrl); cmpUrl = null; $('#cmpmsg').hidden = true; if (bigUrl) { $('#big').src = bigSUrl || bigUrl; if (V.z > 1 || lupeOn) useFull(); } }
 
 /* ---------- Teclado ---------- */
+// 1.4.27: con el video enfocado (tras tocar sus controles), las flechas lo adelantaban en vez de pasar a la siguiente foto
+window.addEventListener('keydown', e => { const v = $('#bigv'); if (document.activeElement !== v || $('#lb').hidden || !/^Arrow(Left|Right)$/.test(e.key) || e.ctrlKey || e.metaKey || e.altKey) return; e.preventDefault(); e.stopPropagation(); v.blur(); step(e.key === 'ArrowRight' ? 1 : -1); }, true);
 document.addEventListener('keydown', e => {
   if (!$('#tour').hidden) { if (e.key === 'Escape') endTour(); else if (e.key === 'ArrowRight' || e.key === 'Enter') { e.preventDefault(); tourGo(1); } else if (e.key === 'ArrowLeft') tourGo(-1); return; }
   if (e.key === 'Escape' && (closeMenu() || closePops() || closeOver())) { if (document.activeElement && document.activeElement.closest && document.activeElement.closest('.popbox')) document.activeElement.blur(); return; }
@@ -1477,6 +1481,8 @@ const wrap = document.querySelector('.imgwrap'), big = $('#big'); let drag = nul
 const rel = e => { const r = wrap.getBoundingClientRect(); return [e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2)]; };
 wrap.addEventListener('wheel', e => { e.preventDefault(); const [cx, cy] = rel(e); zoomTo(V.z * (e.deltaY < 0 ? 1.2 : 1 / 1.2), cx, cy); }, { passive: false });
 big.ondragstart = e => e.preventDefault();
+// 1.4.28: la barra del video solo sale al tocarlo (tapaba al animal y los datos de la cámara); otro toque fuera de la barra la esconde
+$('#bigv').onclick = e => { const v = e.currentTarget; if (!v.controls) { e.preventDefault(); v.controls = true; } else if (e.offsetY < v.clientHeight - 60) { e.preventDefault(); v.controls = false; } };
 big.onpointerdown = e => { if (V.z <= 1) return; e.preventDefault(); big.setPointerCapture(e.pointerId); drag = { x: e.clientX - V.x, y: e.clientY - V.y }; big.style.cursor = 'grabbing'; };
 big.onpointermove = e => { if (drag) { V.x = e.clientX - drag.x; V.y = e.clientY - drag.y; applyV(); } };
 big.onpointerup = big.onpointercancel = () => { drag = null; applyV(); };
@@ -1702,7 +1708,7 @@ async function deleteCat(c) {
     if (bad) { applyFilters(); return toast(`No se pudieron devolver ${bad} fotografía(s); la categoría se conserva.`, 8000); }
   } else if (!confirm(`¿Eliminar la categoría "${c}"? Si su carpeta está vacía, también se borrará del disco.`)) return;
   const gone = S.ro ? false : await dropFolder(c);
-  if (c !== GH) { S.cats = S.cats.filter(x => x !== c); sv('bt_cats', S.cats); } // Fantasmas se conserva como botón y su carpeta se recrea al usarla
+  if (c !== GH) { S.cats = S.cats.filter(x => x !== c); sv('bt_cats', S.cats); S.indSp = S.indSp.filter(x => norm(x) !== norm(c)); sv('bt_indsp', S.indSp); } // 1.4.27: tampoco queda marcada para individuos // Fantasmas se conserva como botón y su carpeta se recrea al usarla
   if (S.f.cat === c) S.f.cat = 'all'; S.multi.clear(); applyFilters(); if (S.cur) show(S.cur);
   toast(c === GH ? 'Carpeta de Fantasmas limpiada; el botón se conserva y la carpeta se recreará cuando la uses.' : `Categoría eliminada${gone ? ' y su carpeta vacía borrada' : ''}.`, 5000);
 }

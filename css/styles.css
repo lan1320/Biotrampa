@@ -215,7 +215,8 @@ body.home #pend{max-width:992px;margin:16px auto 0}
 .card .nm{position:absolute;left:0;right:0;top:0;padding:7px 44px 22px 9px;font-size:12px;font-weight:500;color:#fff;text-shadow:0 1px 2px #0006;background:linear-gradient(#000000a0,transparent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:opacity .15s}
 .card:hover .nm,.card.kf .nm{opacity:1}
 .card .tag{position:absolute;left:8px;bottom:8px;z-index:1;max-width:calc(100% - 16px);padding:3px 9px;border-radius:6px;background:var(--acf);color:var(--onac);box-shadow:0 1px 4px #00000059;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.card .tag:empty{display:none}
+.card .tag:empty,.card .itag:empty{display:none}
+.card .itag{position:absolute;left:8px;bottom:36px;z-index:1;max-width:calc(100% - 16px);padding:2px 8px;border-radius:6px;background:var(--pn);color:var(--ac);box-shadow:0 1px 4px #00000059;font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none} /* 1.4.28: individuo, encima de la especie */
 .card.fant .tag{background:#e3e5e1;color:#1b1d1c}
 .card.done .tag:hover::after{content:' ×'}
 .card.sel{outline:3px solid var(--ac);outline-offset:-3px}
@@ -584,7 +585,8 @@ img:not([src]){visibility:hidden} /* 1.4.24: sin el marco claro de Chrome en im�
 #cmenu.indmenu,#cmenu.spmenu{box-sizing:border-box}#cmenu.indmenu{min-width:290px;padding:6px}
 #cmenu>button.rich,.indlam{display:flex;align-items:center;gap:12px;padding:8px 10px}#cmenu>button.rich>.ic,.indlam>.ic{color:var(--mu)}
 #cmenu .rich>span,.indlam>span{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0}#cmenu .rich b,.indlam b{font-weight:600}#cmenu .rich small,.indlam small{font-size:12px;color:var(--mu)}
-.indsps{padding:6px 10px 10px}.indsps>div{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}.indsps span{padding:3px 10px;border-radius:14px;background:var(--act);color:var(--ac);font-size:12px;font-weight:600}#cmenu .indsps button{padding:3px 6px;color:var(--ac);font-size:12px}
+.indsps{padding:6px 10px 10px;contain:inline-size}.indsps>div{max-height:96px;overflow:auto} /* 1.4.27: muchas especies bajan de renglón (hasta 3) en vez de ensanchar el menú */
+.idvt{position:absolute;right:10px;bottom:8px;display:flex;align-items:center;gap:6px;font-size:12px;color:#e6e8e6;background:#0000008c;padding:3px 8px;border-radius:6px;cursor:default}.idvt[hidden]{display:none}.idvt input{width:160px;accent-color:var(--ac)}.indsps>div{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}.indsps span{padding:3px 10px;border-radius:14px;background:var(--act);color:var(--ac);font-size:12px;font-weight:600}#cmenu .indsps button{padding:3px 6px;color:var(--ac);font-size:12px}
 #cmenu .indlam button{padding:3px 9px;font-size:12px;background:var(--pn2)}#cmenu .indlam button:hover{background:var(--ac2)}
 #cmenu{max-height:calc(100vh - 16px);overflow:auto} /* 1.4.24: un menú alto se desplaza en vez de salirse de la pantalla */
 .lbcats>button{max-width:200px}.lbcats>button span{min-width:0;overflow:hidden;text-overflow:ellipsis}.lbcats>button kbd{flex:none} /* nombres largos: se recortan con … (el nombre completo sale al pasar el ratón) */
