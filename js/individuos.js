@@ -140,15 +140,28 @@ async function loadSide(side, item) {
   const box = $('#idv_' + side), img = box.querySelector('img'), tok = IDV['t' + side] = (IDV['t' + side] || 0) + 1; // si se pide otra foto mientras carga, gana la última
   if (idUrls[side]) URL.revokeObjectURL(idUrls[side]); idUrls[side] = null; img.removeAttribute('src'); box.classList.toggle('empty', !item);
   if (item) { try { let f = await item.h.getFile(), fx = null; // 1.4.27: video → un cuadro (para calcar); JPG dañado → copia reparada, como en el visor
-      if (isVideo(item.name)) { const bmp = await videoFrame(f, true, (sideObs(side) || {}).vt), c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height; c.getContext('2d').drawImage(bmp, 0, 0); bmp.close(); f = await canvasBlob(c); if (side === 'l') { const r = $('#idv_vt'); r.max = bmp.dur || 0; r.value = bmp.at; $('#idv_vtt').textContent = bmp.at.toFixed(1) + ' s'; } }
+      if (isVideo(item.name) && side === 'l') { await vidOpen(item, f); const c = await vidGrab((sideObs(side) || {}).vt ?? Math.min(1, VS.dur / 2)); f = await new Promise(r => c.toBlob(r, 'image/jpeg', .92)); vidStrip(item); }
+      else if (isVideo(item.name)) { const bmp = await videoFrame(f, true, (sideObs(side) || {}).vt), c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height; c.getContext('2d').drawImage(bmp, 0, 0); bmp.close(); f = await canvasBlob(c); }
       else fx = await wJob('view', { file: f, fit: [1e6, 1e6] }).then(d => d.fx, () => null);
       const u = URL.createObjectURL(fx || f); if (tok !== IDV['t' + side]) return URL.revokeObjectURL(u); if (fx) toast('Foto dañada en la cámara: se muestra reparada. El archivo no se modifica.', 4000); idUrls[side] = u; img.src = u; await img.decode().catch(() => {}); } catch (e) { toast('No se pudo leer la foto: ' + e.message, 4000); } }
   if (tok !== IDV['t' + side]) return; if (side === 'l') box.querySelector('.idvt').hidden = !(item && isVideo(item.name)); layoutId(); drawZones(side); idHint();
 }
-// 1.4.27: elegir el cuadro del video que se identifica (se guarda en la foto; las rosetas se calcan sobre ese cuadro)
-$('#idv_vt').oninput = e => { $('#idv_vtt').textContent = (+e.target.value).toFixed(1) + ' s'; };
-$('#idv_vt').onchange = e => { IDV.o.vt = +e.target.value; saveReg(); loadSide('l', IDV.it); };
-$('#idv_vt').parentNode.onpointerdown = e => e.stopPropagation(); // no arrastra la foto
+// 1.4.29: el video que se identifica se abre una sola vez; el cuadro grande y la tira de abajo (como la galería del celular) salen de ahí
+let VS = {}, VSq = Promise.resolve();
+async function vidOpen(item, f) { if (VS.it === item) return; vidFree(); const v = document.createElement('video'), url = URL.createObjectURL(f); v.muted = true; v.preload = 'auto'; v.src = url;
+  try { await new Promise((res, rej) => { v.onloadeddata = res; v.onerror = () => rej(new Error('formato no compatible')); setTimeout(() => rej(new Error('tiempo agotado')), 8000); }); } catch (e) { URL.revokeObjectURL(url); throw e; }
+  if (!isFinite(v.duration)) await new Promise(r => { v.onseeked = r; v.currentTime = 1e9; setTimeout(r, 3000); }); // webm sin duración anotada: se averigua yendo al final
+  VS = { it: item, v, url, dur: isFinite(v.duration) ? v.duration : 0 }; }
+function vidFree() { if (VS.v) { VS.v.removeAttribute('src'); VS.v.load(); URL.revokeObjectURL(VS.url); } VS = {}; $('#idv_l .idvt')._it = null; }
+const vidGrab = (t, w) => VSq = VSq.catch(() => {}).then(() => new Promise((res, rej) => { const v = VS.v; if (!v) return rej(new Error('video cerrado'));
+  const tt = Math.max(0, Math.min(t, VS.dur - .05)), to = setTimeout(() => rej(new Error('tiempo agotado')), 8000), draw = () => { clearTimeout(to); v.onseeked = null; const W = w || v.videoWidth, c = document.createElement('canvas'); c.width = W; c.height = Math.round(W * v.videoHeight / v.videoWidth); c.getContext('2d').drawImage(v, 0, 0, c.width, c.height); VS.at = v.currentTime; res(c); };
+  if (Math.abs(v.currentTime - tt) < .01 && v.readyState >= 2) draw(); else { v.onseeked = draw; v.currentTime = tt; } }));
+function vidStrip(item) { const box = $('#idv_l .idvt');
+  if (box._it !== item) { box._it = item; box.textContent = ''; const n = VS.dur > 1 ? 8 : 1;
+    for (let i = 0; i < n; i++) { const t = VS.dur * (i + .5) / n, b = document.createElement('button'); b._t = t; b.title = `Usar el cuadro de ${t.toFixed(1)} s`; b.innerHTML = `<small>${t.toFixed(1)} s</small>`;
+      b.onclick = () => { [...box.children].forEach(x => x.classList.toggle('on', x === b)); IDV.o.vt = t; saveReg(); loadSide('l', IDV.it); }; box.appendChild(b); vidGrab(t, 112).then(c => { if (box._it === item) b.prepend(c); }).catch(() => {}); } }
+  const bs = [...box.children], on = bs.reduce((a, b) => Math.abs(b._t - VS.at) < Math.abs(a._t - VS.at) ? b : a, bs[0]); bs.forEach(b => b.classList.toggle('on', b === on)); }
+$('#idv_l .idvt').onpointerdown = e => e.stopPropagation(); // no arrastra la foto
 function layoutId() { // con una parte elegida, cada foto se agranda hasta que esa zona llena el recuadro: así da igual si el animal estaba cerca o lejos
   for (const side of ['l', 'r']) { const box = $('#idv_' + side), img = box.querySelector('img'), inn = box.querySelector('.idin'), W = img.naturalWidth, H = img.naturalHeight;
     if (!W || !img.getAttribute('src')) { inn.style.width = inn.style.height = '0px'; continue; }
@@ -296,6 +309,7 @@ addEventListener('keydown', e => { // atajos dentro de «Identificar individuo»
   else if (k === 'p') idTool(side, 'pen'); else if (k === 'e') idTool(side, 'erase'); else if (k === 'h') idTool(side, 'eye');
   else if (k === 'v') { IDV.pen[side] = IDV.er[side] = false; idHint(); }
   else if (e.key === ' ') { IDV.space = true; }
+  else if ((k === 'arrowleft' || k === 'arrowright') && !$('#idv_l .idvt').hidden) { const bs = [...$('#idv_l .idvt').children], b = bs[bs.findIndex(x => x.classList.contains('on')) + (k === 'arrowright' ? 1 : -1)]; if (b) b.click(); } // 1.4.30: ← → recorren la tira de cuadros del video
   else if (!$('#idv_nf').hidden) done = false;
   else if (/^[idan]$/.test(k)) idSet('fl', k.toUpperCase()); // 1.4.18: lado I/D/A/N, claridad 1/2/3, S salta, Enter confirma, ↑ ↓ candidatos
   else if (/^[1-3]$/.test(k) && (!IDV.o.q || IDV.menu === 'q')) idSet('q', 'BRM'[+k - 1]);
@@ -306,7 +320,7 @@ addEventListener('keydown', e => { // atajos dentro de «Identificar individuo»
   else done = false;
   if (done) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
 addEventListener('keyup', e => { if (e.key === ' ') IDV.space = false; });
-function idClosed() { if (IDV.flg && IDV.o) { delete IDV.o.fl; saveReg(); } IDV.flg = false; IDV.menu = null; const it = IDV.it; if (it && !$('#lb').hidden && S.cur !== it && S.items.includes(it)) show(it); } // al cerrar, el visor queda en la última foto que se identificaba
+function idClosed() { vidFree(); if (IDV.flg && IDV.o) { delete IDV.o.fl; saveReg(); } IDV.flg = false; IDV.menu = null; const it = IDV.it; if (it && !$('#lb').hidden && S.cur !== it && S.items.includes(it)) show(it); } // al cerrar, el visor queda en la última foto que se identificaba
 $('#idv .pclose').addEventListener('click', idClosed);
 
 // Cola: al decidir, pasa sola a la siguiente foto de la especie sin individuo (o a la siguiente dudosa)

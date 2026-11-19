@@ -1423,6 +1423,7 @@ document.addEventListener('keydown', e => {
   if (burstPlay) { e.preventDefault(); if (e.key.toUpperCase() === 'P' || e.key === 'Escape') { stopBurst(); return; } stopBurst(); return; } // cualquier tecla detiene la ráfaga
   if (e.key === '/') { e.preventDefault(); if ($('#lbside').hidden) $('#lbmorebtn').click(); else $('#lbq').focus(); return; } // buscar o crear especie
   const k = e.key.length === 1 ? e.key.toUpperCase() : e.key, dg = /^(Digit|Numpad)([1-9])$/.exec(e.code);
+  if (e.key === ' ' && !$('#bigv').hidden) { e.preventDefault(); if (e.repeat) return; const v = $('#bigv'); if (v.paused) v.play().catch(() => {}); else v.pause(); return; } // 1.4.30: espacio pausa o reproduce el video
   if ((e.key === ',' || e.key === '.') && !$('#bigv').hidden) { e.preventDefault(); const v = $('#bigv'); v.pause(); v.currentTime = Math.max(0, v.currentTime + (e.key === '.' ? 1 : -1) / 30); return; } // video: cuadro a cuadro
   if (e.key === 'Escape') { if (focusOn) setFocus(false); else closeLb(); }
   else if (e.key === 'ArrowLeft') step(-1); else if (e.key === 'ArrowRight') step(1);
