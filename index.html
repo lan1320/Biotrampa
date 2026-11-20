@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BioTrampa 1.4</title>
 <link rel="icon" href="data:,"><!-- sin ícono por ahora (icono.svg queda en la carpeta para más adelante) -->
-<link rel="stylesheet" href="css/styles.css?v=1.4.30">
+<link rel="stylesheet" href="css/styles.css?v=1.4.34">
 </head>
 <body class="home">
 <div id="app">
@@ -28,10 +28,10 @@
       <div class="pop"><button id="tourbtn" class="ib" aria-expanded="false" title="Tutorial" aria-label="Tutorial"><i class="ic" data-ic="help"></i></button>
         <div class="popbox up tourmenu" id="tourmenu" hidden>
           <b class="pbh">Tutorial</b>
-          <button data-tour="main">Recorrido general</button>
-          <button data-tour="classify">Clasificar rápido</button>
-          <button data-tour="viewer">El visor (abre una foto)</button>
-          <button data-tour="results">Resumen y exportar</button>
+          <button data-tour="main" class="rich"><i class="ic sm" data-ic="help"></i><span><b>Recorrido general</b><small>Las partes de la pantalla</small></span></button>
+          <button data-tour="classify" class="rich"><i class="ic sm" data-ic="paw"></i><span><b>Clasificar rápido</b><small>Teclas, ráfagas y selección</small></span></button>
+          <button data-tour="viewer" class="rich"><i class="ic sm" data-ic="image"></i><span><b>El visor</b><small>Abre una foto primero</small></span></button>
+          <button data-tour="results" class="rich"><i class="ic sm" data-ic="chart"></i><span><b>Resumen y exportar</b><small>Gráficas y archivos</small></span></button>
         </div></div>
       <button id="helpbtn" class="ib" title="Atajos de teclado (tecla ?)" aria-label="Atajos de teclado"><i class="ic" data-ic="keyboard"></i></button>
       <button id="theme" class="ib themebtn" title="Cambiar modo claro/oscuro" aria-label="Cambiar modo claro/oscuro"></button>
@@ -58,29 +58,40 @@
     <div class="pop g-gal"><button id="filtbtn" class="tb" aria-expanded="false" title="Filtros">Filtrar<span class="fcount" hidden></span></button>
       <div class="popbox" id="filtbox" hidden>
         <b class="pbh">Filtros</b>
-        <label>Otros estados <select id="st"><option value="all">Ninguno (usa las pestañas)</option><option value="unver">Clasificadas sin verificar</option><option value="susp">Fechas sospechosas</option></select></label>
-        <label>Hora de captura <select id="dn" title="Según la salida y puesta del sol en el lugar de la foto"><option value="all">Día, crepúsculo y noche</option><option value="day">Solo día</option><option value="crep">Solo crepúsculo</option><option value="night">Solo noche</option></select></label>
-        <label>Fase lunar <select id="moonf" title="Según la iluminación de la luna en la fecha de la foto"><option value="all">Todas</option><option value="dark">Luna oscura (menos de 25 % iluminada)</option><option value="mid">Intermedia (25 a 75 %)</option><option value="full">Luna brillante (más de 75 %)</option></select></label>
-        <button id="fclear">Quitar filtros</button>
+        <label data-ico="filter">Otros estados <select id="st"><option value="all">Ninguno (usa las pestañas)</option><option value="unver">Clasificadas sin verificar</option><option value="susp">Fechas sospechosas</option></select></label>
+        <label data-ico="sun">Hora de captura <select id="dn" title="Según la salida y puesta del sol en el lugar de la foto"><option value="all">Día, crepúsculo y noche</option><option value="day">Solo día</option><option value="crep">Solo crepúsculo</option><option value="night">Solo noche</option></select></label>
+        <label data-ico="moon">Fase lunar <select id="moonf" title="Según la iluminación de la luna en la fecha de la foto"><option value="all">Todas</option><option value="dark">Luna oscura (menos de 25 % iluminada)</option><option value="mid">Intermedia (25 a 75 %)</option><option value="full">Luna brillante (más de 75 %)</option></select></label>
+        <hr><button id="fclear" class="rich"><i class="ic sm" data-ic="x"></i><span><b>Quitar filtros</b></span></button>
       </div></div>
     <button id="sumbtn" class="tb g-gal" title="Resumen del estudio">Resumen</button>
     <div class="pop g-gal"><button id="export" class="tb main" aria-expanded="false" title="Exportar: registro para Excel y archivos para análisis">Exportar</button>
       <div class="popbox xbox" id="expbox" hidden>
         <b class="pbh">Exportar</b>
-        <button id="x_csv" class="xb"><b>Registro completo (CSV)</b><small>Una fila por foto y especie, para Excel</small></button>
+        <button id="x_csv" class="xb rich"><i class="ic sm" data-ic="sheet"></i><span><b>Registro completo (CSV)</b><small>Una fila por foto y especie, para Excel</small></span></button>
+        <button id="x_dp" class="xb rich"><i class="ic sm" data-ic="share"></i><span><b>Camtrap DP (.zip)</b><small>Para GBIF, Agouti y camtraptor</small></span></button>
+        <button data-sub="xs_r" class="xb rich"><i class="ic sm" data-ic="chart"></i><span><b>Para camtrapR</b><small>Registros, estaciones e individuos</small></span><i class="ic sm" data-ic="chevR"></i></button>
+        <button data-sub="xs_h" class="xb rich"><i class="ic sm" data-ic="cal"></i><span><b>Historia de detección</b><small>Para modelos de ocupación</small></span><i class="ic sm" data-ic="chevR"></i></button>
+        <button id="x_kml" class="xb rich"><i class="ic sm" data-ic="pin"></i><span><b>Estaciones para Google Earth</b><small>Un punto por estación (KML)</small></span></button>
+        <button id="x_merge" class="xb rich"><i class="ic sm" data-ic="overlap"></i><span><b>Unir registros…</b><small>Junta CSV de varias personas</small></span></button>
+        <hr>
+        <button data-sub="xs_d" class="xb rich"><i class="ic sm" data-ic="eye"></i><span><b>Doble revisión</b><small>Desacuerdos y comparar con otro CSV</small></span><i class="ic sm" data-ic="chevR"></i></button>
+        <button data-sub="xs_b" class="xb rich"><i class="ic sm" data-ic="download"></i><span><b>Respaldo del proyecto</b><small>Guardar o restaurar (solo datos, nunca fotos)</small></span><i class="ic sm" data-ic="chevR"></i></button>
+        <div class="xsub" id="xs_r" hidden>
+          <button class="xb rich" data-back><i class="ic sm" data-ic="chevL"></i><span><b>Volver</b></span></button><hr>
         <button id="x_rt" class="xb"><b>Tabla de registros para camtrapR</b><small>Para el paquete camtrapR de R: estación, especie, fecha y hora corregidas</small></button>
-        <button id="x_dp" class="xb"><b>Camtrap DP (.zip)</b><small>Formato estándar para publicar en GBIF o usar en Agouti y camtraptor</small></button>
-        <div class="xb2"><b>Historia de detección</b><small>Para modelos de ocupación: 1 detectada, 0 no detectada, NA cámara sin operar</small><div class="row"><select id="x_sp" aria-label="Especie"></select><select id="x_occ" aria-label="Ocasión"><option value="1">1 día</option><option value="7" selected>7 días</option><option value="14">14 días</option></select></div><div class="row"><button id="x_dh">Historia de detección</button><button id="x_secr" title="Individuos identificados de la especie elegida, para captura-recaptura espacial (paquete secr de R)">Historia de captura (secr)</button></div></div>
         <button id="x_ct" class="xb"><b>Tabla de estaciones para camtrapR</b><small>Fechas, coordenadas y días sin funcionar (CTtable)</small></button>
-        <button id="x_irt" class="xb"><b>Registros de individuos para camtrapR</b><small>Una fila por foto con individuo identificado</small></button>
-        <button id="x_kml" class="xb"><b>Estaciones para Google Earth (KML)</b><small>Un punto por estación con sus coordenadas, especies y fechas</small></button>
-        <button id="x_merge" class="xb"><b>Unir registros…</b><small>Junta en uno los CSV exportados por varias personas, sin filas repetidas</small></button>
-        <b class="pbh">Doble revisión</b>
+        <button id="x_irt" class="xb"><b>Registros de individuos para camtrapR</b><small>Una fila por foto con individuo identificado</small></button></div>
+        <div class="xsub" id="xs_h" hidden>
+          <button class="xb rich" data-back><i class="ic sm" data-ic="chevL"></i><span><b>Volver</b></span></button><hr>
+        <div class="xb2"><b>Historia de detección</b><small>Para modelos de ocupación: 1 detectada, 0 no detectada, NA cámara sin operar</small><div class="row"><select id="x_sp" aria-label="Especie"></select><select id="x_occ" aria-label="Ocasión"><option value="1">1 día</option><option value="7" selected>7 días</option><option value="14">14 días</option></select></div><div class="row"><button id="x_dh">Historia de detección</button><button id="x_secr" title="Individuos identificados de la especie elegida, para captura-recaptura espacial (paquete secr de R)">Historia de captura (secr)</button></div></div></div>
+        <div class="xsub" id="xs_d" hidden>
+          <button class="xb rich" data-back><i class="ic sm" data-ic="chevL"></i><span><b>Volver</b></span></button><hr>
         <button id="x_blind" class="xb"><b>Desacuerdos de la revisión a ciegas</b><small>Fotos donde la respuesta a ciegas no coincide con la clasificación</small></button>
-        <button id="x_cmp" class="xb"><b>Comparar con el CSV de otra persona…</b><small>Muestra solo las fotos en que no coinciden (especie o individuo)</small></button>
-        <b class="pbh">Respaldo (solo datos, nunca fotos)</b>
+        <button id="x_cmp" class="xb"><b>Comparar con el CSV de otra persona…</b><small>Muestra solo las fotos en que no coinciden (especie o individuo)</small></button></div>
+        <div class="xsub" id="xs_b" hidden>
+          <button class="xb rich" data-back><i class="ic sm" data-ic="chevL"></i><span><b>Volver</b></span></button><hr>
         <button id="x_bak" class="xb"><b>Guardar respaldo del proyecto (.zip)</b><small>Clasificaciones, estaciones, especies, individuos y ajustes</small></button>
-        <button id="x_res" class="xb"><b>Restaurar un respaldo…</b><small>Completa lo que falte; no mueve ni reemplaza nada</small></button>
+        <button id="x_res" class="xb"><b>Restaurar un respaldo…</b><small>Completa lo que falte; no mueve ni reemplaza nada</small></button></div>
       </div></div>
 
     <button id="lbclose" class="ib g-vis" title="Volver a la galería (Esc)" aria-label="Volver a la galería"><i class="ic" data-ic="x"></i></button>
@@ -89,10 +100,10 @@
     <button id="redo" class="ib" title="Rehacer (Ctrl/Cmd+Shift+Z)" aria-label="Rehacer" disabled><i class="ic" data-ic="redo"></i></button>
     <div class="pop g-vis"><button id="morebtn" class="ib" aria-expanded="false" title="Más opciones" aria-label="Más opciones"><i class="ic" data-ic="more"></i></button>
       <div class="popbox" id="morebox" hidden>
-        <button id="burstbtn" title="Reproducir la ráfaga (fotos seguidas de la misma cámara)">Reproducir la ráfaga (P)</button>
-        <button id="focus">Solo foto (H)</button>
-        <button id="revmode" title="Revisar fotos clasificadas: Enter verifica y pasa a la siguiente; Retroceso la rechaza">Modo revisor: desactivado</button>
-        <button id="fixtime" title="Escribir la hora real de esta foto para corregir el reloj de su cámara">Corregir hora de esta cámara…</button>
+        <button id="burstbtn" class="rich"><i class="ic sm" data-ic="play"></i><span><b>Reproducir la ráfaga</b><small>Fotos seguidas de la misma cámara</small></span><kbd>P</kbd></button>
+        <button id="focus" class="rich"><i class="ic sm" data-ic="expand"></i><span><b>Solo foto</b><small>Esconde los paneles</small></span><kbd>H</kbd></button>
+        <button id="revmode" class="rich" role="switch" aria-checked="false"><i class="ic sm" data-ic="eye"></i><span><b>Modo revisor</b><small>Enter verifica, Retroceso rechaza</small></span><span class="sw"></span></button>
+        <hr><button id="fixtime" class="rich"><i class="ic sm" data-ic="clock"></i><span><b>Corregir la hora de esta cámara</b><small>Escribe la hora real de esta foto</small></span></button>
       </div></div>
     <span id="vtools" class="g-vis">
       <button data-vt="M" id="vtM" class="ib" title="Marcar o desmarcar para revisar (M)" aria-label="Marcar para revisar"><i class="ic" data-ic="bookmark"></i></button>
@@ -103,10 +114,10 @@
         <div class="row"><span>Zoom</span><button id="zout" title="Alejar (−)">−</button><button id="zin" title="Acercar (+)">+</button></div>
         <label>Brillo <input id="bri" type="range" min="0.5" max="3" step="0.05" value="1"></label>
         <label>Contraste <input id="con" type="range" min="0.5" max="2.5" step="0.05" value="1"></label>
-        <div class="row"><button id="vauto" title="Ajusta brillo y contraste según la foto (útil en fotos oscuras o infrarrojas)">Automático</button><button id="vreset">Restablecer</button></div>
-        <label class="chk"><input type="checkbox" id="vkeep"> Recordar brillo y contraste en esta estación</label>
-        <label class="chk"><input type="checkbox" id="lupechk"> Lupa (L)</label>
-        <label>Tamaño de la lupa <input id="lupesz" type="range" min="80" max="220" step="10" value="110"></label>
+        <div class="row chips"><button id="vauto" title="Ajusta brillo y contraste según la foto (útil en fotos oscuras o infrarrojas)">Automático</button><button id="vreset">Restablecer</button></div>
+        <hr><label class="chk rich"><i class="ic sm" data-ic="pin"></i><span><b>Recordar ajustes</b><small>En esta estación</small></span><input type="checkbox" id="vkeep" class="swi"></label>
+        <label class="chk rich"><i class="ic sm" data-ic="search"></i><span><b>Lupa</b></span><kbd>L</kbd><input type="checkbox" id="lupechk" class="swi"></label>
+        <label class="lupesz">Tamaño de la lupa <input id="lupesz" type="range" min="80" max="220" step="10" value="110"></label>
         <p class="hint tiny">Videos: <kbd>,</kbd> y <kbd>.</kbd> avanzan cuadro a cuadro.</p>
       </div></div>
     <button id="idbtn" class="tb g-vis" hidden title="Identificar individuo: abre la comparación con el catálogo"><i class="ic sm" data-ic="ind"></i><span>Individuo</span></button>
@@ -114,14 +125,14 @@
   </div>
   <!-- Filtros como pestañas (galería) -->
   <div id="ftabs" class="g-gal" aria-label="Filtros">
-    <button data-st="all">Todas<b></b></button><button data-st="pending">Pendientes<b></b></button><button data-st="done">Clasificadas<b></b></button><button data-st="rev">Marcadas<b></b></button>
+    <button data-st="all">Todas<b></b></button><button data-st="pending">Pendientes<b></b></button><button data-st="done">Clasificadas<b></b></button><button data-st="rev">Marcadas<b></b></button><button id="catchip" class="catchip" hidden title="Quitar el filtro de especie y ver todas las fotos"><span></span><i class="ic sm" data-ic="x"></i></button>
     <span class="sp"></span>
     <div class="pop"><button id="viewbtn" class="lnk3" aria-expanded="false" title="Orden de las fotos, ráfagas y selección"></button>
       <div class="popbox" id="viewbox" hidden>
         <b class="pbh">Galería</b>
-        <label>Ordenar fotos por <select id="sort"><option value="date">Fecha de captura</option><option value="name">Nombre de archivo</option></select></label>
-        <label title="Agrupa fotos seguidas de la misma cámara por su fecha EXIF; en el visor se clasifican juntas. Las fotos sin fecha EXIF no se agrupan.">Agrupar ráfagas <select id="burst"><option value="0">No agrupar</option><option value="5">5 segundos</option><option value="10">10 segundos</option><option value="30">30 segundos</option><option value="60">60 segundos</option></select></label>
-        <button id="selall">Seleccionar todas las visibles (Ctrl/Cmd+A)</button>
+        <label data-ico="sort">Ordenar fotos <select id="sort"><option value="date">Fecha de captura</option><option value="name">Nombre de archivo</option></select></label>
+        <label data-ico="layers" title="Agrupa fotos seguidas de la misma cámara por su fecha EXIF; en el visor se clasifican juntas. Las fotos sin fecha EXIF no se agrupan.">Agrupar ráfagas <select id="burst"><option value="0">No agrupar</option><option value="5">5 segundos</option><option value="10">10 segundos</option><option value="30">30 segundos</option><option value="60">60 segundos</option></select></label>
+        <hr><button id="selall" class="rich"><i class="ic sm" data-ic="check"></i><span><b>Seleccionar todas</b><small>Solo las visibles</small></span><kbd>⌘A</kbd></button>
       </div></div>
   </div>
   <div id="warn" hidden></div>
@@ -132,7 +143,7 @@
         <section id="hlast" hidden></section>
         <section class="hprojs"><h2>Proyectos</h2><div id="homelist"><button id="open2" class="hnew"><i class="ic" data-ic="plus"></i><b>Nuevo proyecto</b><span>Haz clic o suelta aquí la carpeta de una cámara</span></button></div></section>
         <span class="sp"></span>
-        <p class="hfoot">También puedes arrastrar una carpeta a esta ventana · Versión 1.4.30</p>
+        <p class="hfoot">También puedes arrastrar una carpeta a esta ventana · Versión 1.4.34</p>
       </div><div id="grid"></div></section>
     <div id="lb" hidden>
       <button id="unfocus" title="Mostrar controles (H o Esc)">Mostrar controles</button>
@@ -171,7 +182,7 @@
 
 <div id="multi" hidden><span id="mcount"></span><span id="mbtns"></span><button id="mclear" class="ghost" aria-label="Cancelar la selección"><i class="ic" data-ic="x"></i></button></div>
 <div id="dropov" hidden><div><b>Suelta aquí las carpetas de las cámaras</b><span>Cada carpeta se agrega como una estación del proyecto.</span></div></div>
-<div id="help" class="over" hidden><div class="panel" role="dialog" aria-modal="true" aria-labelledby="h_help"><div class="ptop"><h2 id="h_help">Atajos de teclado</h2><span class="sp"></span><button id="helpprint" title="Imprimir esta tabla para tenerla a la mano">Imprimir</button><button class="pclose" title="Cerrar (Esc)" aria-label="Cerrar"><i class="ic" data-ic="x"></i></button></div><div class="keytable"></div></div></div>
+<div id="help" class="over" hidden><div class="panel wide sumpanel helppanel" role="dialog" aria-modal="true" aria-labelledby="h_help"><nav class="sumside noprint" id="keyside"><h2 id="h_help">Atajos de teclado</h2><div id="keynav"></div><span class="sp"></span><button id="helpprint" title="Imprimir la tabla completa para tenerla a la mano"><i class="ic sm" data-ic="clip"></i><span><b>Imprimir todo</b><small>Para tenerla a la mano</small></span></button></nav><div class="summain"><button class="pclose" title="Cerrar (Esc)" aria-label="Cerrar"><i class="ic" data-ic="x"></i></button><div class="keytable"></div></div></div></div>
 <div id="sum" class="over" hidden><div class="panel wide sumpanel" role="dialog" aria-modal="true" aria-labelledby="h_sum"><nav class="sumside noprint" id="sumside"><h2 id="h_sum">Resumen</h2><button data-sec="ss-tab"><i class="ic sm" data-ic="paw"></i><span><b>Especies y estaciones</b><small>Fotos, eventos, abundancia</small></span></button><button data-sec="ss-act"><i class="ic sm" data-ic="clock"></i><span><b>Horas de actividad</b><small>Eventos por hora del día</small></span></button><button data-sec="ss-st"><i class="ic sm" data-ic="pin"></i><span><b>Estaciones</b><small>Fechas, coordenadas y cámara</small></span></button><button data-sec="ss-fun"><i class="ic sm" data-ic="cal"></i><span><b>Funcionamiento</b><small>Días sin funcionar</small></span></button><button data-sec="ss-acu"><i class="ic sm" data-ic="chart"></i><span><b>Acumulación</b><small>Especies por esfuerzo</small></span></button><button data-sec="ss-tras"><i class="ic sm" data-ic="overlap"></i><span><b>Traslape</b><small>Horarios de dos especies</small></span></button><button data-sec="ss-ind"><i class="ic sm" data-ic="ind"></i><span><b>Individuos</b><small>Catálogo y avistamientos</small></span></button><span class="sp"></span><hr><button id="sumcsv" title="Un archivo CSV por tabla (fotos, eventos, individuos, abundancia relativa, lista de eventos, actividad por hora y estaciones) dentro de un .zip"><i class="ic sm" data-ic="download"></i><span><b>Guardar tablas</b></span></button><button id="sumprint" title="Imprimir el resumen (también puedes elegir Guardar como PDF en la ventana de impresión)"><i class="ic sm" data-ic="sheet"></i><span><b>Imprimir o PDF</b></span></button></nav><div class="summain" id="summain"><button class="pclose" title="Cerrar (Esc)" aria-label="Cerrar"><i class="ic" data-ic="x"></i></button><div id="sumbody"></div></div></div></div>
 <div id="setdlg" class="over" hidden><div class="panel wide sumpanel setpanel" role="dialog" aria-modal="true" aria-labelledby="h_set"><nav class="sumside" id="setside"><h2 id="h_set">Ajustes</h2><button data-sec="cls"><i class="ic sm" data-ic="paw"></i><span><b>Clasificar</b><small>Fotos y ráfagas</small></span></button><button data-sec="gal"><i class="ic sm" data-ic="image"></i><span><b>Galería y visor</b><small>Orden, miniaturas y lupa</small></span></button><button data-sec="res"><i class="ic sm" data-ic="chart"></i><span><b>Resumen</b><small>Eventos y estaciones</small></span></button><button data-sec="exp"><i class="ic sm" data-ic="share"></i><span><b>Exportar</b><small>CSV y pendientes</small></span></button><button data-sec="rev"><i class="ic sm" data-ic="eye"></i><span><b>Revisión</b><small>Revisor y doble a ciegas</small></span></button><button data-sec="apa"><i class="ic sm" data-ic="sun"></i><span><b>Apariencia</b><small>Tema y miniaturas</small></span></button><span class="sp"></span><hr><button id="setreset" class="danger"><i class="ic sm" data-ic="undo"></i><span><b>Restablecer ajustes</b></span></button></nav><div class="summain"><button class="pclose" title="Cerrar (Esc)" aria-label="Cerrar"><i class="ic" data-ic="x"></i></button>
 <section class="setsec" data-sec="cls"><h3>Clasificar</h3><p class="ssub">Qué pasa cuando eliges la especie de una foto</p><label class="setrow"><span><b>Pasar a la siguiente foto</b><small>Al clasificar, abre sola la siguiente. Las fotos siempre se mueven a su carpeta.</small></span><input type="checkbox" class="swi" id="adv" checked></label><label class="setrow sub"><span><b>Solo pendientes</b><small>Salta las fotos que ya están clasificadas</small></span><input type="checkbox" class="swi" id="onlypend"></label><label class="setrow"><span><b>Ocultar la barra lateral al abrir una foto</b><small>Deja más espacio para la foto; al volver a la galería regresa</small></span><input type="checkbox" class="swi" id="autohide" checked></label><label class="setrow"><span><b>Abrir siempre los datos de la observación</b><small>Individuos, sexo, edad y nota, a la derecha de la foto</small></span><input type="checkbox" class="swi" id="obsalways"></label><label class="setrow"><span><b>Recordar brillo y contraste por estación</b><small>Útil si una cámara saca las fotos muy oscuras</small></span><input type="checkbox" class="swi" id="vkeepall"></label><label class="setrow"><span><b>Sonido al clasificar</b><small>Un clic suave para confirmar sin mirar</small></span><input type="checkbox" class="swi" id="clsnd"></label><div class="setrow col"><label class="setrowin"><span><b>Pedir el número de individuos</b><small>Al clasificar estas especies, la foto no avanza y se abren sus datos para anotar cuántos hay</small></span></label><div class="chips" id="askn"></div></div><p class="setsub">Ráfagas · tecla P <span class="qhelp" tabindex="0" aria-label="Qué son las ráfagas" data-tip="Una ráfaga son las fotos que la cámara toma seguidas en un mismo disparo. Al abrir una, la tecla P la reproduce como un video corto.">?</span></p><div class="setrow"><span><b>Velocidad</b><small>Segundos que dura cada foto al reproducir una ráfaga</small></span><div class="seg setseg" id="bspeed"><button data-v="200">0.2 s</button><button data-v="330">0.3 s</button><button data-v="500">0.5 s</button><button data-v="1000">1 s</button><button data-v="2000">2 s</button></div></div><label class="setrow"><span><b>Repetir</b><small>Sigue hasta que pulses una tecla</small></span><input type="checkbox" class="swi" id="bloop"></label><p class="hint tiny">El orden de las fotos y las ráfagas se cambian a la derecha de las pestañas de la galería.</p></section>
@@ -189,26 +200,23 @@
     <p class="hint tiny" id="ns_hint"></p>
     <div class="row"><span class="sp"></span><button id="ns_cancel">Cancelar</button><button id="ns_ok" class="main">Aceptar</button></div>
   </div></div></div>
-<div id="pjdlg" class="over" hidden><div class="panel small" role="dialog" aria-modal="true" aria-labelledby="h_pj"><div class="ptop"><h2 id="h_pj">Proyecto nuevo</h2><span class="sp"></span><button class="pclose" title="Cerrar (Esc)" aria-label="Cerrar"><i class="ic" data-ic="x"></i></button></div>
+<div id="pjdlg" class="over" hidden><div class="panel small" role="dialog" aria-modal="true" aria-labelledby="h_pj"><div class="ptop"><h2 id="h_pj">Proyecto nuevo</h2><span class="sp"></span><button class="pclose" title="Cerrar (Esc)" aria-label="Cerrar"><i class="ic" data-ic="x"></i></button><p class="psub">Todo se puede cambiar después</p></div>
   <div class="form">
     <label>Nombre del proyecto <input id="pj_n" autocomplete="off"></label>
     <label>Lista de especies <select id="pj_sp"></select></label>
-    <label class="chk"><input type="checkbox" id="pj_auto" checked> Llenar las fechas y el GPS de cada estación con sus fotos</label>
-    <p class="hint tiny">Después agrega las demás cámaras con el «+» de Estaciones o arrastrando sus carpetas a la ventana. Todo esto se puede cambiar más tarde.</p>
+    <label class="swrow"><span><b>Llenar fechas y GPS</b><small>De cada estación, con sus fotos</small></span><input type="checkbox" id="pj_auto" class="swi" checked></label>
     <div class="row"><span class="sp"></span><button id="pj_ok" class="main">Listo</button></div>
   </div></div></div>
-<div id="stdlg" class="over" hidden><div class="panel" role="dialog" aria-modal="true" aria-labelledby="stdlgt"><div class="ptop"><h2 id="stdlgt">Estación</h2><span class="sp"></span><button class="pclose" title="Cerrar (Esc)" aria-label="Cerrar"><i class="ic" data-ic="x"></i></button></div>
+<div id="stdlg" class="over" hidden><div class="panel" role="dialog" aria-modal="true" aria-labelledby="stdlgt"><div class="ptop"><h2 id="stdlgt">Estación</h2><span class="sp"></span><button class="pclose" title="Cerrar (Esc)" aria-label="Cerrar"><i class="ic" data-ic="x"></i></button><p class="psub">Nada de esto modifica las fotos</p></div>
   <div class="form">
     <div class="two"><label>Latitud <input id="st_lat" placeholder="25.686614"></label><label>Longitud <input id="st_lon" placeholder="-100.316114"></label></div>
     <button id="st_gps" class="lnk2">Usar el promedio del GPS de sus fotos</button>
     <div class="two"><label>Instalación <input id="st_start" type="date"></label><label>Retiro <input id="st_end" type="date"></label></div>
     <button id="st_dates" class="lnk2">Usar la fecha de la primera y la última foto</button>
-    <div class="two"><label>Cámara (modelo o ID) <input id="st_cam"></label><label>Altura (cm) <input id="st_h" type="number" min="0"></label></div>
-    <label>Cebo o atrayente <select id="st_bait"><option value="">Sin dato</option><option>No</option><option>Sí</option></select></label>
+    <div class="two three"><label>Cámara (modelo o ID) <input id="st_cam"></label><label>Altura (cm) <input id="st_h" type="number" min="0"></label><label>Cebo o atrayente <select id="st_bait"><option value="">Sin dato</option><option>No</option><option>Sí</option></select></label></div>
     <label>Notas <input id="st_notes" placeholder="p. ej. cebo cambiado el 3 de marzo"></label>
     <div class="downbox"><b>Días sin funcionar</b> <small class="mu">batería agotada, cámara caída, tarjeta llena… se descuentan de los días-trampa</small><div id="st_down"></div><button id="st_addd" class="lnk2">Agregar periodo</button></div>
-    <p class="hint tiny">Con las fechas de instalación y retiro se calculan los días-trampa (esfuerzo de muestreo). Nada de esto modifica las fotos.</p>
-    <div class="row"><span class="sp"></span><button id="st_save" class="main">Guardar</button></div>
+    <div class="row strow"><b id="st_td" class="tdays" title="Con las fechas de instalación y retiro se calculan los días-trampa (esfuerzo de muestreo)"></b><span class="sp"></span><button id="st_save" class="main">Guardar</button></div>
   </div></div></div>
 <div id="idv" class="over" hidden><div class="panel idpanel" role="dialog" aria-modal="true" aria-labelledby="h_idv">
   <div class="idstage" id="idv_stage">
@@ -243,7 +251,7 @@
   <p class="hint tiny" id="indx_sub"></p>
   <p class="idk">¿Qué individuos entran?</p><div class="indxseg" id="indx_fl"></div>
   <p class="hint tiny">Usar un solo lado evita contar dos veces al mismo animal (una vez por cada lado). BioTrampa propone el lado con más individuos.</p>
-  <label class="chk"><input type="checkbox" id="indx_dud"> Incluir las identificaciones dudosas sin confirmar</label>
+  <label class="swrow"><span><b>Incluir dudosas</b><small>Identificaciones sin confirmar</small></span><input type="checkbox" id="indx_dud" class="swi"></label>
   <p class="indxsum" id="indx_sum"></p>
   <div class="row"><span class="sp"></span><button class="main" id="indx_go">Exportar</button></div>
 </div></div>
@@ -274,19 +282,19 @@
     <div class="idfoot"><button class="main" id="cmp_join">Son el mismo</button><div class="cmprow"><button id="cmp_dist">Son distintos</button><button id="cmp_next">Siguiente par ›</button></div></div></div>
 </div></div>
 <div id="cardlg" class="over" hidden><div class="panel wide" role="dialog" aria-modal="true" aria-labelledby="h_card"><div class="ptop"><h2 id="h_card">Foto con rosetas</h2><span class="sp"></span><button class="pclose" title="Cerrar (Esc)" aria-label="Cerrar"><i class="ic" data-ic="x"></i></button></div>
-  <div class="cardprev"><img id="card_img" alt="Vista previa de la imagen que se guarda"></div><div class="row"><p class="hint tiny" id="card_note"></p><span class="sp"></span><button class="main" id="card_save">Guardar PNG</button></div></div></div>
+  <div class="cardprev"><img id="card_img" alt="Vista previa de la imagen que se guarda"></div><div class="phstrip mini" id="card_strip" hidden></div><div class="row"><p class="hint tiny" id="card_note"></p><span class="sp"></span><button class="main" id="card_save">Guardar PNG</button></div></div></div>
 <div id="pridlg" class="over" hidden><div class="panel idpanel" role="dialog" aria-modal="true" aria-labelledby="h_pri">
   <div class="idstage prist"><div class="prw" id="pri_prev"></div></div>
   <div class="idcol"><div class="ptop"><h2 id="h_pri">Imprimir ficha</h2><span class="sp"></span><button class="pclose" title="Cerrar (Esc)" aria-label="Cerrar"><i class="ic" data-ic="x"></i></button></div><p class="mu idsub" id="pri_sub"></p><div id="pri_col"></div>
     <span class="sp"></span><div class="idfoot"><button class="main" id="pri_go">Imprimir o guardar PDF</button><p class="hint tiny">Las opciones se recuerdan para la próxima vez. En el diálogo de Chrome puedes elegir «Guardar como PDF».</p></div></div>
 </div></div>
-<div id="revdlg" class="over" hidden><div class="panel wide" role="dialog" aria-modal="true" aria-labelledby="h_rev"><div class="ptop"><h2 id="h_rev">Desacuerdos</h2><span class="sp"></span><button class="pclose" title="Cerrar (Esc)" aria-label="Cerrar"><i class="ic" data-ic="x"></i></button></div><p class="hint tiny">Elige qué respuesta queda en cada foto. Si eliges otra especie, la foto se mueve a su carpeta (se puede deshacer con Ctrl/Cmd+Z).</p><div id="revbody"></div></div></div>
-<div id="printind"></div>
+<div id="revdlg" class="over" hidden><div class="panel wide sumpanel revpanel" role="dialog" aria-modal="true" aria-labelledby="h_rev"><nav class="sumside"><h2 id="h_rev">Desacuerdos</h2><p class="psub" id="rev_n"></p><button data-rk="sp"><i class="ic sm" data-ic="paw"></i><span><b>Especie</b></span><em></em></button><button data-rk="id"><i class="ic sm" data-ic="ind"></i><span><b>Individuo</b></span><em></em></button><span class="sp"></span><p class="hint tiny">Si eliges otra especie, la foto se mueve a su carpeta. Se puede deshacer con Ctrl/Cmd+Z.</p></nav><div class="summain"><button class="pclose" title="Cerrar (Esc)" aria-label="Cerrar"><i class="ic" data-ic="x"></i></button><h3 id="rev_h">Especie</h3><p class="psub">Pica la respuesta que queda en cada foto</p><div id="revbody"></div></div></div></div>
+<div id="printind"></div><div id="printrep"></div>
 <div id="tour" hidden><div id="tourhole"></div><div id="tourbox"><div id="tourtxt"></div><div class="row"><span id="tourn"></span><span class="sp"></span><button id="tourskip" class="lnk2">Saltar</button><button id="tourprev">Anterior</button><button id="tournext" class="main">Siguiente</button></div></div></div>
 <input id="filest" type="file" accept=".csv,text/csv" hidden><input id="fileimp" type="file" accept=".json,application/json" hidden><input id="filecsv" type="file" accept=".csv,text/csv" multiple hidden><input id="filebak" type="file" accept=".zip,.json,application/zip,application/json" hidden><input id="filerev" type="file" accept=".csv,text/csv" hidden><input id="fileind" type="file" accept=".json,application/json" hidden><input id="filepkg" type="file" accept=".zip,application/zip" hidden>
 <div id="toast" role="status" aria-live="polite" hidden></div>
-<script src="js/app.js?v=1.4.30"></script>
-<script src="js/estudio.js?v=1.4.30"></script>
-<script src="js/individuos.js?v=1.4.30"></script>
+<script src="js/app.js?v=1.4.34"></script>
+<script src="js/estudio.js?v=1.4.34"></script>
+<script src="js/individuos.js?v=1.4.34"></script>
 </body>
 </html>

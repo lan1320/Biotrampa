@@ -245,23 +245,29 @@ async function blindSet(items, cat) { // cat = null borra la respuesta a ciegas
 async function applySp(it, cat) { // clasifica de verdad (mueve la foto) aunque la revisión a ciegas esté activa
   await locked(async () => { const was = S.blindOff; S.blindOff = true; try { await classify([it], cat, true); } finally { S.blindOff = was; } });
 }
-function openDis(list, title, la, lb, onA, onB) { // desacuerdos lado a lado: la foto y las dos respuestas
+function openDis(list, title, la, lb, onA, onB) { // desacuerdos: barra con Especie / Individuo y cada foto con sus dos respuestas (1.4.32)
   $('#h_rev').textContent = title; const box = $('#revbody'); box.textContent = '';
   if (!list.length) box.innerHTML = '<p class="hint">No hay desacuerdos.</p>';
   for (const d of list) {
-    const r = document.createElement('div'); r.className = 'disrow';
-    r.innerHTML = '<img class="dth" alt=""><div class="dinfo"><b></b><small></small></div><button class="da"></button><button class="db"></button><button class="lnk2 dop">Abrir</button>';
+    const r = document.createElement('div'); r.className = 'disrow'; r.dataset.k = d.kind === 'id' ? 'id' : 'sp';
+    r.innerHTML = '<img class="dth" alt=""><div class="dinfo"><b></b><small></small></div><button class="dch da"><small></small><b></b></button><button class="dch db"><small></small><b></b></button><button class="ib dop" title="Abrir en el visor" aria-label="Abrir en el visor"><i class="ic sm">' + icon('search') + '</i></button>';
     box.appendChild(r);
     const img = r.querySelector('img'); if (d.it) { img.dataset.id = d.it.id; thumb(img); } else img.remove();
-    r.querySelector('b').textContent = d.it.origName || d.it.name;
-    r.querySelector('small').textContent = [station(d.it), d.kind === 'id' ? `ID del individuo (${d.c})` : 'Especie'].join(' · ');
-    const ba = r.querySelector('.da'), bb = r.querySelector('.db'); ba.textContent = `${la}: ${d.a}`; bb.textContent = `${lb}: ${d.b}`;
+    r.querySelector('.dinfo b').textContent = d.it.origName || d.it.name;
+    r.querySelector('.dinfo small').textContent = [station(d.it), d.kind === 'id' ? `ID del individuo (${d.c})` : ''].filter(Boolean).join(' · ');
+    const ba = r.querySelector('.da'), bb = r.querySelector('.db'); ba.querySelector('small').textContent = la; ba.querySelector('b').textContent = d.a; bb.querySelector('small').textContent = lb; bb.querySelector('b').textContent = d.b;
     ba.title = 'Queda esta respuesta'; bb.title = 'Queda esta respuesta (si es otra especie, la foto se mueve a su carpeta)';
-    ba.onclick = async () => { await onA(d); r.remove(); }; bb.onclick = async () => { await onB(d); r.remove(); };
+    const done = v => { r.classList.add('done'); r.querySelectorAll('.dch').forEach(x => x.remove()); r.querySelector('.dinfo small').textContent = `Resuelta: queda ${v}`; disCount(); };
+    ba.onclick = async () => { await onA(d); done(d.a); }; bb.onclick = async () => { await onB(d); done(d.b); };
     r.querySelector('.dop').onclick = () => { closeOver(true); show(d.it); };
   }
-  openOver('#revdlg');
+  disCount(); disTab(list.some(d => d.kind !== 'id') || !list.length ? 'sp' : 'id'); openOver('#revdlg');
 }
+function disCount() { const n = k => $('#revbody').querySelectorAll(`.disrow:not(.done)${k ? `[data-k="${k}"]` : ''}`).length;
+  $('#rev_n').textContent = `${n()} por resolver`; document.querySelectorAll('#revdlg [data-rk]').forEach(b => { b.querySelector('em').textContent = n(b.dataset.rk); b.hidden = !$('#revbody').querySelector(`[data-k="${b.dataset.rk}"]`); }); }
+function disTab(k) { document.querySelectorAll('#revdlg [data-rk]').forEach(b => b.classList.toggle('on', b.dataset.rk === k)); $('#rev_h').textContent = k === 'id' ? 'Individuo' : 'Especie';
+  $('#revbody').querySelectorAll('.disrow').forEach(r => r.hidden = r.dataset.k !== k); }
+document.querySelectorAll('#revdlg [data-rk]').forEach(b => b.onclick = () => disTab(b.dataset.rk));
 function blindDis() {
   if (!S.items.some(i => i.bl)) return toast('Todavía no hay respuestas a ciegas. Actívala en Ajustes → Revisión → «Doble revisión a ciegas».', 6000);
   const l = S.items.filter(i => i.bl && !i.br && i.bl !== (i.cat || '')).map(it => ({ it, a: it.cat || 'pendiente', b: it.bl + (it.bb ? ` (${it.bb})` : ''), sp: it.bl, kind: 'sp' }));

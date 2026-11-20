@@ -42,7 +42,8 @@ const IC = {
   redo: '<path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/>',
   trash: '<path d="M5 7h14M7 7l1 13h8l1-13M10 7V4h4v3"/>', erase: '<path d="M20 20H9l-5-5L14 5l6 6-9 9"/><path d="m8 11 6 6"/>', move: '<path d="M12 3v18M3 12h18M12 3 9.5 5.5M12 3l2.5 2.5M12 21l-2.5-2.5M12 21l2.5-2.5M3 12l2.5-2.5M3 12l2.5 2.5M21 12l-2.5-2.5M21 12l-2.5 2.5"/>', crop: '<path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/>',
   split: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 3v18"/>',
-  clip: '<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 11.5h6M9 15h6"/>'
+  clip: '<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 11.5h6M9 15h6"/>',
+  play: '<path d="M7 5v14l11-7z"/>', expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>', layers: '<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>', check: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/>' // 1.4.32: menús
 };
 const icon = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n] || ''}</svg>`;
 document.querySelectorAll('[data-ic]').forEach(e => { e.innerHTML = icon(e.dataset.ic); });
@@ -148,7 +149,7 @@ async function videoMeta(f) {
   const r = {}, look = async (a, b) => { const v = new DataView(await f.slice(a, b).arrayBuffer());
     for (let i = 4; i < v.byteLength - 24; i++) if (v.getUint32(i) === 0x6d766864) { const ver = v.getUint8(i + 4), secs = ver === 1 ? v.getUint32(i + 12) * 4294967296 + v.getUint32(i + 16) : v.getUint32(i + 8); return secs; } return 0; };
   try { let secs = await look(0, Math.min(f.size, 4e6)); if (!secs && f.size > 4e6) secs = await look(f.size - 4e6, f.size);
-    if (secs > 2082844800 + 946684800) { const d = new Date((secs - 2082844800) * 1000); r.date = ymd(d); r.time = hms(d); r.video = true; } } catch (e) {}
+    if (secs > 2082844800 + 946684800) { const d = new Date((secs - 2082844800) * 1000); if (isNaN(d)) return r; r.date = ymd(d); r.time = hms(d); r.video = true; } } catch (e) {}
   return r;
 }
 async function loadAllMeta(list) {
@@ -512,20 +513,22 @@ async function newProject() {
 async function renderProjMenu() {
   const box = $('#projbox'); if (!box) return; const saved = ((await idbGet('projects')) || []).filter(p => !S.proj || p.id !== S.proj.id);
   $('#projname').textContent = S.proj ? S.proj.name : 'BioTrampa'; document.title = S.proj ? `BioTrampa · ${S.proj.name}` : 'BioTrampa'; $('#projbtn').title = S.proj ? `Proyecto «${S.proj.name}»: ${S.srcs.length} estación(es). Clic para ver sus estaciones, renombrarlas o abrir otro proyecto.` : 'Proyectos guardados';
-  box.innerHTML = (S.proj ? `<label>Nombre del proyecto <input id="pj_name" value="${esc(S.proj.name)}"></label>` : '<p class="hint tiny">Agrega la carpeta de cada cámara o estación. El grupo se guarda como un proyecto que puedes reabrir.</p>')
+  const dots = (k, v, t) => `<button class="dots" data-${k}="${v}" title="${t}" aria-label="${t}">${icon('more')}</button>`, plus = t => `<i class="ic sm">${icon('plus')}</i><span><b>${t}</b></span>`; // 1.4.32: menú con el estilo de los ⋯
+  box.innerHTML = (S.proj ? `<input id="pj_name" class="pjname" value="${esc(S.proj.name)}" title="Nombre del proyecto: clic para cambiarlo" aria-label="Nombre del proyecto">` : '<p class="hint tiny">Agrega la carpeta de cada cámara o estación. El grupo se guarda como un proyecto que puedes reabrir.</p>')
     + `<div class="pjst"><b>Estaciones (${S.srcs.length})</b>${S.srcs.map((s, i) => { const l = S.items.filter(it => it.src === s), d = l.filter(it => it.cat).length, pc = l.length ? Math.round(d / l.length * 100) : 0;
-      return `<div class="pjrow"><span class="cn" title="Carpeta: ${esc(s.name)}">${esc(s.label)}${s.label !== s.name ? ` <small>(${esc(s.name)})</small>` : ''}</span><small title="${d} de ${l.length} clasificadas">${pc} %</small><span class="pjbar"><i style="width:${pc}%"></i></span><button class="lnk2" data-ren="${i}">Renombrar</button><button class="lnk2" data-pair="${i}" title="Cámaras en par: dos carpetas que cuentan como una sola estación">${s.pair ? 'Par: ' + esc(s.pair) : 'Par…'}</button><button class="lnk2" data-rem="${i}">Quitar</button></div>`; }).join('')}`
+      return `<div class="pjrow"><span class="cn" title="Carpeta: ${esc(s.name)}">${esc(s.label)}${s.label !== s.name ? ` <small>(${esc(s.name)})</small>` : ''}</span>${s.pair ? ` <small>· par: ${esc(s.pair)}</small>` : ''}<span class="pjbar"><i style="width:${pc}%"></i></span><small title="${d} de ${l.length} clasificadas">${pc} %</small>${dots('st', i, 'Opciones de la estación')}</div>`; }).join('')}`
     + S.pending.map((p, i) => `<div class="pjrow"><span class="cn">${esc(p.label)} <small>(sin permiso)</small></span><button class="lnk2" data-gr="${i}">Dar permiso</button></div>`).join('') + '</div>'
-    + `<button id="pj_add" class="main">Agregar estación…</button>`
-    + (S.ro ? '' : `<div class="pjsaved"><b>Proyectos guardados</b>${saved.length ? saved.map(p => `<div class="pjrow"><button class="lnk2 pjopen" data-open="${p.id}">${esc(p.name)}</button><small>${p.n} est.</small><button class="lnk2" data-forget="${p.id}" title="Solo lo quita de esta lista; no toca ninguna carpeta">Olvidar</button></div>`).join('') : '<p class="hint tiny">Ninguno más.</p>'}${S.proj ? '<button id="pj_new" class="lnk2">Nuevo proyecto</button>' : ''}</div>`);
+    + `<button id="pj_add" class="rich pjadd">${plus('Agregar estación…')}</button>`
+    + (S.ro ? '' : `<div class="pjsaved"><b>Otros proyectos</b>${saved.length ? saved.map(p => `<div class="pjrow"><button class="rich pjopen" data-open="${p.id}"><i class="ic sm">${icon('folder')}</i><span><b>${esc(p.name)}</b><small>${p.n} estaciones</small></span></button>${dots('forget', p.id, 'Opciones del proyecto')}</div>`).join('') : '<p class="hint tiny">Ninguno más.</p>'}${S.proj ? `<button id="pj_new" class="rich">${plus('Proyecto nuevo…')}</button>` : ''}</div>`);
   if ($('#pj_name')) $('#pj_name').onchange = e => { const v = e.target.value.trim(); if (!v) { e.target.value = S.proj.name; return; } S.proj.name = v; $('#projname').textContent = v; document.title = `BioTrampa · ${v}`; saveProj(); updTitle(); };
   $('#pj_add').onclick = () => { closePops(); addStation(); };
-  box.querySelectorAll('[data-ren]').forEach(b => b.onclick = () => renameStation(S.srcs[+b.dataset.ren]));
-  box.querySelectorAll('[data-rem]').forEach(b => b.onclick = () => removeStation(S.srcs[+b.dataset.rem]));
-  box.querySelectorAll('[data-pair]').forEach(b => b.onclick = () => setPair(S.srcs[+b.dataset.pair]));
+  box.querySelectorAll('[data-st]').forEach(b => b.onclick = e => { e.stopPropagation(); if (closeMenu()) return; const s = S.srcs[+b.dataset.st];
+    const m = menuAt(b, [['Renombrar', () => renameStation(s)], [s.pair ? 'Par: ' + s.pair : 'Cámaras en par', () => setPair(s), 'Dos carpetas que cuentan como una sola estación'], ['Quitar del proyecto', () => removeStation(s)]]);
+    m.classList.add('indmenu'); richMenu(m, [['pen'], ['overlap', 'Unir con otra estación'], ['x', 'No borra la carpeta']]); m.lastChild.classList.add('danger'); });
   box.querySelectorAll('[data-gr]').forEach(b => b.onclick = () => grantPending(+b.dataset.gr));
   box.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { closePops(); openProject(b.dataset.open); });
-  box.querySelectorAll('[data-forget]').forEach(b => b.onclick = async () => { const id = b.dataset.forget; await idbPut('projects', ((await idbGet('projects')) || []).filter(p => p.id !== id)); try { await idb('readwrite', s => s.delete('proj:' + id)); } catch (e) {} renderProjMenu(); });
+  box.querySelectorAll('[data-forget]').forEach(b => b.onclick = e => { e.stopPropagation(); if (closeMenu()) return;
+    const m = menuAt(b, [['Olvidar', async () => { const id = b.dataset.forget; await idbPut('projects', ((await idbGet('projects')) || []).filter(p => p.id !== id)); try { await idb('readwrite', s => s.delete('proj:' + id)); } catch (e) {} renderProjMenu(); }, 'Solo lo quita de esta lista; no toca ninguna carpeta']]); m.classList.add('indmenu'); richMenu(m, [['x', 'No toca ninguna carpeta']]); });
   if ($('#pj_new')) $('#pj_new').onclick = () => { closePops(); newProject(); };
 }
 let homeUrls = [];
@@ -735,9 +738,11 @@ const FT = { all: () => true, pending: i => !i.cat, done: i => !!i.cat, rev: i =
 function renderChips() {
   const base = S.f.src ? S.items.filter(i => station(i) === S.f.src) : S.items;
   $('#ftabs').querySelectorAll('button[data-st]').forEach(b => { const k = b.dataset.st, on = S.f.st === k; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); b.querySelector('b').textContent = k === 'empty' && !S.empty ? '' : fmtN(base.filter(FT[k]).length); });
+  const sp = !S.f.cat.startsWith('__') && S.f.cat !== 'all'; $('#catchip').hidden = !sp; if (sp) $('#catchip span').textContent = S.f.cat; // 1.4.32: la especie elegida se ve y se quita con ✕
   $('#viewbtn').textContent = `${S.burst ? 'Ráfagas agrupadas' : 'Sin agrupar ráfagas'} · ${S.sort === 'date' ? 'por fecha de captura' : 'por nombre de archivo'}`;
 }
-$('#ftabs').addEventListener('click', async e => { const b = e.target.closest('button[data-st]'); if (!b) return; const k = b.dataset.st, again = S.f.st === k; S.f.st = k; $('#st').value = 'all';
+$('#catchip').onclick = () => { S.f.cat = 'all'; applyFilters(); };
+$('#ftabs').addEventListener('click', async e => { const b = e.target.closest('button[data-st]'); if (!b) return; const k = b.dataset.st, again = S.f.st === k; S.f.st = k; if (k === 'all') S.f.cat = 'all'; // 1.4.32: «Todas» vuelve a todas las especies $('#st').value = 'all';
   if (k === 'empty' && !again) await findEmpty(); updFilt(); applyFilters(); $('#gal').scrollTop = 0; });
 function cardState(d, it) {
   const isDone = i => S.blind ? !!i.bl : !!i.cat, g = S.groups.get(it), done = g ? g.every(isDone) : isDone(it), per = period(it);
@@ -832,13 +837,19 @@ $('#grid').oncontextmenu = e => {
 function spMenu(x, y, items, it) { // menú de especies para clasificar sin abrir el visor (miniatura o tira de la ráfaga)
   closeMenu(); const m = document.createElement('div'); m.id = 'cmenu'; m.className = 'spmenu'; const g = groupOf(it), whole = items.length === g.length && items.every(i => g.includes(i));
   const head = document.createElement('div'); head.className = 'cmh'; head.textContent = items.length > 1 ? `${items.length} fotos` : (it.origName || it.name); m.appendChild(head);
-  const add = (t, f, cls) => { const b = document.createElement('button'); b.innerHTML = t; if (cls) b.className = cls; b.onclick = () => { closeMenu(); f(); }; m.appendChild(b); };
-  for (const sp of [...S.cats, GH]) { const k = keyOf(sp); add(`<kbd>${esc(k || '')}</kbd>${esc(sp)}`, () => locked(() => classify(items, sp, whole)), sp === GH ? 'gh' : ''); }
+  const add = (t, f, cls, to = m) => { const b = document.createElement('button'); b.innerHTML = t; if (cls) b.className = cls; b.onclick = () => { closeMenu(); f(); }; to.appendChild(b); return b; };
+  const act = (ic, t, f, k) => add(`<i class="ic sm">${icon(ic)}</i><span>${esc(t)}</span>${k ? `<kbd>${k}</kbd>` : ''}`, f, 'act'); // 1.4.32: acciones arriba, siempre visibles
+  if (items.some(i => i.cat)) act('undo', 'Quitar la clasificación', () => locked(() => unclassify(items, whole)));
+  const allRev = items.every(i => i.rev); act('bookmark', allRev ? 'Quitar la marca de revisión' : 'Marcar para revisar', () => { items.forEach(i => { i.rev = !allRev; if (allRev) i.revWhy = ''; }); saveReg(); refreshCards(); renderChips(); if (S.cur) show(S.cur); toast(allRev ? 'Marca de revisión quitada.' : `${items.length} foto(s) marcada(s) para revisar.`, 2500); });
+  if (g.length > 1) act('split', items.length === 1 && g[0] !== it ? 'Separar la ráfaga desde esta foto' : 'Separar esta ráfaga en fotos sueltas', () => splitBurst(items.length === 1 && g[0] !== it ? [it] : g.slice(1)));
+  act('expand', 'Abrir en grande', () => show(it), 'Enter');
   m.appendChild(document.createElement('hr'));
-  if (items.some(i => i.cat)) add('Quitar la clasificación', () => locked(() => unclassify(items, whole)));
-  const allRev = items.every(i => i.rev); add(allRev ? 'Quitar la marca de revisión' : 'Marcar para revisar', () => { items.forEach(i => { i.rev = !allRev; if (allRev) i.revWhy = ''; }); saveReg(); refreshCards(); renderChips(); if (S.cur) show(S.cur); toast(allRev ? 'Marca de revisión quitada.' : `${items.length} foto(s) marcada(s) para revisar.`, 2500); });
-  if (g.length > 1) add(items.length === 1 && g[0] !== it ? 'Separar la ráfaga desde esta foto' : 'Separar esta ráfaga en fotos sueltas', () => splitBurst(items.length === 1 && g[0] !== it ? [it] : g.slice(1)));
-  add('Abrir en grande', () => show(it));
+  const sps = [...S.cats, GH], list = document.createElement('div'); list.className = 'splist'; // las especies se desplazan solas: con muchas, las acciones no se pierden
+  if (sps.length > 10) { const q = document.createElement('input'); q.type = 'search'; q.className = 'spq'; q.placeholder = 'Escribe para buscar'; q.setAttribute('aria-label', 'Buscar especie'); m.appendChild(q);
+    q.onclick = e => e.stopPropagation(); q.oninput = () => { const v = norm(q.value).trim(); list.querySelectorAll('button').forEach(b => b.hidden = !!v && !norm(b.dataset.cat).includes(v) && !norm(S.sci[b.dataset.cat]).includes(v)); };
+    q.onkeydown = e => { if (e.key === 'Escape') return; e.stopPropagation(); if (e.key === 'Enter') { const b = [...list.children].find(b => !b.hidden); if (b) b.click(); } }; setTimeout(() => q.focus({ preventScroll: true })); }
+  m.appendChild(list);
+  for (const sp of sps) { const k = keyOf(sp); add(`<kbd>${esc(k || '')}</kbd>${esc(sp)}`, () => locked(() => classify(items, sp, whole)), sp === GH ? 'gh' : '', list).dataset.cat = sp; }
   document.body.appendChild(m); m.style.left = Math.max(8, Math.min(x, innerWidth - m.offsetWidth - 8)) + 'px'; m.style.top = Math.max(8, Math.min(y, innerHeight - m.offsetHeight - 8)) + 'px';
 }
 /* Galería con teclado: flechas para moverse, Enter para abrir, teclas de especie para clasificar la foto marcada (o la selección) */
@@ -951,9 +962,23 @@ addEventListener('pointermove', e => { if (dragCat && e.buttons === 0) catDragEn
 $('#cats').addEventListener('click', e => { if (noClick) { e.stopPropagation(); e.preventDefault(); } }, true); // soltar no cuenta como clic
 function closeMenu() { const m = $('#cmenu'); if (!m) return false; m.id = ''; // pierde el id al instante: un menú nuevo puede abrirse mientras este se desvanece
   if (!MOTION) { m.remove(); return true; } m.classList.add('bt-out'); m.addEventListener('animationend', () => m.remove()); setTimeout(() => m.remove(), 200); return true; }
+// 1.4.32: los <select> de Filtrar y Galería se ven como renglones con submenú; el select sigue guardando el valor
+document.querySelectorAll('#filtbox label[data-ico], #viewbox label[data-ico]').forEach(l => {
+  const s = l.querySelector('select'), b = document.createElement('button'); b.className = 'rich'; b.title = s.title || l.title;
+  b.innerHTML = `<i class="ic sm">${icon(l.dataset.ico)}</i><span><b></b><small></small></span><i class="ic sm">${icon('chevR')}</i>`; b.querySelector('b').textContent = l.firstChild.textContent.trim();
+  const upd = () => { b.querySelector('small').textContent = s.selectedOptions[0]?.text || ''; b.classList.toggle('act', l.closest('#filtbox') && s.selectedIndex > 0); };
+  upd(); s.addEventListener('change', upd); l.closest('.pop').firstElementChild.addEventListener('click', upd); // al abrir: el valor pudo cambiar desde el código
+  b.onclick = e => { e.stopPropagation(); if (closeMenu()) return; const m = menuAt(b, [...s.options].map((o, i) => [o.text, () => { s.value = o.value; s.dispatchEvent(new Event('change', { bubbles: true })); }, '', i === s.selectedIndex]));
+    m.addEventListener('click', e => e.stopPropagation()); const r = b.closest('.popbox').getBoundingClientRect(); m.style.left = (r.right + 8 + m.offsetWidth < innerWidth ? r.right + 8 : Math.max(8, r.left - m.offsetWidth - 8)) + 'px'; m.style.top = Math.max(8, Math.min(b.getBoundingClientRect().top - 6, innerHeight - m.offsetHeight - 8)) + 'px'; };
+  l.hidden = true; l.after(b);
+});
+// 1.4.32: Exportar con submenús (camtrapR, historia, doble revisión y respaldo)
+$('#expbox').addEventListener('click', e => { const b = e.target.closest('[data-sub],[data-back]'); if (!b) return; const sub = b.dataset.sub ? $('#' + b.dataset.sub) : null; expSub(sub); });
+const expSub = sub => { $('#expbox').classList.toggle('insub', !!sub); $('#expbox').querySelectorAll('.xsub').forEach(x => x.hidden = x !== sub); };
+$('#export').addEventListener('click', () => expSub(null));
 function closePops(except) { let c = false; document.querySelectorAll('.popbox').forEach(p => { if (p !== except && !p.hidden) { p.hidden = true; p.previousElementSibling.setAttribute('aria-expanded', false); c = true; } }); return c; }
-document.querySelectorAll('.pop > button').forEach(b => b.onclick = e => { e.stopPropagation(); const box = b.nextElementSibling; closePops(box); box.hidden = !box.hidden; b.setAttribute('aria-expanded', !box.hidden); });
-document.querySelectorAll('.popbox').forEach(p => p.onclick = e => e.stopPropagation());
+document.querySelectorAll('.pop > button').forEach(b => b.onclick = e => { e.stopPropagation(); closeMenu(); const box = b.nextElementSibling; closePops(box); box.hidden = !box.hidden; b.setAttribute('aria-expanded', !box.hidden); });
+document.querySelectorAll('.popbox').forEach(p => p.onclick = e => { e.stopPropagation(); closeMenu(); }); // 1.4.32: un clic dentro cierra el ⋯ abierto (Proyecto)
 document.addEventListener('click', () => { closeMenu(); closePops(); });
 function catMenu(btn, c) { // 1.4.24: editar (nombre, científico y carpeta), tecla, individuos y eliminar
   const k = S.cats.indexOf(c) >= 9, ind = c !== GH, ops = [['Editar especie', () => openNewSp(null, c)], ...(k ? [['Cambiar tecla', () => setKey(c)]] : []), ...(ind ? [['Identificar por individuo']] : []), null, ['Eliminar', () => locked(() => deleteCat(c))]];
@@ -1053,10 +1078,14 @@ function renderKeys(force) {
     ['Ctrl/Cmd+clic', 'Seleccionar varias miniaturas'], ['Shift+clic', 'Seleccionar todas entre la anterior y esta'], ['Clic derecho', 'Clasificar, marcar o separar una ráfaga sin abrir el visor'],
     ['', 'En todas partes'], ['Ctrl/Cmd+Z', 'Deshacer'], ['Ctrl/Cmd+Shift+Z', 'Rehacer'], ['?', 'Esta ayuda']];
   const sp = [GH, ...S.cats].map(c => [keyOf(c) || '—', c]);
-  const html = '<table><tbody>' + rows.map(([k, v]) => k ? `<tr><td><kbd>${esc(k)}</kbd></td><td>${esc(v)}</td></tr>` : `<tr><td colspan="2"><b>${esc(v)}</b></td></tr>`).join('') + '</tbody></table>'
-    + '<h3>Teclas de especies</h3><table><tbody>' + sp.map(([k, v]) => `<tr><td><kbd>${esc(k)}</kbd></td><td>${esc(v)}</td></tr>`).join('') + '</tbody></table>'
+  // 1.4.32: un grupo por sección (barra a la izquierda); al imprimir salen todos
+  const G = []; for (const [k, v] of rows) if (!k) G.push([v, []]); else G[G.length - 1][1].push([k, v]); G.push(['Teclas de especies', sp]);
+  const KI = { 'En el visor': ['image', 'Moverse y clasificar'], 'En la galería': ['panel', 'Selección y flechas'], 'En todas partes': ['keyboard', 'Deshacer y ayuda'], 'Teclas de especies': ['paw', `${sp.length} especie${sp.length === 1 ? '' : 's'}`] };
+  $('.keytable').innerHTML = G.map(([t, l], i) => `<section class="ksec" data-k="${i}"><h3>${esc(t)}</h3><table><tbody>${l.map(([k, v]) => `<tr><td>${esc(v)}</td><td><kbd>${esc(k)}</kbd></td></tr>`).join('')}</tbody></table></section>`).join('')
     + '<p class="hint tiny">Ctrl/Cmd/Alt + tecla nunca clasifican. Para cambiar cuáles especies usan 1-9, arrástralas en el panel (con el orden «Orden de las teclas»).</p>';
-  document.querySelectorAll('.keytable').forEach(k => k.innerHTML = html);
+  $('#keynav').innerHTML = G.map(([t], i) => `<button data-k="${i}"><i class="ic sm">${icon(KI[t][0])}</i><span><b>${esc(t)}</b><small>${esc(KI[t][1])}</small></span></button>`).join('');
+  const go = i => document.querySelectorAll('#help [data-k]').forEach(e => e.classList.toggle('on', e.dataset.k === i));
+  $('#keynav').querySelectorAll('button').forEach(b => b.onclick = () => go(b.dataset.k)); go('0');
 }
 const openOver = id => { const o = $(id); if (o.hidden) o._ret = document.activeElement; o.hidden = false; }, closeOver = all => { // cierra solo la ventana de arriba (p. ej. Editar estación sin cerrar el Resumen); all = true cierra todas
   const open = [...document.querySelectorAll('.over')].filter(o => !o.hidden); if (!open.length) return false; (all === true ? open : open.slice(-1)).forEach(o => { o.hidden = true; if (o.contains(document.activeElement)) document.activeElement.blur(); const r = o._ret; o._ret = null; if (r && r.isConnected && r !== document.body && !r.closest('[hidden]')) r.focus({ preventScroll: true }); }); return true; };
@@ -1110,13 +1139,13 @@ async function show(it) {
   $('#vtM').classList.toggle('on', !!it.rev);
   const bb = $('#lbburst'); bb.hidden = g.length < 2; if (g.length > 1) bb.textContent = `Ráfaga · ${g.indexOf(it) + 1} de ${g.length}`;
   $('#fbar').textContent = [it.origName || it.name, catsTxt(it), pi >= 0 ? `pendiente ${pi + 1} de ${pv.length}` : `${pv.length} pendientes`].join(' · ');
-  const vid = isVideo(it.name); $('#big').hidden = vid; $('#bigv').hidden = !vid; if (vid) setLupe(false, true);
-  const tu = !same && !vid && thumbs.get(it); if (tu && tu !== 'err') { $('#big').src = tu; $('.imgwrap').classList.remove('ld'); } // 1.4.24: miniatura mientras carga la grande
+  const vid = isVideo(it.name), tu = !same && thumbs.get(it); $('#big').hidden = vid && !(tu && tu !== 'err'); $('#bigv').hidden = !vid || !same; if (vid) setLupe(false, true); // 1.4.31: el video sale cuando ya tiene su primer cuadro; mientras, su miniatura (antes un recuadro negro)
+  if (tu && tu !== 'err') { $('#big').src = tu; $('.imgwrap').classList.remove('ld'); } // 1.4.24: miniatura mientras carga la grande
   if (!same || !(vid ? $('#bigv').getAttribute('src') : $('#big').getAttribute('src'))) {
     try { const u = vid ? { url: URL.createObjectURL(await it.h.getFile()), surl: null } : await urlFor(it), url = u.url;
       if (S.cur !== it) { URL.revokeObjectURL(url); if (u.surl) URL.revokeObjectURL(u.surl); return; }
       if (bigUrl) URL.revokeObjectURL(bigUrl); if (bigSUrl) URL.revokeObjectURL(bigSUrl); bigUrl = url; bigSUrl = u.surl; fullLoading = false;
-      if (vid) { $('#big').removeAttribute('src'); $('#bigv').controls = false; $('#bigv').src = url; $('#lbmsg').textContent = /\.avi$/i.test(it.name) ? 'Chrome no reproduce videos AVI; puedes clasificarlo igual.' : ''; }
+      if (vid) { const v = $('#bigv'); v.controls = false; v.onloadeddata = v.onerror = () => { if (S.cur !== it) return; $('#big').hidden = true; $('#big').removeAttribute('src'); v.hidden = false; }; v.src = url; $('#lbmsg').textContent = /\.avi$/i.test(it.name) ? 'Chrome no reproduce videos AVI; puedes clasificarlo igual.' : ''; }
       else { $('#bigv').removeAttribute('src'); $('#big').src = bigSUrl || bigUrl; $('#lbmsg').textContent = ''; if (u.fx) toast('Foto dañada en la cámara: se muestra reparada. Las líneas son del daño; el archivo no se modifica.', 4000); jpegCut(it).then(cut => { if (cut && S.cur === it && !$('#lbmsg').textContent) $('#lbmsg').textContent = 'Esta foto parece incompleta (el archivo termina antes de tiempo): se muestra solo la parte que se pudo leer.'; }); if (V.z > 1 || lupeOn) useFull(); if (!burstPlay && !matchMedia('(prefers-reduced-motion: reduce)').matches) $('#big').animate([{ opacity: .55 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' }); } }
     catch (e) { $('#big').removeAttribute('src'); $('#lbmsg').textContent = 'No se pudo leer: ' + e.message; }
     $('.imgwrap').classList.remove('ld');
@@ -1162,7 +1191,7 @@ function openNewSp(it, c) { // 1.4.24: con c, la misma ventana edita la especie;
   $('#h_ns').textContent = ed ? 'Editar especie' : 'Especie nueva'; $('#ns_ok').textContent = ed ? 'Guardar' : 'Aceptar'; $('#ns_dirw').hidden = c === GH;
   $('#ns_name').value = ed ? c : ''; $('#ns_sci').value = ed ? S.sci[c] || '' : ''; $('#ns_hint').textContent = ed ? '' : it ? 'La foto que estás viendo se clasificará en esta especie.' : 'Se añade a la lista con la siguiente tecla libre.';
   const val = () => [$('#ns_name').value.trim().replace(/\s+/g, ' '), $('#ns_sci').value.trim().replace(/\s+/g, ' ')];
-  const upd = () => { const [nm, sci] = val(), d = folder(fs && sci ? sci : nm); $('#ns_dir').querySelectorAll('button').forEach(b => b.classList.toggle('on', !!b.dataset.v === (fs && !!sci))); $('#ns_dir [data-v="1"]').disabled = !sci;
+  const upd = () => { const [nm, sci] = val(), d = folder(fs && sci ? sci : nm); $('#ns_dir').querySelectorAll('button').forEach(b => b.classList.toggle('on', !!b.dataset.v === (fs && !!sci))); $('#ns_dir [data-v="1"]').disabled = !sci; $('#ns_dir [data-v=""]').textContent = nm || 'Nombre común'; $('#ns_dir [data-v="1"]').textContent = sci || 'Nombre científico'; // 1.4.32: se ve el nombre que tendrá la carpeta
     $('#ns_path').textContent = d ? `Clasificadas/${d}/` + (ed && n && !noMove() && d.toLowerCase() !== catDir(c).toLowerCase() ? ` · se moverán ${n} foto(s)` : '') : ''; };
   $('#ns_dir').querySelectorAll('button').forEach(b => b.onclick = () => { fs = !!b.dataset.v; upd(); }); $('#ns_name').oninput = $('#ns_sci').oninput = upd; upd();
   openOver('#nsdlg'); setTimeout(() => $('#ns_name').focus(), 0);
@@ -1335,7 +1364,7 @@ function rejectCur() { // modo revisor: la clasificación no convence; se marca 
 }
 $('#burstbtn').onclick = () => { closePops(); playBurst(); }; $('#lbburst').onclick = () => playBurst(); $('#repbtn').onclick = () => { closePops(); repeatPrev(); };
 $('#reviewer').value = ls('bt_rev', ''); $('#reviewer').oninput = e => sv('bt_rev', e.target.value.trim());
-function setRevMode(on) { S.revMode = on; $('#revmode').textContent = 'Modo revisor: ' + (on ? 'activado' : 'desactivado'); document.body.classList.toggle('revmode', on);
+function setRevMode(on) { S.revMode = on; $('#revmode .sw').classList.toggle('on', on); $('#revmode').setAttribute('aria-checked', on); document.body.classList.toggle('revmode', on);
   toast(on ? 'Modo revisor: Espacio va a la siguiente foto clasificada sin verificar; Enter la verifica y Retroceso la rechaza.' : 'Modo revisor desactivado.', 5000); renderSide(); if (S.cur) show(S.cur); }
 $('#revmode').onclick = () => { closePops(); setRevMode(!S.revMode); };
 function verifyCur() {
@@ -1483,7 +1512,7 @@ const rel = e => { const r = wrap.getBoundingClientRect(); return [e.clientX - (
 wrap.addEventListener('wheel', e => { e.preventDefault(); const [cx, cy] = rel(e); zoomTo(V.z * (e.deltaY < 0 ? 1.2 : 1 / 1.2), cx, cy); }, { passive: false });
 big.ondragstart = e => e.preventDefault();
 // 1.4.28: la barra del video solo sale al tocarlo (tapaba al animal y los datos de la cámara); otro toque fuera de la barra la esconde
-$('#bigv').onclick = e => { const v = e.currentTarget; if (!v.controls) { e.preventDefault(); v.controls = true; } else if (e.offsetY < v.clientHeight - 60) { e.preventDefault(); v.controls = false; } };
+$('#bigv').onclick = e => { const v = e.currentTarget; if (!v.controls) { e.preventDefault(); v.controls = true; } else if (e.offsetY < v.clientHeight - 60) { e.preventDefault(); v.controls = false; } else return; if (v.paused && v.readyState >= 2) v.currentTime = v.currentTime; }; // 1.4.31: al poner o quitar la barra, Chrome a veces deja el video pausado en negro: se vuelve a pintar el cuadro
 big.onpointerdown = e => { if (V.z <= 1) return; e.preventDefault(); big.setPointerCapture(e.pointerId); drag = { x: e.clientX - V.x, y: e.clientY - V.y }; big.style.cursor = 'grabbing'; };
 big.onpointermove = e => { if (drag) { V.x = e.clientX - drag.x; V.y = e.clientY - drag.y; applyV(); } };
 big.onpointerup = big.onpointercancel = () => { drag = null; applyV(); };
@@ -1773,7 +1802,7 @@ function stCoords(name) { const st = S.stations[name]; if (st && st.lat !== '' &
 let stEditing = null, stFromSum = false;
 async function openStation(name) {
   if (!S.srcs.length) return; stEditing = name; stFromSum = !$('#sum').hidden; await prepare(true); const st = S.stations[name] || {};
-  $('#stdlgt').textContent = 'Estación: ' + name;
+  $('#stdlgt').textContent = name; const td = trapDays(name); $('#st_td').innerHTML = !td.days ? '' : `${fmtN(td.days)}<small>días-trampa${td.est ? ' (estimados con las fotos)' : ''}${td.down ? ` · ${td.down} sin funcionar` : ''}</small>`; // 1.4.32
   for (const [id, k] of [['st_lat', 'lat'], ['st_lon', 'lon'], ['st_start', 'start'], ['st_end', 'end'], ['st_cam', 'cam'], ['st_h', 'h'], ['st_bait', 'bait'], ['st_notes', 'notes']]) $('#' + id).value = st[k] == null ? '' : st[k];
   renderDownList(st.down || []);
   openOver('#stdlg'); $('#st_lat').focus();
@@ -1843,7 +1872,7 @@ function renderSummary() {
   const warn = { susp: its.filter(suspect).length, nodate: its.filter(i => isNaN(capTs(i))).length, rev: its.filter(i => i.rev).length, nost: stations.filter(s => !(S.stations[s] && S.stations[s].start && S.stations[s].end)).length };
   const sec = (id, title, tip, body) => `<details class="ssec" id="${id}"${folds[id] ? '' : ' open'}><summary title="${esc(tip)}">${title}</summary><p class="ssub">${esc(tip)}</p>${body}</details>`; // 1.4.24: la explicación va bajo el título
   const pct = its.length ? Math.floor(done / its.length * 100) : 0;
-  let h = `<div class="printhead"><h1>${esc(projName())}</h1><p>Resumen de cámaras trampa · ${stations.length} estación(es)${first ? ` · del ${ymd(first)} al ${ymd(last)}` : ''} · generado el ${ymd(Date.now())} con BioTrampa</p></div>`;
+  let h = '';
   const w = []; if (warn.susp) w.push(`<button class="lnk2" data-show="susp"><b>${warn.susp}</b> foto(s) con fecha sospechosa (cámara mal configurada o fuera de las fechas de la estación): verlas</button>`); if (warn.nodate) w.push(`<b>${warn.nodate}</b> sin fecha de captura${nodate ? ` (${nodate} evento(s) sin fecha cuentan por separado)` : ''}`);
   if (warn.rev) w.push(`<button class="lnk2" data-show="rev"><b>${warn.rev}</b> marcada(s) para revisar: verlas</button>`); if (warn.nost) w.push(`<button class="lnk2" data-go="ss-st"><b>${warn.nost}</b> estación(es) sin fechas de instalación y retiro (los días-trampa se estiman con las fotos): completarlas</button>`);
   // 1.4.24: cifras en una línea, avisos en un botón y «solo filtradas» como interruptor junto a la tabla
@@ -2048,7 +2077,35 @@ $('#fileimp').onchange = async e => { const f = e.target.files[0]; e.target.valu
   sv('bt_cats', S.cats); sv('bt_sci', S.sci); sv('bt_keys', S.keys); saveReg(); renderSide(); if (S.cur) show(S.cur); toast(`Lista cargada: ${S.cats.length} especies.`, 4000); };
 
 // Imprimir el resumen con portada y gráficas; en la ventana de impresión se puede elegir «Guardar como PDF»
-$('#sumprint').onclick = () => { const ds = [...document.querySelectorAll('#sumbody details.ssec')], was = ds.map(d => d.open); ds.forEach(d => d.open = true); document.body.classList.add('printsum'); print(); setTimeout(() => { document.body.classList.remove('printsum'); ds.forEach((d, k) => { if (d.isConnected) d.open = was[k]; }); }, 500); };
+/* 1.4.33: el Resumen impreso es un anexo para entregar con un reporte: método, tablas numeradas, una figura, sin colores */
+function sumReport() { const { stations, cats, val, td, tdTot, evs, its } = sumData, ev = evMin(), es = n => n.toLocaleString('es-MX', { maximumFractionDigits: 2, minimumFractionDigits: n % 1 ? 2 : 0 });
+  const D = t => new Date(t).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }), pts = its.filter(goodTs).map(fixTs), sp = cats.filter(c => val('e', c, null)).sort((a, b) => val('e', b, null) - val('e', a, null));
+  const nm = c => S.sci[c] ? `<i>${esc(S.sci[c])}</i>` : esc(c); let nt = 0; const tab = (cap, body, note = '') => `<p class="rtc"><b>Tabla ${++nt}.</b> ${cap}</p><table class="rtb">${body}</table>${note ? `<p class="rfn">${note}</p>` : ''}`;
+  let h = `<p class="rkick">Anexo</p><h1>Resultados del monitoreo con cámaras trampa</h1><p class="rmeta">${esc(projName())}${pts.length ? ` · ${D(Math.min(...pts))} al ${D(Math.max(...pts))}` : ''}</p>
+  <h2>Método</h2><p>Se instalaron ${stations.length} estaciones de fototrampeo que funcionaron un total de ${es(tdTot)} días-trampa. ${ev ? `Se consideraron independientes los registros de una misma especie en una misma estación separados por al menos ${ev} minutos.` : 'Cada fotografía se consideró un registro independiente.'} El índice de abundancia relativa (IAR) se calculó como el número de eventos independientes por cada 100 días-trampa, y la ocupación naive como la proporción de estaciones con al menos un registro de la especie.</p>
+  <h2>Resultados</h2><p>Se obtuvieron ${es(its.length)} fotografías, de las cuales ${es(evs.length)} corresponden a eventos independientes de ${sp.length} especie(s).</p>`;
+  h += tab('Especies registradas, eventos independientes, índice de abundancia relativa (IAR, eventos/100 días-trampa) y ocupación naive.', `<tr><th class="l">Especie</th><th class="l">Nombre común</th><th>Eventos</th><th>IAR</th><th>Ocupación naive</th></tr>`
+    + sp.map(c => `<tr><td class="l">${nm(c)}</td><td class="l">${esc(c)}</td><td>${val('e', c, null)}</td><td>${val('r', c, null) == null ? '—' : val('r', c, null).toFixed(2)}</td><td>${(stations.filter(s => val('e', c, s)).length / stations.length).toFixed(2)}</td></tr>`).join(''));
+  const wide = stations.length > 10; // shortcut: con más de 10 estaciones la tabla se gira (estaciones en filas) para que quepa en la hoja
+  h += tab('Eventos independientes por especie y estación.', wide
+    ? `<tr><th class="l">Estación</th>${sp.map(c => `<th>${nm(c)}</th>`).join('')}<th>Total</th></tr>${stations.map(s => `<tr><td class="l">${esc(s)}</td>${sp.map(c => `<td>${val('e', c, s) || '—'}</td>`).join('')}<td>${val('e', null, s)}</td></tr>`).join('')}<tr class="tot"><td class="l">Total</td>${sp.map(c => `<td>${val('e', c, null)}</td>`).join('')}<td>${evs.length}</td></tr>`
+    : `<tr><th class="l">Especie</th>${stations.map(s => `<th>${esc(s)}</th>`).join('')}<th>Total</th></tr>${sp.map(c => `<tr><td class="l">${nm(c)}</td>${stations.map(s => `<td>${val('e', c, s) || '—'}</td>`).join('')}<td>${val('e', c, null)}</td></tr>`).join('')}<tr class="tot"><td class="l">Total</td>${stations.map(s => `<td>${val('e', null, s)}</td>`).join('')}<td>${evs.length}</td></tr>`);
+  const hr = new Array(24).fill(0), dated = evs.filter(e => !e.nodate); dated.forEach(e => hr[new Date(e.t).getHours()]++); const mx = Math.max(1, ...hr);
+  if (dated.length) h += `<svg class="rfig" viewBox="0 0 480 130" role="img" aria-label="Eventos por hora">${hr.map((v, i) => `<rect x="${30 + i * 18.5}" y="${110 - v / mx * 100}" width="14" height="${v / mx * 100}"><title>${pad(i)}:00 · ${v}</title></rect>`).join('')}<line x1="28" x2="476" y1="110" y2="110"/><text x="24" y="14" text-anchor="end">${mx}</text><text x="24" y="110" text-anchor="end">0</text>${[0, 6, 12, 18, 23].map(i => `<text x="${37 + i * 18.5}" y="124" text-anchor="middle">${pad(i)}:00</text>`).join('')}</svg><p class="rtc"><b>Figura 1.</b> Distribución horaria de los eventos independientes de todas las especies (n = ${es(dated.length)}).</p>`;
+  let est = 0, gps = 0; const row = s => { const st = S.stations[s] || {}, c = stCoords(s); if (td[s].est) est++; if (c && c[2]) gps++; const g = c && c[2] ? '†' : '';
+    return `<tr><td class="l">${esc(s)}</td><td>${esc(st.start || '—')}</td><td>${esc(st.end || '—')}</td><td>${td[s].days || '—'}${td[s].est ? '*' : ''}</td><td>${c ? c[0].toFixed(5) + g : '—'}</td><td>${c ? c[1].toFixed(5) + g : '—'}</td><td class="l">${esc(st.cam || '—')}</td></tr>`; };
+  const rows = stations.map(row).join('');
+  h += tab('Estaciones de muestreo: periodo de operación, esfuerzo y ubicación (grados decimales).', `<tr><th class="l">Estación</th><th>Instalación</th><th>Retiro</th><th>Días-trampa</th><th>Latitud</th><th>Longitud</th><th class="l">Cámara</th></tr>${rows}<tr class="tot"><td class="l">Total</td><td></td><td></td><td>${es(tdTot)}</td><td></td><td></td><td></td></tr>`,
+    [est ? '* Días-trampa estimados con la primera y la última fotografía.' : '', gps ? '† Coordenadas tomadas del GPS de las fotografías.' : ''].filter(Boolean).join(' '));
+  const by = new Map(); for (const it of its) for (const c of allCats(it)) { const o = it.obs && it.obs[c]; if (!o || !o.id) continue; const r = by.get(o.id) || { c, n: 0, st: new Set(), d: new Set() }; r.n++; r.st.add(station(it)); if (goodTs(it)) r.d.add(ymd(fixTs(it))); by.set(o.id, r); }
+  if (by.size) { const ids = [...by.keys()].sort();
+    h += `<p>Se identificaron ${ids.length} individuo(s) en ${es(ids.reduce((a, k) => a + by.get(k).n, 0))} fotografías; ${ids.filter(k => by.get(k).d.size >= 2).length} se registraron en dos días o más.</p>` + tab('Individuos identificados por su patrón de marcas.', `<tr><th class="l">Individuo</th><th class="l">Especie</th><th class="l">Sexo</th><th>Fotos</th><th>Estaciones</th><th>Días con registro</th></tr>`
+      + ids.map(k => { const r = by.get(k), d = S.ind.list[k] || {}; return `<tr><td class="l">${esc(k)}${d.nombre ? ` «${esc(d.nombre)}»` : ''}</td><td class="l">${nm(r.c)}</td><td class="l">${esc(d.sexo || 'Sin dato')}</td><td>${r.n}</td><td>${r.st.size}</td><td>${r.d.size}</td></tr>`; }).join('')); }
+  return h; }
+$('#sumprint').onclick = () => { const box = $('#printrep'); box.innerHTML = sumReport(); let st = $('#rep_css'); if (!st) { st = document.createElement('style'); st.id = 'rep_css'; document.head.appendChild(st); }
+  const q = JSON.stringify, m = 'font:8pt "Plus Jakarta Sans",sans-serif;color:#5e635f'; // encabezado y pie en cada hoja (Chrome 131 o más nuevo)
+  st.textContent = `@page{size:letter;margin:20mm 18mm 18mm;@top-left{content:${q(projName())};${m}}@top-right{content:"Resultados de fototrampeo";${m}}@bottom-left{content:${q('Generado con BioTrampa el ' + new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }))};${m}}@bottom-right{content:"Página " counter(page) " de " counter(pages);${m}}}`;
+  document.body.classList.add('printrep'); print(); setTimeout(() => { document.body.classList.remove('printrep'); box.innerHTML = ''; st.textContent = ''; }, 500); };
 renderSide();
 
 /* ---------- Tutorial guiado ---------- */

@@ -25,6 +25,7 @@ input:hover:not(:focus):not([type=checkbox]):not([type=radio]):not([type=range])
 input::placeholder{color:var(--fa)}
 input:focus,select:focus{border-color:var(--ac);outline:0;box-shadow:0 0 0 3px var(--acs)}
 input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--ac)}
+input[type=range]{padding:0;border:0;background:none;box-shadow:none;margin:0} /* 1.4.34: sin el relleno de las cajas de texto, la barra llega hasta el borde */
 kbd{display:inline-block;box-sizing:border-box;min-width:20px;height:20px;padding:0 5px;border:1px solid var(--ln2);border-radius:5px;background:var(--pn);font:500 11px/18px var(--sans);text-align:center;color:var(--mu);font-variant-numeric:tabular-nums}
 .sp{flex:1}
 .hint{font-size:13px;color:var(--mu);margin-top:20px}.hint.tiny{font-size:12px;margin:4px 0 0}
@@ -637,3 +638,104 @@ table.st.heat{border-collapse:separate;border-spacing:4px}table.st.heat td.h{hei
 .setseg{flex:none}.setseg button{flex:none;white-space:nowrap}
 .setrow.sub{padding-left:22px}.setrow.col{flex-direction:column;align-items:stretch;gap:10px;cursor:default}.setrowin{display:flex}.setrowin>span{display:flex;flex-direction:column;gap:3px}#askn{margin:0}#askn select{width:auto;border-radius:16px;font-size:13px;padding:4px 10px} /* 1.4.24 */
 body.nonight .card.night::before,body.nonight .card.crep::before{display:none}body.allnames .card .nm{opacity:1}body.nonote .card.noted .nm::before{display:none}
+/* 1.4.32: menús de arriba con el estilo de los ⋯ (ícono, título y explicación) */
+#morebox,#tourmenu,#filtbox,#viewbox,.xbox,.projbox{gap:2px;padding:6px}#imgbox{gap:6px}
+.popbox .rich{display:flex;flex-direction:row;align-items:center;gap:12px;width:100%;box-sizing:border-box;margin:0;padding:8px 10px;border:0;border-radius:8px;background:none;color:var(--tx);font-size:13px;text-align:left;cursor:pointer}
+.popbox .rich:hover{background:var(--ac2)}.popbox .rich>.ic{flex:none;color:var(--mu)}
+.popbox .rich>span:not(.sw){display:flex;flex-direction:column;align-items:flex-start;gap:1px;flex:1;min-width:0}.popbox .rich b{font-weight:600;font-size:13px}.popbox .rich small{font-size:12px;font-weight:400;color:var(--mu)}
+.popbox .rich.act small{color:var(--ac);font-weight:600}.popbox .rich kbd{flex:none}
+.popbox hr{border:0;border-top:1px solid var(--ln);margin:4px;width:auto}
+.popbox .pbh{padding:4px 10px 2px}
+input.swi{appearance:none;-webkit-appearance:none;flex:none;position:relative;width:30px;height:18px;margin:0;border-radius:9px;background:var(--ln2);transition:background .15s;cursor:pointer}
+input.swi::after{content:'';position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:7px;background:#fff;transition:transform .15s var(--ease)}input.swi:checked{background:var(--ac)}input.swi:checked::after{transform:translateX(12px)}
+#imgbox>label:not(.rich),#imgbox>.row{padding:2px 10px}#imgbox .hint{padding:0 10px}#imgbox:has(#lupechk:not(:checked)) .lupesz{display:none}
+.xsub{display:flex;flex-direction:column;gap:2px}.xsub[hidden],#expbox.insub>:not(.xsub){display:none}.xsub .xb2{border:0;margin:0}
+.pjname{border:0;background:none;font:700 15px var(--sans);color:var(--tx);padding:6px 10px;border-radius:8px;width:100%;box-sizing:border-box}.pjname:hover{background:var(--pn2)}.pjname:focus{background:var(--pn2);outline:2px solid var(--ac)}
+.projbox .pjrow{padding:3px 4px 3px 10px;border-radius:8px}.projbox .pjrow:hover{background:var(--ac2)}.projbox .pjrow .pjopen{padding:5px 0;flex:1;width:auto}.projbox .pjrow .pjopen:hover{background:none;text-decoration:none}
+.pjst>b,.pjsaved>b{padding:6px 10px 0;margin:0}.pjsaved{border-top:0;padding-top:4px}.pjadd b{color:var(--ac)}.pjadd>.ic{color:var(--ac)!important}
+.projbox .dots{display:grid;margin:0}
+#cmenu.spmenu .act>.ic{color:var(--mu)}#cmenu.spmenu .act>span{flex:1}#cmenu.spmenu .act kbd{margin-left:8px} /* 1.4.32: clic derecho con acciones arriba */
+#cmenu .splist{display:flex;flex-direction:column;max-height:min(320px,45vh);overflow:auto}#cmenu.spmenu{overflow:hidden}
+#cmenu .spq{margin:2px 4px 4px;padding:5px 9px;border:0;border-radius:7px;background:var(--pn2);font-size:12px;color:var(--tx)}#cmenu .spq:focus{outline:2px solid var(--ac)}
+#imgbox .chips{margin:0}#imgbox .chips button{padding:5px 12px;font-size:12px}#morebox{min-width:290px}
+#ftabs>.catchip{height:auto;margin:0;padding:3px 8px 3px 12px;border:0;border-radius:14px;background:var(--ac2);font-weight:600;color:var(--ac)}.catchip{display:inline-flex;align-items:center;gap:6px;margin-left:6px;padding:3px 8px 3px 12px;border:0;border-radius:14px;background:var(--ac2);color:var(--ac);font-size:13px;font-weight:600}.catchip[hidden]{display:none}#ftabs>.catchip:hover{background:var(--act)} /* 1.4.32 */
+#ns_dir{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}#ns_dir button{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} /* 1.4.32: nombres largos en «La carpeta se llama» */
+/* 1.4.32: ventanas chicas y Estación con el estilo nuevo: título grande, campos rellenos sin borde, interruptores */
+#stdlg .panel,#pjdlg .panel,#indx .panel,#cardlg .panel{border:0;border-radius:16px;padding:22px 24px}
+#stdlg .panel{width:min(680px,100%)}
+#stdlg .ptop h2,#pjdlg .ptop h2,#indx .ptop h2,#cardlg .ptop h2{font-size:18px;font-weight:700}
+.psub{flex-basis:100%;margin:-6px 0 0;font-size:12px;color:var(--mu)}
+#stdlg .form label,#pjdlg .form label{font-weight:600}
+#stdlg .form input:not(.swi),#stdlg .form select,#pjdlg .form input:not(.swi),#pjdlg .form select{border:0;border-radius:8px;background:var(--pn2);padding:8px 12px;font-weight:400}
+.form .two.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+#stdlg .downbox{border:0;padding:4px 0}
+.strow{padding-top:14px;border-top:1px solid var(--ln)}.tdays{font-size:24px;font-weight:700;color:var(--ac);display:flex;align-items:baseline;gap:8px}.tdays small{font-size:13px;font-weight:400;color:var(--mu)}
+.swrow{display:flex!important;flex-direction:row!important;align-items:center;gap:14px;cursor:pointer}.swrow>span{display:flex;flex-direction:column;gap:2px;flex:1}.swrow b{font-size:14px;font-weight:600;color:var(--tx)}.swrow small{font-size:12px;font-weight:400;color:var(--mu)}
+#indx .swrow{margin:12px 0 0}
+.indxseg{grid-template-columns:1fr!important}.indxseg button{display:flex;flex-direction:column;position:relative;border:0;border-radius:10px;background:var(--pn2);padding:10px 12px 10px 40px;font-weight:600}
+.indxseg button::before{content:'';position:absolute;left:14px;top:50%;width:16px;height:16px;margin-top:-8px;border-radius:8px;box-shadow:inset 0 0 0 1.5px var(--ln2)}
+.indxseg button.on{background:var(--ac2);box-shadow:inset 0 0 0 1.5px var(--ac)}.indxseg button.on::before{box-shadow:inset 0 0 0 5px var(--ac)}.indxseg button small{font-weight:400}
+@media(max-width:760px){.form .two.three{grid-template-columns:1fr}}
+/* 1.4.32: Atajos con barra lateral; lo que hace primero y las teclas a la derecha */
+.over .panel.helppanel{width:min(900px,100%);height:min(640px,90vh)}#keynav{display:flex;flex-direction:column;gap:2px}
+.ksec:not(.on){display:none}.ksec h3{margin:0 40px 10px 0!important;font-size:20px!important;font-weight:700}
+.keytable td{padding:9px 0}.keytable td:last-child{text-align:right;white-space:nowrap;width:1%;padding-left:20px}.keytable td:first-child{width:auto;white-space:normal}
+@media print{body.printhelp .panel.sumpanel{display:block;height:auto}body.printhelp .ksec{display:block!important}body.printhelp .summain{overflow:visible;padding:0}body.printhelp .pclose{display:none}}
+/* 1.4.32: Desacuerdos con barra lateral */
+.over .panel.revpanel{width:min(1000px,100%);height:min(680px,90vh)}.revpanel .sumside>.psub{flex-basis:auto;margin:-8px 10px 12px}.revpanel .sumside .hint{padding:0 10px}
+.revpanel .sumside button>span{flex:1}.revpanel .sumside em{font-style:normal;font-size:12px;color:var(--mu)}.revpanel .sumside button[hidden]{display:none}
+#rev_h{margin:0 40px 2px 0;font-size:20px;font-weight:700}.revpanel .summain>.psub{margin:0 0 10px}
+#revbody .disrow{gap:16px;padding:12px 0;border:0;border-bottom:1px solid var(--ln);border-radius:0}#revbody .disrow[hidden]{display:none}#revbody .disrow .dth{width:84px;height:56px;border-radius:8px}
+.dch{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:130px;border:0;border-radius:10px;background:var(--pn2);padding:7px 14px;text-align:left}.dch:hover{background:var(--ac2)}.dch small{font-size:11px;color:var(--mu)}.dch b{font-size:13px;font-weight:600}
+#revbody .disrow.done{opacity:.5}#revbody .dop{flex:none}
+#indx .panel>.row{display:flex;align-items:center}
+#stdlg .form select,#pjdlg .form select,#ficform select{appearance:none;-webkit-appearance:none;padding-right:36px;background:var(--pn2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23898791' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center} /* 1.4.32: flecha con aire, como el resto */
+@media screen{#stdlg,#pjdlg,#indx,#cardlg,#nsdlg{align-items:center;overflow:hidden}#stdlg .panel,#pjdlg .panel,#indx .panel,#cardlg .panel,#nsdlg .panel{margin-top:0;max-height:92vh;overflow:auto;overscroll-behavior:contain}} /* 1.4.32: las ventanas ya no se mueven con la rueda */
+html,body{overscroll-behavior:none}.over{overscroll-behavior:contain} /* 1.4.32: sin rebote: las ventanas no se mueven al deslizar arriba o abajo */
+#card_strip[hidden]{display:none}#card_strip{margin:0 0 8px}#cardlg .cardprev img{max-height:min(60vh,calc(92vh - 280px))} /* 1.4.32: tira para elegir la foto */
+/* 1.4.33: ficha con barra lateral a la izquierda, como Resumen; al abrir una foto la columna vuelve a la derecha */
+#inddlg .idpanel:has(#indst:not(.view)){grid-template-columns:250px minmax(0,1fr)}
+#inddlg .idpanel:has(#indst:not(.view))>.idcol{order:-1;border-left:0;border-right:1px solid var(--ln);padding:18px 10px}
+#inddlg .idpanel:has(#indst:not(.view)) .ptop{padding:0 0 0 10px}#inddlg .idpanel:has(#indst:not(.view)) .ptop h2{font-size:18px;font-weight:700}
+#inddlg .idpanel:has(#indst:not(.view)) .idsub{padding:0 10px;margin:2px 0 12px}
+.ficnav,.ficacts{display:flex;flex-direction:column;gap:2px;margin:0}.ficacts{flex:1}
+.ficnav button,.ficacts button{display:flex;align-items:center;gap:12px;border:0;background:none;border-radius:8px;padding:9px 10px;text-align:left;font-size:13px;color:var(--tx)}
+.ficnav button:hover,.ficacts button:hover{background:var(--ac2)}.ficnav button.on{background:var(--act)}
+.ficnav .ic,.ficacts .ic{color:var(--mu)}.ficnav button.on .ic{color:var(--ac)}
+.ficnav button>span,.ficacts button>span{display:flex;flex-direction:column;gap:1px;min-width:0}.ficnav b,.ficacts b{font-weight:600}.ficnav small,.ficacts small{font-size:12px;color:var(--mu)}
+.ficacts button.danger,.ficacts button.danger .ic{color:var(--danger)}
+.fichr{border:0;border-top:1px solid var(--ln);margin:6px 4px;width:auto}
+.fic{padding-top:22px}.fict{margin:0 0 2px;font-size:20px;font-weight:700}.fic>.psub{margin:0 0 18px}
+.ficstats{display:flex;flex-wrap:wrap;gap:12px 34px;margin:18px 0 4px}.ficstats b{font-size:24px;font-weight:700;color:var(--ac)}
+.ficpick{position:absolute;right:8px;top:8px;border:0;border-radius:14px;background:#000000a6;color:#fff;font-size:12px;font-weight:600;padding:4px 12px;opacity:0;transition:opacity .15s}.ficpick:hover{background:#000000cc}
+.ficrf:hover .ficpick,.ficpick:focus-visible{opacity:1}#fic_pick{margin:0 0 6px}
+#ficform{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px;margin-top:22px}#ficform label{font-weight:600}#ficform .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#ficform input:not([type=checkbox]),#ficform select{border:0;border-radius:8px;background-color:var(--pn2);padding:8px 12px;font-weight:400}
+.fictab th,.fictab td{border-bottom:0}.indhrs.ficbig{border-bottom:0}
+@media (max-width:900px){#inddlg .idpanel:has(#indst:not(.view)){grid-template-columns:1fr}#ficform{grid-template-columns:1fr}}
+/* 1.4.33: ficha impresa sin rayas: título con nombre en gris, cifras en cuatro columnas, títulos en negrita, más fotos cuatro por fila */
+.prpage header{border-bottom:0;padding-bottom:0;margin-bottom:14px}.prpage h1{font-size:24px;font-weight:800;letter-spacing:-.02em}.prpage h1 span{font-weight:500;color:#5e635f}.prpage .prm{color:#8d928e}
+.prpage h2{font-size:12px;color:#1b1d1c;text-transform:none;letter-spacing:0;margin:18px 0 6px}
+.prkv{display:grid;grid-template-columns:repeat(4,auto);justify-content:start;gap:1px 28px;margin:0 0 12px}.prkv span{color:#8d928e;font-size:8.5px}.prkv b{font-weight:600}
+.prmk{margin:10px 0 0!important}.prmk span{color:#8d928e;margin-right:10px}
+.prpage th,.prpage td{border-bottom:0}.prpage th{color:#8d928e}.prpage .indtl line{stroke:#ecece8}.prpage .indhrs.prh{border-bottom:0}
+.prg.c4{grid-template-columns:repeat(4,1fr);width:100%}.prg.c4 figcaption{font-size:7.5px}
+/* 1.4.33: Resumen impreso como anexo de reporte: texto negro, tablas de tres líneas, figura en gris */
+#printrep{display:none}
+@media print{
+  body.printrep #app,body.printrep #toast,body.printrep .over,body.printrep #multi,body.printrep #printind{display:none!important}
+  body.printrep #printrep{display:block;color:#1b1d1c;background:#fff;font:9.5pt/1.55 var(--sans)}
+  #printrep h1{font-size:18pt;font-weight:700;letter-spacing:-.01em;margin:0}#printrep .rkick{margin:0 0 2px;font-size:8.5pt;color:#5e635f}#printrep .rmeta{margin:4px 0 18px;color:#5e635f}
+  #printrep h2{font-size:11pt;font-weight:700;margin:18px 0 6px;break-after:avoid}#printrep p{margin:0 0 6px;text-align:justify;orphans:3;widows:3}
+  #printrep .rtc{font-size:8.5pt;margin:16px 0 5px;text-align:left;break-after:avoid}#printrep .rfn{font-size:7.5pt;color:#5e635f;margin-top:3px}
+  .rtb{width:100%;border-collapse:collapse;font-size:8.5pt;font-variant-numeric:tabular-nums;border-top:1pt solid #1b1d1c;border-bottom:1pt solid #1b1d1c;break-inside:auto}
+  .rtb th{font-weight:600;text-align:right;padding:4px 6px;border-bottom:.6pt solid #1b1d1c}.rtb td{text-align:right;padding:3px 6px}.rtb tr{break-inside:avoid}
+  .rtb .l{text-align:left}.rtb tr.tot td{border-top:.6pt solid #1b1d1c;font-weight:600}
+  .rfig{display:block;width:100%;max-width:150mm;margin:14px 0 0;break-inside:avoid}.rfig rect{fill:#5e635f}.rfig line{stroke:#1b1d1c;stroke-width:.8}.rfig text{fill:#5e635f;font:9px var(--sans)}
+}
+@media screen{#inddlg{align-items:center;justify-content:center;overflow:hidden;padding:2vh 16px}}#inddlg .panel.idpanel{width:min(1280px,100%);height:min(820px,92vh)}.fic{max-width:none;margin:0;padding:22px 28px 26px} /* 1.4.33: la ficha siempre del mismo tamaño y centrada (también al ver una foto) */
+#pridlg .idrow2{grid-template-columns:1fr;gap:0}#pridlg .idseg button{white-space:nowrap} /* 1.4.33: cada grupo a lo ancho: todos los botones del mismo tamaño y sin cortar palabras */
+#inddlg .idpanel{position:relative}#inddlg .idpanel:has(#indst:not(.view)) .ptop .pclose{position:absolute;right:16px;top:14px;margin:0;z-index:3} /* 1.4.33: la X arriba a la derecha */
+.idfld select{appearance:none;-webkit-appearance:none;padding-right:36px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23898791' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center} /* 1.4.33: la misma flecha con aire en los menús de imprimir, comparar e importar */
+#sum select{appearance:none;-webkit-appearance:none;padding:5px 32px 5px 10px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23898791' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center} /* 1.4.33: flecha con aire también en el Resumen */
+#sumbody .seg button{flex:none;white-space:nowrap;padding:0 12px}#sumbody .swl,#sumbody .avisos,#sumbody .stbtns button,#sumbody .chips button{white-space:nowrap}#sumbody label.sm{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap} /* 1.4.33: ningún texto se sale de su botón */
