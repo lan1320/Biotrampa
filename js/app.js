@@ -43,7 +43,7 @@ const IC = {
   trash: '<path d="M5 7h14M7 7l1 13h8l1-13M10 7V4h4v3"/>', erase: '<path d="M20 20H9l-5-5L14 5l6 6-9 9"/><path d="m8 11 6 6"/>', move: '<path d="M12 3v18M3 12h18M12 3 9.5 5.5M12 3l2.5 2.5M12 21l-2.5-2.5M12 21l2.5-2.5M3 12l2.5-2.5M3 12l2.5 2.5M21 12l-2.5-2.5M21 12l-2.5 2.5"/>', crop: '<path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/>',
   split: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 3v18"/>',
   clip: '<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 11.5h6M9 15h6"/>',
-  play: '<path d="M7 5v14l11-7z"/>', expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>', layers: '<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>', check: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/>' // 1.4.32: menús
+  play: '<path d="M7 5v14l11-7z"/>', pause: '<path d="M7 5h3v14H7zM14 5h3v14h-3z"/>', expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>', layers: '<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>', check: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/>' // 1.4.32: menús
 };
 const icon = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n] || ''}</svg>`;
 document.querySelectorAll('[data-ic]').forEach(e => { e.innerHTML = icon(e.dataset.ic); });
@@ -1513,8 +1513,9 @@ wrap.addEventListener('wheel', e => { e.preventDefault(); const [cx, cy] = rel(e
 big.ondragstart = e => e.preventDefault();
 // 1.4.28: la barra del video solo sale al tocarlo (tapaba al animal y los datos de la cámara); otro toque fuera de la barra la esconde
 $('#bigv').onclick = e => { const v = e.currentTarget; if (!v.controls) { e.preventDefault(); v.controls = true; } else if (e.offsetY < v.clientHeight - 60) { e.preventDefault(); v.controls = false; } else return; if (v.paused && v.readyState >= 2) v.currentTime = v.currentTime; }; // 1.4.31: al poner o quitar la barra, Chrome a veces deja el video pausado en negro: se vuelve a pintar el cuadro
-big.onpointerdown = e => { if (V.z <= 1) return; e.preventDefault(); big.setPointerCapture(e.pointerId); drag = { x: e.clientX - V.x, y: e.clientY - V.y }; big.style.cursor = 'grabbing'; };
-big.onpointermove = e => { if (drag) { V.x = e.clientX - drag.x; V.y = e.clientY - drag.y; applyV(); } };
+big.onpointerdown = e => { if (V.z <= 1 || e.button !== 0) return; e.preventDefault(); big.setPointerCapture(e.pointerId); drag = { x: e.clientX - V.x, y: e.clientY - V.y }; big.style.cursor = 'grabbing'; };
+big.onpointermove = e => { if (drag && !(e.buttons & 1)) { drag = null; applyV(); } if (drag) { // 1.4.36: sin botón apretado no arrastra (con clic derecho o Ctrl+clic el arrastre se quedaba pegado al cursor)
+   V.x = e.clientX - drag.x; V.y = e.clientY - drag.y; applyV(); } };
 big.onpointerup = big.onpointercancel = () => { drag = null; applyV(); };
 big.ondblclick = e => { if (V.z > 1) zoomTo(1, 0, 0); else { const [cx, cy] = rel(e); zoomTo(3, cx, cy); } };
 $('#zin').onclick = () => zoomTo(V.z * 1.3, 0, 0); $('#zout').onclick = () => zoomTo(V.z / 1.3, 0, 0);

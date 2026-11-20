@@ -140,27 +140,29 @@ async function loadSide(side, item) {
   const box = $('#idv_' + side), img = box.querySelector('img'), tok = IDV['t' + side] = (IDV['t' + side] || 0) + 1; // si se pide otra foto mientras carga, gana la última
   if (!item || box._item !== item) { if (idUrls[side]) URL.revokeObjectURL(idUrls[side]); idUrls[side] = null; img.removeAttribute('src'); } box._item = item; box.classList.toggle('empty', !item); // 1.4.31: otro cuadro del mismo video: la foto anterior se queda mientras carga (antes se ponía negro)
   if (item) { try { let f = await item.h.getFile(), fx = null; // 1.4.27: video → un cuadro (para calcar); JPG dañado → copia reparada, como en el visor
-      if (isVideo(item.name) && side === 'l') { await vidOpen(item, f); const c = await vidGrab((sideObs(side) || {}).vt ?? Math.min(1, VS.dur / 2)); f = await new Promise(r => c.toBlob(r, 'image/jpeg', .92)); vidStrip(item); }
-      else if (isVideo(item.name)) { const bmp = await videoFrame(f, true, (sideObs(side) || {}).vt), c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height; c.getContext('2d').drawImage(bmp, 0, 0); bmp.close(); f = await canvasBlob(c); }
+      if (side === 'l' && !isVideo(item.name)) vidFree(); // 1.4.35: el reproductor no se queda encima de una foto
+      if (isVideo(item.name) && side === 'l') { await vidOpen(item, f); const c = await vidGrab((sideObs(side) || {}).vt ?? Math.min(1, VS.dur / 2)); f = await new Promise(r => c.toBlob(r, 'image/jpeg', .92)); vidBar(item); }
+      else if (isVideo(item.name)) f = await repaired(item, (sideObs(side) || {}).vt);
       else fx = await wJob('view', { file: f, fit: [1e6, 1e6] }).then(d => d.fx, () => null);
       const u = URL.createObjectURL(fx || f); if (tok !== IDV['t' + side]) return URL.revokeObjectURL(u); if (fx) toast('Foto dañada en la cámara: se muestra reparada. El archivo no se modifica.', 4000); if (idUrls[side]) URL.revokeObjectURL(idUrls[side]); idUrls[side] = u; img.src = u; await img.decode().catch(() => {}); } catch (e) { toast('No se pudo leer la foto: ' + e.message, 4000); } }
   if (tok !== IDV['t' + side]) return; if (side === 'l') box.querySelector('.idvt').hidden = !(item && isVideo(item.name)); layoutId(); drawZones(side); idHint();
 }
-// 1.4.29: el video que se identifica se abre una sola vez; el cuadro grande y la tira de abajo (como la galería del celular) salen de ahí
+// 1.4.35: el video que se identifica se abre una sola vez y se ve encima del cuadro guardado; se reproduce, se calca encima y «Guardar frame» fija el cuadro que se compara
 let VS = {}, VSq = Promise.resolve();
 async function vidOpen(item, f) { if (VS.it === item) return; vidFree(); const v = document.createElement('video'), url = URL.createObjectURL(f); v.muted = true; v.preload = 'auto'; v.src = url;
   try { await new Promise((res, rej) => { v.onloadeddata = res; v.onerror = () => rej(new Error('formato no compatible')); setTimeout(() => rej(new Error('tiempo agotado')), 8000); }); } catch (e) { URL.revokeObjectURL(url); throw e; }
   if (!isFinite(v.duration)) await new Promise(r => { v.onseeked = r; v.currentTime = 1e9; setTimeout(r, 3000); }); // webm sin duración anotada: se averigua yendo al final
-  VS = { it: item, v, url, dur: isFinite(v.duration) ? v.duration : 0 }; }
-function vidFree() { if (VS.v) { VS.v.removeAttribute('src'); VS.v.load(); URL.revokeObjectURL(VS.url); } VS = {}; $('#idv_l .idvt')._it = null; }
+  VS = { it: item, v, url, dur: isFinite(v.duration) ? v.duration : 0 }; v.className = 'idvid'; $('#idv_l .idin img').after(v); v.ontimeupdate = v.onplay = v.onpause = vidUi; }
+function vidFree() { if (VS.v) { VS.v.remove(); VS.v.removeAttribute('src'); VS.v.load(); URL.revokeObjectURL(VS.url); } VS = {}; }
 const vidGrab = (t, w) => VSq = VSq.catch(() => {}).then(() => new Promise((res, rej) => { const v = VS.v; if (!v) return rej(new Error('video cerrado'));
   const tt = Math.max(0, Math.min(t, VS.dur - .05)), to = setTimeout(() => rej(new Error('tiempo agotado')), 8000), draw = () => { clearTimeout(to); v.onseeked = null; const W = w || v.videoWidth, c = document.createElement('canvas'); c.width = W; c.height = Math.round(W * v.videoHeight / v.videoWidth); c.getContext('2d').drawImage(v, 0, 0, c.width, c.height); VS.at = v.currentTime; res(c); };
   if (Math.abs(v.currentTime - tt) < .01 && v.readyState >= 2) draw(); else { v.onseeked = draw; v.currentTime = tt; } }));
-function vidStrip(item) { const box = $('#idv_l .idvt');
-  if (box._it !== item) { box._it = item; box.textContent = ''; const n = VS.dur > 1 ? 8 : 1;
-    for (let i = 0; i < n; i++) { const t = VS.dur * (i + .5) / n, b = document.createElement('button'); b._t = t; b.title = `Usar el cuadro de ${t.toFixed(1)} s`; b.innerHTML = `<small>${t.toFixed(1)} s</small>`;
-      b.onclick = () => { [...box.children].forEach(x => x.classList.toggle('on', x === b)); IDV.o.vt = t; saveReg(); loadSide('l', IDV.it); }; box.appendChild(b); vidGrab(t, 112).then(c => { if (box._it === item) b.prepend(c); }).catch(() => {}); } }
-  const bs = [...box.children], on = bs.reduce((a, b) => Math.abs(b._t - VS.at) < Math.abs(a._t - VS.at) ? b : a, bs[0]); bs.forEach(b => b.classList.toggle('on', b === on)); }
+function vidBar() { $('#idv_seek').max = VS.dur || 0; vidUi(); }
+function vidUi() { const v = VS.v; if (!v) return; const t = v.currentTime, sv = Math.abs(t - (IDV.o.vt ?? -1)) < .02; $('#idv_play').innerHTML = `<i class="ic">${icon(v.paused ? 'play' : 'pause')}</i>`; $('#idv_seek').value = t; $('#idv_time').textContent = `${t.toFixed(1)} / ${VS.dur.toFixed(1)} s`;
+  const g = $('#idv_gf'); g.classList.toggle('on', !sv); g.textContent = sv ? 'Frame guardado' : 'Guardar frame'; }
+$('#idv_play').onclick = () => { const v = VS.v; if (v) v.paused ? v.play().catch(() => {}) : v.pause(); };
+$('#idv_seek').oninput = e => { if (VS.v) { VS.v.pause(); VS.v.currentTime = +e.target.value; } };
+$('#idv_gf').onclick = () => { const v = VS.v; if (!v) return; v.pause(); IDV.o.vt = v.currentTime; saveReg(); loadSide('l', IDV.it); toast('Frame guardado: este cuadro, con sus rosetas, es el que se compara.', 3000); }; // shortcut: las rosetas no se borran al cambiar de cuadro; si se calca en otro momento hay que guardar ese frame
 $('#idv_l .idvt').onpointerdown = e => e.stopPropagation(); // no arrastra la foto
 function layoutId() { // con una parte elegida, cada foto se agranda hasta que esa zona llena el recuadro: así da igual si el animal estaba cerca o lejos
   for (const side of ['l', 'r']) { const box = $('#idv_' + side), img = box.querySelector('img'), inn = box.querySelector('.idin'), W = img.naturalWidth, H = img.naturalHeight;
@@ -169,7 +171,7 @@ function layoutId() { // con una parte elegida, cada foto se agranda hasta que e
     const k = z ? Math.min(bw / z.w, bh / z.h) * .92 : Math.min(bw / W, bh / H), cx = z ? z.x + z.w / 2 : W / 2, cy = z ? z.y + z.h / 2 : H / 2;
     Object.assign(inn.style, { width: W * k + 'px', height: H * k + 'px', left: bw / 2 - cx * k + 'px', top: bh / 2 - cy * k + 'px', transformOrigin: `${cx * k}px ${cy * k}px`, transform: `translate(${V.x}px,${V.y}px) scale(${V.z})` });
     inn.querySelector('svg').setAttribute('viewBox', `0 0 ${W} ${H}`);
-    img.style.filter = `brightness(${$('#idv_' + side + 'b').value}) contrast(${$('#idv_' + side + 'c').value})`; }
+    for (const m of box.querySelectorAll('img,video')) m.style.filter = `brightness(${$('#idv_' + side + 'b').value}) contrast(${$('#idv_' + side + 'c').value})`; }
   const st = $('#idv').style; st.setProperty('--trc', TRC[+ls('bt_trc', 0)] || TRC[0]); st.setProperty('--trw', $('#idv_trw').value);
 }
 const trPath = pts => 'M' + pts.map(p => p[0] + ' ' + p[1]).join('L') + 'Z';
@@ -264,10 +266,10 @@ for (const side of ['l', 'r']) { // zoom y desplazamiento sincronizados; arrastr
     else if (o && needZone(side)) { mode = 'zn'; a = imgPt(e); }
     if (mode && !a) mode = null;
     drag = { x: e.clientX, y: e.clientY, x0: IDV.v[side].x, y0: IDV.v[side].y, moved: false, mode, a }; if (mode === 'tr') IDV.drawing = { side, tr: [a.map(Math.round)] }; box.setPointerCapture(e.pointerId); });
-  box.addEventListener('pointermove', e => { if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true; if (!drag.moved) return;
+  box.addEventListener('pointermove', e => { if (drag && !e.buttons) drag = IDV.drawing = null; if (!drag) return; // 1.4.36: arrastre pegado (se soltó fuera) → se suelta const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true; if (!drag.moved) return;
     if (drag.mode === 'tr') { const b = imgPt(e), t = IDV.drawing.tr, l = t[t.length - 1], W = box.querySelector('img').naturalWidth; if (b && Math.hypot(b[0] - l[0], b[1] - l[1]) > W * .002) { t.push(b.map(Math.round)); drawZones(side); } }
     else if (drag.mode === 'zn') { const a = drag.a, b = imgPt(e); if (!b) return; IDV.drawing = { side, z: { x: Math.min(a[0], b[0]), y: Math.min(a[1], b[1]), w: Math.abs(a[0] - b[0]), h: Math.abs(a[1] - b[1]) } }; drawZones(side); }
-    else if (IDV.v[side].z > 1) { IDV.v[side].x = drag.x0 + dx; IDV.v[side].y = drag.y0 + dy; layoutId(); } });
+    else if (IDV.v[side].z > 1) { const V = IDV.v[side], inn = box.querySelector('.idin'), mx = (V.z - 1) * inn.offsetWidth / 2, my = (V.z - 1) * inn.offsetHeight / 2; V.x = Math.max(-mx, Math.min(mx, drag.x0 + dx)); V.y = Math.max(-my, Math.min(my, drag.y0 + dy)); layoutId(); } }); // 1.4.36: la foto acercada no se sale del recuadro
   box.addEventListener('pointerup', () => { const d = drag, dr = IDV.drawing; drag = null; IDV.drawing = null; if (!d || !d.mode) return; const o = sideObs(side), W = box.querySelector('img').naturalWidth;
     if (d.mode === 'tr') { const t = dr && dr.tr, xs = t ? t.map(p => p[0]) : [], ys = t ? t.map(p => p[1]) : [];
       if (t && t.length > 5 && Math.max(...xs) - Math.min(...xs) > W * .006 && Math.max(...ys) - Math.min(...ys) > W * .006) { trSnap(side); o.tr = [...(o.tr || []), trSmooth(t)]; if (side === 'r') IDV.m.push(0); trSaved(side); } // 1.4.15: el trazo se cierra y se suaviza
@@ -309,7 +311,7 @@ addEventListener('keydown', e => { // atajos dentro de «Identificar individuo»
   else if (k === 'p') idTool(side, 'pen'); else if (k === 'e') idTool(side, 'erase'); else if (k === 'h') idTool(side, 'eye');
   else if (k === 'v') { IDV.pen[side] = IDV.er[side] = false; idHint(); }
   else if (e.key === ' ') { IDV.space = true; }
-  else if ((k === 'arrowleft' || k === 'arrowright') && !$('#idv_l .idvt').hidden) { const bs = [...$('#idv_l .idvt').children], b = bs[bs.findIndex(x => x.classList.contains('on')) + (k === 'arrowright' ? 1 : -1)]; if (b) b.click(); } // 1.4.30: ← → recorren la tira de cuadros del video
+  else if ((k === 'arrowleft' || k === 'arrowright') && !$('#idv_l .idvt').hidden && VS.v) { VS.v.pause(); VS.v.currentTime = Math.max(0, Math.min(VS.dur, VS.v.currentTime + (k === 'arrowright' ? 1 : -1) / 30)); } // 1.4.35: ← → avanzan o retroceden un cuadro del video
   else if (!$('#idv_nf').hidden) done = false;
   else if (/^[idan]$/.test(k)) idSet('fl', k.toUpperCase()); // 1.4.18: lado I/D/A/N, claridad 1/2/3, S salta, Enter confirma, ↑ ↓ candidatos
   else if (/^[1-3]$/.test(k) && (!IDV.o.q || IDV.menu === 'q')) idSet('q', 'BRM'[+k - 1]);
@@ -375,8 +377,9 @@ const sideName = fl => fl === 'D' ? 'der' : fl === 'I' ? 'izq' : 'ambos';
 function bestRef(id, fl) { // la mejor imagen de un lado para mostrar o entregar: con rosetas calcadas, luego referencia, luego claridad
   const l = [...extRefs(id), ...indPhotos(id)].filter(p => fl ? p.o.fl === fl || (p.o.fl === 'A' && !p.ext) : true);
   return l.sort((a, b) => !!(b.o.tr || []).length - !!(a.o.tr || []).length || refFirst(a, b))[0] || null; }
-async function repaired(it) { const f = await it.h.getFile(); return isVideo(it.name) ? f : (await wJob('view', { file: f, fit: [1e6, 1e6] }).then(d => d.fx, () => null)) || f; } // 1.4.32: JPG dañado → copia reparada en memoria, como en el visor (el archivo no se toca)
-async function bitmapOf(p) { return createImageBitmap(p.ext ? await p.it.h.getFile() : await repaired(p.it)); }
+async function repaired(it, vt) { const f = await it.h.getFile(); if (isVideo(it.name)) { const b = await videoFrame(f, true, vt), c = document.createElement('canvas'); c.width = b.width; c.height = b.height; c.getContext('2d').drawImage(b, 0, 0); b.close(); return canvasBlob(c); } // 1.4.35: video → el cuadro guardado (antes se pasaba el video a una imagen y no se veía)
+  return (await wJob('view', { file: f, fit: [1e6, 1e6] }).then(d => d.fx, () => null)) || f; } // 1.4.32: JPG dañado → copia reparada en memoria, como en el visor (el archivo no se toca)
+async function bitmapOf(p) { return createImageBitmap(p.ext ? await p.it.h.getFile() : await repaired(p.it, p.o.vt)); }
 
 /* ---------- 1.4.15: foto con rosetas (la imagen que se entrega del individuo nuevo), lámina del catálogo ---------- */
 function paintTraces(x, trs, k, opt = {}) { const col = opt.color || TRC[+ls('bt_trc', 0)] || TRC[0], w = opt.w || 3;
@@ -467,7 +470,7 @@ function CanvasEd(host, o = {}) {
   can.addEventListener('pointerdown', e => { if (!d.img || e.button) return; CanvasEd.act = d; const q = pt(e), t = IDV.space ? 'pan' : d.tool;
     if (t === 'erase') { const k = trHit(d.tr, q, 12 / sc()); if (k >= 0) { d.snap(); d.tr.splice(k, 1); d.render(); o.onchange && o.onchange(d); } return; }
     if (t === 'pen') d.cur = [q]; if (t === 'zone') { d.snap(); d.zs = q; } drag = { x: e.clientX, y: e.clientY, cx: d.view.cx, cy: d.view.cy, t }; can.setPointerCapture(e.pointerId); });
-  can.addEventListener('pointermove', e => { if (!drag) return; const q = pt(e), s = sc();
+  can.addEventListener('pointermove', e => { if (drag && !e.buttons) { drag = null; d.cur = null; } if (!drag) return; // 1.4.36: arrastre pegado → se suelta const q = pt(e), s = sc();
     if (drag.t === 'pen') { const l = d.cur[d.cur.length - 1]; if (Math.hypot(q[0] - l[0], q[1] - l[1]) > 2.5 / s) { d.cur.push(q.map(Math.round)); d.render(); } }
     else if (drag.t === 'zone') { d.zone = [d.zs, q]; d.render(); }
     else { d.view.cx = drag.cx - (e.clientX - drag.x) / s / W(); d.view.cy = drag.cy - (e.clientY - drag.y) / s / H(); d.render(); } });
@@ -707,7 +710,7 @@ $('#filepkg').onchange = e => { const f = e.target.files[0]; e.target.value = ''
 /* ---------- Ficha de un individuo (1.4.17: visor con flechas, referencias arriba, números, filtros, estaciones, horas, visto con, historial) ---------- */
 const FI = { filt: 'T', st: '', open: -1, tok: 0 };
 const fullUrls = new Map(); // imágenes completas de la cabecera de la ficha (pocas, se liberan al pasar de 12)
-async function fullUrl(p) { const k = phKey(p); if (fullUrls.has(k)) return fullUrls.get(k); const u = p.ext ? await refUrl(p.it.ref) : URL.createObjectURL(await repaired(p.it));
+async function fullUrl(p) { const k = phKey(p); if (fullUrls.has(k)) return fullUrls.get(k); const u = p.ext ? await refUrl(p.it.ref) : URL.createObjectURL(await repaired(p.it, p.o.vt));
   if (!p.ext) { fullUrls.set(k, u); if (fullUrls.size > 12) { const [k0, u0] = fullUrls.entries().next().value; URL.revokeObjectURL(u0); fullUrls.delete(k0); } } return u; }
 function openFicha(id) { if (!S.ind.list[id]) return toast(`${id} no está en el catálogo.`, 3000); if (S.fichaId !== id) Object.assign(FI, { filt: 'T', st: '', open: -1, sec: 'f', pick: null }); FI.open = -1; S.fichaId = id; renderFicha(); openOver('#inddlg'); }
 function ficAll(id) { return [...extRefs(id), ...indPhotos(id).sort((a, b) => (phTime(a) || 0) - (phTime(b) || 0))]; } // referencias importadas primero, luego por fecha
