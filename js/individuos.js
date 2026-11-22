@@ -536,7 +536,7 @@ $('#imp_ok').onclick = async () => { const l = IMP.list.filter(m => !m.sheet); i
 /* ---------- 1.4.17: fotos de un individuo ordenadas de mejor a peor (comparar, ficha, imprimir) ---------- */
 const QORD = { B: 2, R: 1, M: 0 }, QCL = { B: 'qb', R: 'qr', M: 'qm' };
 // 1.4.37: clave estable (cámara + carpeta y nombre originales); antes era la posición en la lista, que cambia al agregar estaciones o clasificar
-const phKey = p => p.ext ? p.it.id : [camOf(p.it), ...(p.it.origParts || p.it.parts), p.it.origName || p.it.name].join('/');
+const phKey = p => p.ext ? p.it.id : itKey(p.it);
 const phScore = p => ((p.o.tr || []).length ? 3 : 0) + (p.o.ref || p.ext ? 2 : 0) + (QORD[p.o.q] ?? 1) - (p.o.dud && !p.o.iv ? 2 : 0) - (p.o.fl === 'A' ? .5 : 0);
 function photosOf(id, fl) { return [...extRefs(id), ...indPhotos(id)].filter(p => !fl || p.o.fl === fl || (p.o.fl === 'A' && !p.ext)).sort((a, b) => phScore(b) - phScore(a)); }
 function mainOf(id, fl) { const k = ((S.ind.list[id] || {}).main || {})[fl], l = photosOf(id, fl); return (k && l.find(p => phKey(p) === k)) || l[0]; } // 1.4.33: la foto principal de cada lado (elegida en la ficha o la mejor)

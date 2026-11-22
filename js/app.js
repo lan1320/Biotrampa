@@ -85,6 +85,7 @@ const ymd = d => { d = new Date(d); return `${d.getFullYear()}-${pad(d.getMonth(
 const hms = d => { d = new Date(d); return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; };
 const norm = s => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); // sin acentos ni mayúsculas
 const relPath = it => [...it.parts, it.name].join('/'); // ruta dentro de la carpeta de su estación
+const itKey = it => [it.src ? it.src.label : '', ...(it.origParts || it.parts), it.origName || it.name].join('/'); // 1.4.37: clave estable de la foto (cámara + carpeta y nombre originales): no cambia al moverla
 const pathOf = it => (it.src ? it.src.label + '/' : '') + relPath(it); // estación/ruta (única en todo el proyecto)
 const srcOf = it => (it.src ? it.src.label : '') + '|' + (it.origParts || it.parts).join('/'); // carpeta de origen (cámara)
 const station = it => it.src ? (it.src.pair || it.src.label) : '(sin estación)'; // cada carpeta agregada es una estación (o la mitad de un par de cámaras)
@@ -241,7 +242,9 @@ async function locked(fn) {
 }
 
 /* ---------- Deshacer: cada paso guarda [foto, especie anterior, especies adicionales anteriores] ---------- */
-const updUndo = () => { $('#undo').disabled = !S.hist.length; $('#redo').disabled = !S.redo.length; };
+const updUndo = () => { $('#undo').disabled = !S.hist.length; $('#redo').disabled = !S.redo.length; if (S.proj && !S.ro) sv('bt_hist_' + S.proj.id, S.hist.map(op => op.map(([it, c, x]) => [itKey(it), c, x]))); }; // 1.4.38: Deshacer se guarda por proyecto y sobrevive al cerrar
+const loadHist = () => { if (!S.proj) return []; const by = new Map(S.items.map(i => [itKey(i), i])); // al reabrir, cada paso vuelve a apuntar a sus fotos (las que ya no están se omiten)
+  return ls('bt_hist_' + S.proj.id, []).map(op => op.map(([k, c, x]) => by.has(k) ? [by.get(k), c, x] : null).filter(Boolean)).filter(op => op.length); };
 function pushHist(ch) { if (S.undoing || !ch.length) return; S.hist.push(ch); if (S.hist.length > 100) S.hist.shift(); S.redo = []; updUndo(); } // una acción nueva borra lo que se podía rehacer
 const snap = it => [it, it.cat, (it.extras || []).map(x => x.cat)];
 // Devuelve cada foto al estado guardado y regresa el estado que tenían (para poder rehacer o volver a deshacer)
@@ -505,7 +508,7 @@ function removeStation(src) {
   const n = S.items.filter(i => i.src === src).length;
   if (!confirm(`¿Quitar «${src.label}» del proyecto? Sus ${n} archivo(s) no se tocan: solo dejan de mostrarse aquí. Puedes volver a agregarla cuando quieras.`)) return;
   S.items = S.items.filter(i => i.src !== src); S.srcs = S.srcs.filter(s => s !== src); if (!S.srcs.some(s => (s.pair || s.label) === (src.pair || src.label))) delete S.stations[src.pair || src.label]; delete S.offsets[src.label];
-  if (S.f.src === src.label) S.f.src = null; S.multi.clear(); S.hist = []; S.redo = []; updUndo(); if (S.cur && S.cur.src === src) closeLb(); S.sig = null; saveProj(); applyFilters(); renderProjMenu(); toast(`«${src.label}» quitada del proyecto.`, 3000);
+  if (S.f.src === src.label) S.f.src = null; S.multi.clear(); S.hist = S.hist.map(op => op.filter(x => x[0].src !== src)).filter(op => op.length); S.redo = []; updUndo(); if (S.cur && S.cur.src === src) closeLb(); S.sig = null; saveProj(); applyFilters(); renderProjMenu(); toast(`«${src.label}» quitada del proyecto.`, 3000);
 }
 async function newProject() {
   if (S.srcs.length && !confirm('¿Empezar un proyecto nuevo? El actual queda guardado y lo puedes reabrir desde Proyecto.')) return;
@@ -592,7 +595,7 @@ async function afterScan(msg) {
   syncIndCatalog(); // los «ID del individuo» ya escritos entran al catálogo
   sv('bt_cats', S.cats);
   S.items.sort((a, b) => a.src.label.localeCompare(b.src.label) || a.parts.join('/').localeCompare(b.parts.join('/')) || a.name.localeCompare(b.name, undefined, { numeric: true }));
-  S.hist = []; S.redo = []; S.sig = null; updUndo(); renderPending(); renderProjMenu(); if (!S.items.length) renderHome();
+  S.hist = loadHist(); S.redo = []; S.sig = null; updUndo(); renderPending(); renderProjMenu(); if (!S.items.length) renderHome();
   if (msg) toast(msg, 6000); else if (msg !== '') { const nv = S.items.filter(i => isVideo(i.name)).length; toast(S.items.length ? `${S.items.length} fotografías encontradas${nv ? ` (incluye ${nv} video${nv > 1 ? 's' : ''})` : ''}.` : 'Las estaciones no contienen fotos ni videos.', 5000); }
   applyFilters();
   if (needMeta()) { await prepare(); applyFilters(); }
@@ -670,7 +673,7 @@ async function thumbBlobMain(f) {
    Se guardan con el nombre original, el tamaño y la fecha de la foto: si la foto cambia, se vuelve a generar. Nunca se escribe nada en tus carpetas. */
 let tdbP = null;
 function tdb() { return tdbP || (tdbP = new Promise(res => { try { const r = indexedDB.open('bt_thumbs', 1); r.onupgradeneeded = () => r.result.createObjectStore('t');
-  r.onsuccess = () => { const d = r.result; try { const c = d.transaction('t').objectStore('t').count(); c.onsuccess = () => { if (c.result > 40000) try { d.transaction('t', 'readwrite').objectStore('t').clear(); } catch (e) {} }; } catch (e) {} res(d); }; r.onerror = r.onblocked = () => res(null); } catch (e) { res(null); } })); }
+  r.onsuccess = () => { const d = r.result; try { const c = d.transaction('t').objectStore('t').count(); c.onsuccess = () => { if (c.result > 40000) try { let n = c.result - 30000; const q = d.transaction('t', 'readwrite').objectStore('t').openCursor(); q.onsuccess = () => { const cur = q.result; if (cur && n-- > 0) { cur.delete(); cur.continue(); } }; } catch (e) {} }; } catch (e) {} res(d); }; r.onerror = r.onblocked = () => res(null); } catch (e) { res(null); } })); } // 1.4.38: se quitan 10 000, no todas. shortcut: se quitan por orden de nombre, no las más viejas; si molesta, guardar la fecha de uso
 async function tget(k) { const d = await tdb(); if (!d) return null; return new Promise(res => { try { const q = d.transaction('t').objectStore('t').get(k); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); } catch (e) { res(null); } }); }
 function tput(k, b) { tdb().then(d => { if (d) try { d.transaction('t', 'readwrite').objectStore('t').put(b, k); } catch (e) {} }); }
 const tkey = it => it.tk || (it.tk = [it.src.label, ...(it.origParts || it.parts), it.origName || it.name, it.size, it.mod].join('|'));
