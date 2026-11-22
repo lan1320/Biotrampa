@@ -1700,7 +1700,8 @@ function openSet() { segSet('settheme', ls('bt_theme', null) || 'sys');
   $('#setgap').value = String(ls('bt_gap', 7));
   renderAskN();
   const bl = bakLast();
-  $('#baklast').textContent = 'Último respaldo: ' + (bl ? new Date(bl.t).toLocaleDateString() : 'nunca');
+  $('#bakrem').value = ls('bt_bakrem', '500'); // por si cambió al restaurar un respaldo
+  $('#baklast').textContent = 'Último respaldo: ' + (bl ? ymd(bl.t) : 'nunca');
   openOver('#setdlg'); }
 // 1.4.24: opciones nuevas de Ajustes (cada una guarda su valor en el navegador)
 const setOpt = (id, k, def, fn) => { const e = $('#' + id);
