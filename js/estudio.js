@@ -63,7 +63,7 @@ function bindExtraSummary() {
   document.querySelectorAll('#sumbody img.indth').forEach(im => thumbAny(im, S.items[im.dataset.ix])); // miniatura de cada individuo
   drawFun(); drawAcu();
   if ($('#tr_a')) { const go = () => { sv('bt_tras', [$('#tr_a').value, $('#tr_b').value]);
-    drawTras(); };
+      drawTras(); };
     $('#tr_a').onchange = $('#tr_b').onchange = go;
     drawTras(); }
   if ($('#fungap')) $('#fungap').onchange = e => { sv('bt_gap', +e.target.value); drawFun(); };
@@ -88,7 +88,7 @@ function drawFun() {
   const step = Math.max(1, Math.ceil(months.length / 12));
   months.forEach((t, k) => { svg += `<line x1="${x(t)}" x2="${x(t)}" y1="0" y2="${H - 18}" class="grid"/>`;
     if (k % step === 0) { const d = new Date(t);
-    svg += `<text x="${x(t) + 2}" y="${H - 6}" class="ax">${MES[d.getUTCMonth()]} ${d.getUTCFullYear()}</text>`; } });
+      svg += `<text x="${x(t) + 2}" y="${H - 6}" class="ax">${MES[d.getUTCMonth()]} ${d.getUTCFullYear()}</text>`; } });
   rows.forEach((r, k) => {
     const y = k * rh + 4, a = Date.parse(r.t.start), b = Date.parse(r.t.end) + DAY;
     svg += `<text x="${L - 8}" y="${y + 13}" class="lbl">${esc(r.s.length > 22 ? r.s.slice(0, 21) + '…' : r.s)}<title>${esc(r.s)}</title></text>`;
@@ -106,8 +106,8 @@ function drawFun() {
     const dn = downSet(r.s); let run = null;
     const end = () => { if (run && run.n >= gap) sug.push({ s: r.s, ...run }); run = null; };
     for (const d of dayList(r.t.start, r.t.end)) { if (!r.ph.has(d) && !dn.has(d)) { if (!run) run = { a: d, n: 0 };
-      run.b = d;
-      run.n++; } else end(); }
+        run.b = d;
+        run.n++; } else end(); }
     end();
   }
   const tot = rows.reduce((a, r) => a + r.t.down, 0);
@@ -117,12 +117,12 @@ function drawFun() {
   box.innerHTML = html;
   box.querySelectorAll('[data-sug]').forEach(b => b.onclick = () => {
     const g = sug[+b.dataset.sug], st = { ...(S.stations[g.s] || {}) };
-      st.down = [...(st.down || []), { a: g.a, b: g.b, why: 'sin fotos (confirmado)' }].sort((p, q) => p.a.localeCompare(q.a));
+    st.down = [...(st.down || []), { a: g.a, b: g.b, why: 'sin fotos (confirmado)' }].sort((p, q) => p.a.localeCompare(q.a));
     if (!st.start || !st.end) { const t = trapDays(g.s); st.start = st.start || t.start; st.end = st.end || t.end; }
     S.stations[g.s] = st;
-      saveReg();
-      renderSummary();
-      toast(`«${g.s}»: ${g.n} día(s) marcados sin funcionar. Se descontaron de los días-trampa.`, 5000);
+    saveReg();
+    renderSummary();
+    toast(`«${g.s}»: ${g.n} día(s) marcados sin funcionar. Se descontaron de los días-trampa.`, 5000);
   });
 }
 
@@ -135,28 +135,28 @@ function drawAcu() {
     const t = td[s]; if (!t.start || !t.end) continue; const dn = downSet(s), by = new Map();
     for (const it of its) if (station(it) === s && goodTs(it)) { const d = ymd(fixTs(it));
       for (const c of allCats(it)) if (c !== GH && S.cats.includes(c)) { if (!by.has(d)) by.set(d, new Set());
-      by.get(d).add(c); } }
+        by.get(d).add(c); } }
     for (const d of dayList(t.start, t.end)) if (!dn.has(d)) units.push(by.has(d) ? [...by.get(d)] : null);
   }
   const n = units.length;
-    if (n < 2) { box.innerHTML = '<p class="hint tiny">Se necesitan estaciones con fechas (o fotos con fecha) para la curva.</p>';
+  if (n < 2) { box.innerHTML = '<p class="hint tiny">Se necesitan estaciones con fechas (o fotos con fecha) para la curva.</p>';
     return; }
   const R = 100, mean = new Float64Array(n), idx = Array.from({ length: n }, (_, i) => i);
   for (let r = 0; r < R; r++) {
     for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; }
     const seen = new Set();
-      for (let k = 0; k < n; k++) { const u = units[idx[k]];
+    for (let k = 0; k < n; k++) { const u = units[idx[k]];
       if (u) for (const c of u) seen.add(c);
       mean[k] += seen.size / R; }
   }
   const tot = mean[n - 1];
-    if (!tot) { box.innerHTML = '<p class="hint tiny">Todavía no hay especies clasificadas en fotos con fecha.</p>';
+  if (!tot) { box.innerHTML = '<p class="hint tiny">Todavía no hay especies clasificadas en fotos con fecha.</p>';
     return; }
   const W = 720, H = 220, L = 34, B = 26, X = k => L + k / (n - 1) * (W - L - 10), Y = v => H - B - v / Math.ceil(tot) * (H - B - 10);
   const pts = [];
-    const stp = Math.max(1, Math.floor(n / 240));
-    for (let k = 0; k < n; k += stp) pts.push(`${X(k).toFixed(1)},${Y(mean[k]).toFixed(1)}`);
-    pts.push(`${X(n - 1).toFixed(1)},${Y(tot).toFixed(1)}`);
+  const stp = Math.max(1, Math.floor(n / 240));
+  for (let k = 0; k < n; k += stp) pts.push(`${X(k).toFixed(1)},${Y(mean[k]).toFixed(1)}`);
+  pts.push(`${X(n - 1).toFixed(1)},${Y(tot).toFixed(1)}`);
   let svg = `<svg viewBox="0 0 ${W} ${H}" class="acusvg" role="img" aria-label="Curva de acumulación de especies">`;
   for (let v = 0; v <= Math.ceil(tot); v += Math.max(1, Math.round(Math.ceil(tot) / 5))) svg += `<line x1="${L}" x2="${W - 10}" y1="${Y(v)}" y2="${Y(v)}" class="grid"/><text x="${L - 6}" y="${Y(v) + 4}" class="ax" style="text-anchor:end">${v}</text>`;
   for (let k = 0; k <= 4; k++) { const d = Math.round((n - 1) * k / 4);
@@ -170,8 +170,8 @@ function drawAcu() {
    Ancho de banda: regla de Taylor (2008). Es un valor aproximado: para publicar, calcúlalo con el paquete overlap de R. */
 function besI(nu, x) { let term = Math.pow(x / 2, nu) / (nu === 2 ? 2 : 1), s = 0;
   for (let k = 0; k < 2000; k++) { s += term;
-  term *= (x * x / 4) / ((k + 1) * (k + 1 + nu));
-  if (term < s * 1e-14) break; } return s; }
+    term *= (x * x / 4) / ((k + 1) * (k + 1 + nu));
+    if (term < s * 1e-14) break; } return s; }
 function vmKappa(th) {
   const n = th.length, C = th.reduce((a, t) => a + Math.cos(t), 0) / n, Sn = th.reduce((a, t) => a + Math.sin(t), 0) / n, R = Math.min(.999, Math.hypot(C, Sn));
   const k = R < .53 ? 2 * R + R ** 3 + 5 * R ** 5 / 6 : R < .85 ? -.4 + 1.39 * R + .43 / (1 - R) : 1 / (R ** 3 - 4 * R ** 2 + 3 * R);
@@ -196,11 +196,11 @@ function drawTras() {
   const th = c => sumData.evs.filter(e => e.c === c && !isNaN(e.t)).map(e => { const d = new Date(e.t);
     return (d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600) / 24 * 2 * Math.PI; });
   const A = th(a), B = th(b);
-    if (A.length < 2 || B.length < 2) { box.innerHTML = '<p class="hint tiny">Cada especie necesita al menos 2 eventos con fecha.</p>';
+  if (A.length < 2 || B.length < 2) { box.innerHTML = '<p class="hint tiny">Cada especie necesita al menos 2 eventos con fecha.</p>';
     return; }
   const G = 288, f = actDensity(A, G), g = actDensity(B, G);
-    let dl = 0, mx = 0;
-    for (let i = 0; i < G; i++) { dl += Math.min(f[i], g[i]);
+  let dl = 0, mx = 0;
+  for (let i = 0; i < G; i++) { dl += Math.min(f[i], g[i]);
     mx = Math.max(mx, f[i], g[i]); } dl *= 2 * Math.PI / G;
   const W = 720, H = 220, L = 10, Bm = 26, X = i => L + i / G * (W - 2 * L), Y = v => H - Bm - v / mx * (H - Bm - 10);
   const line = arr => Array.from(arr, (v, i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ') + ` ${X(G).toFixed(1)},${Y(arr[0]).toFixed(1)}`;
@@ -217,10 +217,10 @@ function backupData() {
   const registros = {};
   for (const src of S.srcs) { const files = {};
     for (const it of S.items) if (it.src === src) { const e = regEntry(it);
-    if (e) files[relPath(it)] = e; } registros[src.label] = { carpeta: src.name, par: src.pair || null, files }; }
+      if (e) files[relPath(it)] = e; } registros[src.label] = { carpeta: src.name, par: src.pair || null, files }; }
   const ajustes = {};
-    try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i);
-    if (k && k.startsWith('bt_')) ajustes[k] = localStorage.getItem(k); } } catch (e) {}
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i);
+      if (k && k.startsWith('bt_')) ajustes[k] = localStorage.getItem(k); } } catch (e) {}
   return { app: 'BioTrampa', tipo: 'respaldo', version: '1.3', fecha: new Date().toISOString(), proyecto: projName(), estaciones: S.stations, correcciones: S.offsets, individuos: { especies: S.indSp, list: S.ind.list, act: S.ind.act }, registros, ajustes };
 }
 function saveBackup() {
@@ -249,11 +249,11 @@ async function restoreBackup(j) {
   if (!confirm(`Respaldo de «${j.proyecto}» del ${String(j.fecha || '').slice(0, 10)}.\n\nSe restaurarán la lista de especies (con teclas y nombres científicos), los datos rápidos y los ajustes de este navegador${S.srcs.length ? `; y, en el proyecto abierto, los datos de las estaciones y de las fotos que falten (${nReg} estación(es) en el respaldo)` : '. Abre antes el proyecto si también quieres recuperar los datos de sus fotos'}${nInd ? `; y ${nInd} individuo(s) del catálogo` : ''}.\n\nNo se mueve ni se borra ninguna foto y no se reemplaza lo que ya tengas escrito. ¿Continuar?`)) return;
   for (const [k, v] of Object.entries(j.ajustes || {})) if (typeof v === 'string') try { localStorage.setItem(k, v); } catch (e) {}
   S.cats = ls('bt_cats', S.cats);
-    S.keys = ls('bt_keys', S.keys);
-    S.sci = Object.assign({}, SCI, ls('bt_sci', {}));
-    S.presets = ls('bt_presets', S.presets);
-    GH = ls('bt_gh', GH);
-    S.indSp = ls('bt_indsp', S.indSp);
+  S.keys = ls('bt_keys', S.keys);
+  S.sci = Object.assign({}, SCI, ls('bt_sci', {}));
+  S.presets = ls('bt_presets', S.presets);
+  GH = ls('bt_gh', GH);
+  S.indSp = ls('bt_indsp', S.indSp);
   let nst = 0, nph = 0;
   for (const src of S.srcs) {
     const r = (j.registros || {})[src.label] || Object.values(j.registros || {}).find(x => x.carpeta === src.name); if (!r) continue;
@@ -312,24 +312,24 @@ function openDis(list, title, la, lb, onA, onB) { // desacuerdos: barra con Espe
     r.querySelector('.dinfo b').textContent = d.it.origName || d.it.name;
     r.querySelector('.dinfo small').textContent = [station(d.it), d.kind === 'id' ? `ID del individuo (${d.c})` : ''].filter(Boolean).join(' · ');
     const ba = r.querySelector('.da'), bb = r.querySelector('.db');
-      ba.querySelector('small').textContent = la;
-      ba.querySelector('b').textContent = d.a;
-      bb.querySelector('small').textContent = lb;
-      bb.querySelector('b').textContent = d.b;
+    ba.querySelector('small').textContent = la;
+    ba.querySelector('b').textContent = d.a;
+    bb.querySelector('small').textContent = lb;
+    bb.querySelector('b').textContent = d.b;
     ba.title = 'Queda esta respuesta'; bb.title = 'Queda esta respuesta (si es otra especie, la foto se mueve a su carpeta)';
     const done = v => { r.classList.add('done');
       r.querySelectorAll('.dch').forEach(x => x.remove());
       r.querySelector('.dinfo small').textContent = `Resuelta: queda ${v}`;
       disCount(); };
     ba.onclick = async () => { if (await onA(d) !== false) done(d.a); };
-      bb.onclick = async () => { if (await onB(d) !== false) done(d.b); }; // 1.4.37: si no se pudo mover, la fila sigue pendiente
+    bb.onclick = async () => { if (await onB(d) !== false) done(d.b); }; // 1.4.37: si no se pudo mover, la fila sigue pendiente
     r.querySelector('.dop').onclick = () => { closeOver(true); show(d.it); };
   }
   disCount(); disTab(list.some(d => d.kind !== 'id') || !list.length ? 'sp' : 'id'); openOver('#revdlg');
 }
 function disCount() { const n = k => $('#revbody').querySelectorAll(`.disrow:not(.done)${k ? `[data-k="${k}"]` : ''}`).length;
   $('#rev_n').textContent = `${n()} por resolver`;
-    document.querySelectorAll('#revdlg [data-rk]').forEach(b => { b.querySelector('em').textContent = n(b.dataset.rk);
+  document.querySelectorAll('#revdlg [data-rk]').forEach(b => { b.querySelector('em').textContent = n(b.dataset.rk);
     b.hidden = !$('#revbody').querySelector(`[data-k="${b.dataset.rk}"]`); }); }
 function disTab(k) { document.querySelectorAll('#revdlg [data-rk]').forEach(b => b.classList.toggle('on', b.dataset.rk === k));
   $('#rev_h').textContent = k === 'id' ? 'Individuo' : 'Especie';
@@ -354,7 +354,7 @@ $('#filerev').onchange = async e => {
   const clean = v => (v || '').replace(/^'(?=[=+@\-])/, ''), g = (r, n) => ix(n) < 0 ? '' : clean(r[ix(n)]);
   const key = (name, d, t, st) => norm(name) + '|' + (d ? d + ' ' + (t || '') : norm(st));
   const mine = new Map();
-    for (const it of S.items) { const m = it.meta || {};
+  for (const it of S.items) { const m = it.meta || {};
     mine.set(key(it.origName || it.name, m.date, m.time, station(it)), it); }
   const list = []; let miss = 0, same = 0;
   for (const r of rows.slice(1)) {
@@ -368,11 +368,11 @@ $('#filerev').onchange = async e => {
   }
   openDis(list, `Comparación con «${f.name}»: ${same} coinciden, ${list.length} desacuerdo(s)`, 'Tú', 'Otra persona', async () => {},
     async d => { if (d.kind === 'sp') { if (!(await applySp(d.it, d.sp))) return false; } else { const o = obsOf(d.it, d.c);
-      o.id = d.b;
-      delete o.ns;
-      ensureInd(d.b, d.c);
-      saveReg();
-      refreshCards([d.it]); } });
+        o.id = d.b;
+        delete o.ns;
+        ensureInd(d.b, d.c);
+        saveReg();
+        refreshCards([d.it]); } });
   if (miss) toast(`${miss} fila(s) del CSV no se encontraron en este proyecto (otras fotos o sin fecha EXIF).`, 7000);
 };
 
@@ -381,7 +381,7 @@ async function exportCTtable() {
   if (!S.items.length) return toast('Abre una carpeta primero.'); await prepare(true);
   const sts = [...new Set(S.items.map(station))].sort(), maxP = Math.max(0, ...sts.map(s => ((S.stations[s] || {}).down || []).length));
   const head = ['Station', 'Cameras', 'Latitude', 'Longitude', 'Setup_date', 'Retrieval_date'];
-    for (let k = 1; k <= maxP; k++) head.push(`Problem${k}_from`, `Problem${k}_to`);
+  for (let k = 1; k <= maxP; k++) head.push(`Problem${k}_from`, `Problem${k}_to`);
   const rows = [head];
   for (const s of sts) {
     const t = trapDays(s), c = stCoords(s), dn = (S.stations[s] || {}).down || [];
