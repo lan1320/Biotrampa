@@ -1065,7 +1065,7 @@ let actx = null; function clickSound() { try { actx = actx || new AudioContext()
 $('#bloop').checked = ls('bt_bloop', false); $('#bloop').onchange = e => sv('bt_bloop', e.target.checked);
 $('#setreset').onclick = () => { if (!confirm('¿Volver a los ajustes de fábrica? No se tocan fotos, especies, proyectos ni datos de estaciones.')) return;
   ['bt_adv', 'bt_autost', 'bt_bspeed', 'bt_bloop', 'bt_ev', 'bt_sort', 'bt_burst', 'bt_obs', 'bt_focus', 'bt_size', 'bt_autohide', 'bt_spsort', 'bt_lupesz',
-    'bt_onlypend', 'bt_vkeepall', 'bt_clsnd', 'bt_autoempty', 'bt_obsalways', 'bt_shownight', 'bt_showname', 'bt_shownote', 'bt_csvsep', 'bt_gap', 'bt_askn', 'bt_theme', 'bt_side', 'bt_sw', 'bt_pri', 'bt_trc'].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+    'bt_onlypend', 'bt_vkeepall', 'bt_clsnd', 'bt_autoempty', 'bt_obsalways', 'bt_shownight', 'bt_showname', 'bt_shownote', 'bt_csvsep', 'bt_gap', 'bt_askn', 'bt_theme', 'bt_side', 'bt_sw', 'bt_pri', 'bt_trc', 'bt_trok'].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
   try { localStorage.removeItem('bt_confirm'); } catch (e) {} toast('Ajustes restablecidos. Se recarga la página…', 2000); setTimeout(() => location.reload(), 900); };
 
 

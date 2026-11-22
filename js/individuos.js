@@ -53,7 +53,8 @@ function mergeCatalog(j) { // junta un catálogo (de un respaldo o de otra perso
 const IDV = { v: { l: { z: 1, x: 0, y: 0 }, r: { z: 1, x: 0, y: 0 } }, pen: { l: false, r: false }, er: { l: false, r: false }, eye: true, m: [], hist: { l: [], r: [] }, redo: { l: [], r: [] }, hov: 'l' }, idUrls = { l: null, r: null };
 const resetView = side => { for (const s of side ? [side] : ['l', 'r']) IDV.v[s] = { z: 1, x: 0, y: 0 }; }; // 1.4.15: cada foto con su propio zoom
 const PARTS = ['cabeza', 'hombro', 'costado', 'cadera', 'pata', 'cola'], zoneOf = (o, p) => o && (o.zn || []).find(z => z.p === p);
-const TROK = 3; // cuántas rosetas deben coincidir para no quedar como dudosa (1.4.15: ya no hay máximo de rosetas calcadas)
+let TROK = +ls('bt_trok', 3); // cuántas rosetas deben coincidir para no quedar como dudosa; 1.4.37: se elige en Ajustes (0 = no pedir)
+segSet('trok', TROK); $('#trok').onclick = e => { const b = e.target.closest('button'); if (!b) return; TROK = +b.dataset.v; sv('bt_trok', TROK); segSet('trok', TROK); };
 const TRC = ['#ffd400', '#00e0ff', '#ffffff', '#ff5ab4', '#6b4fd8']; // colores del trazo
 const SEXS = { Macho: '♂', Hembra: '♀' };
 function candidates(it, c, fl) { // mismo lado primero, los que tienen avisos al final, luego misma estación, distancia y fecha; con avisos de velocidad imposible y sexo distinto
@@ -215,6 +216,7 @@ function renderVerdict() {
   const y = IDV.m.filter(x => x === 1).length, n = IDV.m.filter(x => x === 2).length; same.textContent = id ? 'Es ' + id : 'Es el mismo'; same.disabled = !id; $('#idv_chipsw').hidden = !trs.length;
   if (!id) v.textContent = '';
   else if (!p) v.textContent = `Aviso: de ${id} no hay fotos del lado ${(FL[IDV.o.fl] || '').toLowerCase()}. No se puede comparar, pero puedes agregarla: será su primera de este lado.`; // 1.4.27: antes no dejaba
+  else if (!TROK && !IDV.m.includes(2)) v.textContent = 'Sin mínimo de rosetas (se cambia en Ajustes): decide tú si es el mismo.';
   else if (!trs.length) { v.textContent = `Esta foto de ${id} no tiene rosetas calcadas. Cálcalas con el lápiz, o compara a ojo (queda como dudosa).`; dud.checked = true; }
   else if (n) { v.innerHTML = `<b class="no">${n} no coincide${n > 1 ? 'n' : ''}.</b> Una roseta distinta basta: no es ${esc(id)}.`; same.disabled = true; }
   else if (y >= TROK) { v.innerHTML = `<b class="ok">${y} coinciden.</b> Suficiente para decir que es el mismo.`; dud.checked = IDV.o.q === 'M'; } // 1.4.37: la misma regla que en Comparar
@@ -351,7 +353,7 @@ $('#nf_c').onclick = nfClose; $('#nf_ok').onclick = () => nfCreate(false);
 function nfCreate(force) { const f = IDV.nf, v = (f.id || '').trim().replace(/\s+/g, '-'); if (!v) return toast('Escribe el código del individuo.', 2500);
   if (S.ind.list[v]) return toast(`${v} ya existe en el catálogo. Elige otro código, o elígelo en la lista de candidatos.`, 4500);
   const rec = { nombre: f.nombre.trim(), sexo: f.sexo, edad: f.edad, crias: f.crias && f.sexo === 'Hembra' ? 1 : 0, madre: f.edad === 'Cría' ? f.madre : '' }; Object.keys(rec).forEach(k => { if (!rec[k]) delete rec[k]; });
-  const it = IDV.it, o = IDV.o; nfClose(); applyInd(v, { nuevo: 1, dud: f.dud, rec, card: !force && (o.tr || []).length >= TROK ? { it, o } : null }); }
+  const it = IDV.it, o = IDV.o; nfClose(); applyInd(v, { nuevo: 1, dud: f.dud, rec, card: !force && (o.tr || []).length && (o.tr || []).length >= TROK ? { it, o } : null }); }
 
 /* ---------- 1.4.15: referencias importadas (los jaguares ya identificados, p. ej. de Canva) ----------
    Cada individuo puede tener rec.refs = [{ fl, file, st, tr, dib, ref: 1 }]: imágenes guardadas en «Referencias de individuos/» dentro de la carpeta de una
@@ -510,7 +512,7 @@ function impForm() { const m = IMP.list[IMP.sel], f = $('#imp_form'), n = IMP.li
     <p class="idk">Lado</p><div class="idseg" data-k="fl"><button data-v="I" class="${m.fl === 'I' ? 'on' : ''}">Izquierdo</button><button data-v="D" class="${m.fl === 'D' ? 'on' : ''}">Derecho</button></div>
     ${ex ? '' : `<p class="idk">Sexo</p>${seg([['Macho', 'Macho'], ['Hembra', 'Hembra'], ['', 'Sin dato']], 'sexo')}<p class="idk">Edad</p>${seg(EDADES.map(e => [e, e]), 'edad')}`}
     <p class="idk">Rosetas</p><div class="idseg" data-k="dib"><button data-v="1" class="${m.dib ? 'on' : ''}">Ya vienen dibujadas</button><button data-v="" class="${m.dib ? '' : 'on'}">Calcarlas aquí</button></div>
-    <button class="lnk2" id="imp_many">Esta imagen tiene varios individuos: separarlos</button><p class="hint tiny">${m.tr.length ? `${m.tr.length} roseta(s) calcada(s) encima.` : m.dib ? 'Se guarda la imagen tal cual. Si además calcas las rosetas encima con el lápiz, al comparar podrás marcar ✓/✗ una por una.' : `Calca al menos ${TROK} con el lápiz.`}</p><button class="lnk2" id="imp_del">Quitar esta imagen</button>`;
+    <button class="lnk2" id="imp_many">Esta imagen tiene varios individuos: separarlos</button><p class="hint tiny">${m.tr.length ? `${m.tr.length} roseta(s) calcada(s) encima.` : m.dib ? 'Se guarda la imagen tal cual. Si además calcas las rosetas encima con el lápiz, al comparar podrás marcar ✓/✗ una por una.' : (TROK ? `Calca al menos ${TROK} con el lápiz.` : 'Calca las rosetas con el lápiz.')}</p><button class="lnk2" id="imp_del">Quitar esta imagen</button>`;
   $('#imp_id').oninput = e => { m.id = e.target.value.trim().replace(/\s+/g, '-'); }; $('#imp_id').onchange = () => impForm(); $('#imp_n').oninput = e => m.nombre = e.target.value; $('#imp_ex').onchange = e => { m.id = e.target.value || impFree(); impRender(); };
   f.querySelectorAll('.idseg[data-k] button').forEach(b => b.onclick = () => { const k = b.parentElement.dataset.k, v = b.dataset.v; m[k] = k === 'dib' ? !!v : v; if (k === 'dib') IMP.ed.setTool(v ? 'pan' : 'pen'); impForm(); });
   $('#imp_many').onclick = () => { m.sheet = true; m.id = ''; m.tr = []; impRender(); };
