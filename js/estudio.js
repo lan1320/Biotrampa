@@ -228,6 +228,7 @@ function saveBackup() {
   const d = backupData(), n = Object.values(d.registros).reduce((a, r) => a + Object.keys(r.files).length, 0);
   const leeme = `Respaldo de BioTrampa del proyecto «${d.proyecto}» (${d.fecha.slice(0, 10)}).\r\n\r\nSolo contiene DATOS: clasificaciones y origen de cada foto, datos de las estaciones (fechas, GPS, días sin funcionar, cámaras en par), corrección de hora, lista de especies, datos rápidos, catálogo de individuos y ajustes.\r\nNO contiene fotos ni videos: respáldalos aparte (por ejemplo, en un disco externo).\r\n\r\nPara usarlo: abre el proyecto en BioTrampa (o vuelve a agregar sus carpetas) y elige Exportar → «Restaurar un respaldo…».\r\nNo se mueve ni se borra ninguna foto, y no se reemplaza lo que ya esté escrito: solo se completa lo que falte.\r\n`;
   download(zipStore([['respaldo.json', JSON.stringify(d, null, 1)], ['LEEME.txt', leeme]]), `respaldo_biotrampa_${depId(d.proyecto)}_${ymd(Date.now())}.zip`);
+  bakMark();
   toast(`Respaldo guardado: ${Object.keys(d.registros).length} estación(es) y ${n} foto(s) con datos. No incluye fotos. Guárdalo fuera de esta computadora (USB, Drive…).`, 8000);
 }
 function fillFromReg(it, r) { // completa lo que le falta a la foto con los datos del respaldo (nunca reemplaza)
@@ -385,10 +386,11 @@ async function exportCTtable() {
   const rows = [head];
   for (const s of sts) {
     const t = trapDays(s), c = stCoords(s), dn = (S.stations[s] || {}).down || [];
-    const r = [s, S.srcs.filter(x => (x.pair || x.label) === s).map(x => x.label).join(' + '), c ? c[0].toFixed(6) : '', c ? c[1].toFixed(6) : '', t.start || '', t.end || ''];
+    const r = [s, S.srcs.filter(x => (x.pair || x.label) === s).map(x => x.label).join(' + '), c ? xco(c[0].toFixed(6)) : '', c ? xco(c[1].toFixed(6)) : '', t.start || '', t.end || ''];
     for (let k = 0; k < maxP; k++) r.push(dn[k] ? dn[k].a : '', dn[k] ? dn[k].b : '');
     rows.push(r);
   }
+  if (xcMode() === 'none') rows.forEach(r => r.splice(2, 2)); // 1.4.40: sin Latitude ni Longitude
   download(new Blob([plainCsv(rows)], { type: 'text/csv;charset=utf-8' }), `CTtable_camtrapR_${ymd(Date.now())}.csv`);
   toast(`Tabla de estaciones para camtrapR: ${sts.length} estación(es)${maxP ? ' con sus días sin funcionar (ProblemN_from / ProblemN_to)' : ''}. En R: cameraOperation(CTtable, stationCol = "Station", setupCol = "Setup_date", retrievalCol = "Retrieval_date", hasProblems = ${maxP ? 'TRUE' : 'FALSE'}, dateFormat = "ymd").`, 12000);
 }

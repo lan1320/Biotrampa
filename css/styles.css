@@ -2,8 +2,8 @@
 /* 1.4.10: fuente Plus Jakarta Sans (OFL), un solo archivo para todos los grosores */
 @font-face{font-family:"Plus Jakarta Sans";font-weight:200 800;font-display:swap;src:url("../fonts/PlusJakartaSans-latin-ext.woff2") format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
 @font-face{font-family:"Plus Jakarta Sans";font-weight:200 800;font-display:swap;src:url("../fonts/PlusJakartaSans-latin.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
-:root{--bg:#fbfbfa;--pn:#ffffff;--pn2:#f1f2f0;--tx:#1b1d1c;--mu:#5e635f;--fa:#676c68;--ln:#ecece8;--ln2:#e3e5e1;--scr:#d5d8d3;--ac2:#f1f2f0;--act:#6b4fd81c;--ac:#6b4fd8;--ach:#5a3fc6;--acs:#6b4fd81c;--acf:#6b4fd8;--acfh:#5a3fc6;--onac:#ffffff;--ok:#6b4fd8;--pe:#a8700f;--danger:#c4392f;--gh:#8c8a82;--vbg:#1f2220;--chip:#ffffff;--chiptx:#1b1d1c;--sh:none;--pop:0 10px 30px #0000001f;--scrim:#00000059;--ease:cubic-bezier(.23,1,.32,1);--sans:"Plus Jakarta Sans","Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;--i-pen:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21.17 6.81a2.83 2.83 0 0 0-4-4L3.84 16.17a2 2 0 0 0-.5.83L2 22l5-1.34a2 2 0 0 0 .83-.5z'/%3E%3C/svg%3E");--i-flag:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z'/%3E%3Cpath d='M4 22v-7'/%3E%3C/svg%3E");color-scheme:light}
-:root[data-theme=dark]{--bg:#141615;--pn:#1b1e1c;--pn2:#222623;--tx:#e6e8e6;--mu:#a3a8a4;--fa:#8d938e;--ln:#262a27;--ln2:#2e332f;--scr:#3a3f3b;--ac2:#1f2321;--act:#b0a2ff24;--ac:#b0a2ff;--ach:#c3b8ff;--acs:#b0a2ff2e;--acf:#b0a2ff;--acfh:#c3b8ff;--onac:#141615;--ok:#b0a2ff;--pe:#e0b050;--danger:#f0716a;--gh:#a8a59b;--vbg:#0e100f;--chip:#141615;--chiptx:#e6e8e6;--pop:0 10px 30px #000000aa;--scrim:#000000a6;color-scheme:dark}
+:root{--bg:#fbfbfa;--pn:#ffffff;--pn2:#f1f2f0;--tx:#1b1d1c;--mu:#5e635f;--fa:#5a5f5b;--ln:#ecece8;--ln2:#e3e5e1;--scr:#d5d8d3;--ac2:#f1f2f0;--act:#6b4fd81c;--ac:#6b4fd8;--ach:#5a3fc6;--acs:#6b4fd81c;--acf:#6b4fd8;--acfh:#5a3fc6;--onac:#ffffff;--ok:#6b4fd8;--pe:#a8700f;--danger:#c4392f;--gh:#8c8a82;--vbg:#1f2220;--chip:#ffffff;--chiptx:#1b1d1c;--sh:none;--pop:0 10px 30px #0000001f;--scrim:#00000059;--ease:cubic-bezier(.23,1,.32,1);--sans:"Plus Jakarta Sans","Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;--i-pen:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21.17 6.81a2.83 2.83 0 0 0-4-4L3.84 16.17a2 2 0 0 0-.5.83L2 22l5-1.34a2 2 0 0 0 .83-.5z'/%3E%3C/svg%3E");--i-flag:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z'/%3E%3Cpath d='M4 22v-7'/%3E%3C/svg%3E");color-scheme:light}
+:root[data-theme=dark]{--bg:#141615;--pn:#1b1e1c;--pn2:#222623;--tx:#e6e8e6;--mu:#b9beba;--fa:#a3a8a4;--ln:#262a27;--ln2:#2e332f;--scr:#3a3f3b;--ac2:#1f2321;--act:#b0a2ff24;--ac:#b0a2ff;--ach:#c3b8ff;--acs:#b0a2ff2e;--acf:#b0a2ff;--acfh:#c3b8ff;--onac:#141615;--ok:#b0a2ff;--pe:#e0b050;--danger:#f0716a;--gh:#a8a59b;--vbg:#0e100f;--chip:#141615;--chiptx:#e6e8e6;--pop:0 10px 30px #000000aa;--scrim:#000000a6;color-scheme:dark}
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;font:14px/1.5 var(--sans);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;background:var(--bg);color:var(--tx);overflow:hidden;caret-color:var(--ac)}
@@ -128,7 +128,7 @@ h2.fold small{font-size:12px;font-weight:400;color:var(--fa)}h2.fold .ic{width:1
 .progl{display:flex;gap:8px}.progl span:first-child{flex:1}#progtxt{font-variant-numeric:tabular-nums}
 #stbar{display:block;height:3px;border-radius:2px;background:var(--ln2);overflow:hidden}
 #bar{display:block;height:100%;width:0;background:var(--ac);border-radius:2px;transition:width .3s}
-#reveta:empty{display:none}#revcnt{color:var(--pe)}
+#reveta:empty{display:none}#bakln{display:flex;align-items:center;gap:6px}#bakln[hidden],#bakgo[hidden]{display:none}#bakgo{margin-left:auto;font-size:12px}#revcnt{color:var(--pe)}
 body.blind .prog::after{content:"Revisión a ciegas";color:var(--pe);font-weight:600}
 .sfoot .tools{display:flex;gap:2px}
 
@@ -222,7 +222,7 @@ body.revmode #lbtitle::after{content:'  · MODO REVISOR';color:var(--pe);font-we
 .xbox .xb{display:flex;flex-direction:column;align-items:flex-start;gap:1px;border:0;background:none;padding:7px 9px;border-radius:8px;text-align:left}
 .xbox .xb:hover{background:var(--ac2)}.xbox small{font-size:12px;color:var(--mu);font-weight:400}.xbox b{font-weight:600;font-size:13px}
 .xbox .xb2{display:flex;flex-direction:column;gap:4px;padding:8px 9px;border-top:1px solid var(--ln);border-bottom:1px solid var(--ln);margin:2px 0}
-.xbox .xb2 .row{margin-top:4px}.xbox .xb2 select{flex:1;min-width:0}.xbox .xb2>button{margin-top:2px;align-self:flex-start}
+.xbox .xcoord{display:flex;flex-direction:column;gap:4px;padding:8px 9px}.xbox .xcoord label{color:var(--tx)}#xcoordpv{font-variant-numeric:tabular-nums}.xbox .xcnote{font-size:11px}.xbox .xb2 .row{margin-top:4px}.xbox .xb2 select{flex:1;min-width:0}.xbox .xb2>button{margin-top:2px;align-self:flex-start}
 .projbox{left:0;right:auto;min-width:340px;max-width:min(440px,92vw);max-height:70vh;overflow:auto}
 .projbox label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mu)}.projbox label input{width:100%}
 .pjst,.pjsaved{display:flex;flex-direction:column;gap:2px}
@@ -440,7 +440,7 @@ table.st tr.tot td{font-weight:600;border-top:1.5px solid var(--ln)}
 #tourhole{position:fixed;border-radius:8px;box-shadow:0 0 0 9999px #000a;outline:2px solid var(--ac);transition:all .2s ease;pointer-events:none}
 #tourbox{position:fixed;background:var(--bg);color:var(--tx);border:1px solid var(--ln);border-radius:12px;padding:16px 18px;box-shadow:var(--pop);font-size:13px}
 #tourbox h3{margin:0 0 6px;font-size:15px}#tourbox p{margin:0 0 12px;line-height:1.5}
-#tourbox .row{display:flex;gap:8px;align-items:center}#tourn{font-size:12px;color:var(--mu)}
+#tourbox .row{display:flex;gap:8px;align-items:center}#tournomore{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:var(--mu);cursor:pointer}#tournomore[hidden]{display:none}#tourn{font-size:12px;color:var(--mu)}
 #tour:not(:has(#tourhole[style*="block"])){background:#000a}
 
 /* ---------- Pantallas estrechas ---------- */

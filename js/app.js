@@ -642,7 +642,31 @@ async function openProject(id, open) { // open: abrir en el visor la foto donde 
   await saveProj();
   await afterScan(`Proyecto «${rec.name}»: ${S.srcs.length} estación(es), ${S.items.length} archivo(s).${S.pending.length ? ` Falta dar permiso a ${S.pending.length}.` : ''}${lost.length ? ` No se encontraron: ${lost.join(', ')} (¿se movieron o borraron?).` : ''}${busy.length ? ` Ocupadas en otra computadora: ${busy.join(', ')}.` : ''}`);
   if (rec.last) continueAt(rec.last, open);
+  if (ls('bt_askrev', true)) askWho();
 }
+// 1.4.40: «¿Quién revisa hoy?» al abrir un proyecto; el nombre es el mismo de Ajustes › Revisión
+function askWho() { $('#who_name').value = $('#reviewer').value;
+  $('#who_ask').checked = true;
+  const box = $('#who_chips');
+  box.textContent = '';
+  for (const n of ls('bt_revs', [])) { const b = document.createElement('button');
+    b.textContent = n;
+    b.onclick = () => { $('#who_name').value = n;
+      $('#who_ok').click(); };
+    box.appendChild(b); }
+  openOver('#whodlg');
+  $('#who_name').focus(); }
+$('#who_ask').onchange = e => { sv('bt_askrev', e.target.checked); // se guarda al momento, aunque se cierre con Esc
+  $('#askrev').checked = e.target.checked; };
+$('#who_no').onclick = () => closeOver();
+$('#who_ok').onclick = () => { const n = $('#who_name').value.trim().replace(/\s+/g, ' ');
+  if (n) { $('#reviewer').value = n;
+    sv('bt_rev', n);
+    sv('bt_revs', [n, ...ls('bt_revs', []).filter(x => x !== n)].slice(0, 6));
+    S.srcs.forEach(writeLock); } // la nota de estación ocupada lleva el nombre nuevo
+  closeOver(); };
+$('#who_name').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault();
+    $('#who_ok').click(); } });
 function continueAt(last, open) { // vuelve a la estación y la foto donde te quedaste
   const it = S.items.find(i => station(i) === last.st && relPath(i) === last.p) || S.items.find(i => station(i) === last.st && i.origName === last.o);
   if (!it) return; S.lastSeen = last;
@@ -1316,6 +1340,24 @@ function catBtn(c) {
   d.title = (S.sci[c] ? S.sci[c] + ' · ' : '') + 'Clic: ver sus fotos (otro clic: ver todas)' + (c !== GH && S.spSort === 'keys' ? ' · Arrastra para cambiar el orden y la tecla' : '') + ' · Clic derecho o …: más opciones';
   d.children[2].textContent = (S.counts && S.counts.get(c)) || 0; return d;
 }
+// 1.4.40: recordatorio de respaldo al pie de la barra lateral (fecha y fotos clasificadas del último respaldo, por proyecto)
+const bakKey = () => S.proj ? S.proj.id : projName();
+const bakLast = () => ls('bt_bak', {})[bakKey()];
+function bakLine() { const l = bakLast(), mode = ls('bt_bakrem', '500'), n = S.items.filter(i => i.cat).length;
+  $('#bakln').hidden = !S.srcs.length;
+  if (!S.srcs.length) return;
+  const d = l ? Math.floor((Date.now() - l.t) / 864e5) : 0;
+  $('#baktxt').textContent = !l ? 'Sin respaldo todavía' : d < 1 ? 'Respaldo hoy' : `Respaldo hace ${d} día${d === 1 ? '' : 's'}`;
+  $('#bakgo').hidden = mode === 'never' || n <= (l ? l.n : 0) || (mode === 'week' ? l && Date.now() - l.t < 7 * 864e5 : n - (l ? l.n : 0) < +mode); }
+function bakMark() { if (!S.srcs.length) return;
+  const b = ls('bt_bak', {});
+  b[bakKey()] = { t: Date.now(), n: S.items.filter(i => i.cat).length };
+  sv('bt_bak', b);
+  bakLine(); }
+$('#bakgo').onclick = () => saveBackup();
+$('#bakrem').value = ls('bt_bakrem', '500');
+$('#bakrem').onchange = e => { sv('bt_bakrem', e.target.value);
+  bakLine(); };
 function renderSide() {
   // conteos de especies y estaciones en una sola pasada (rápido con miles de fotos)
   S.counts = new Map(); S.stCount = new Map();
@@ -1330,6 +1372,7 @@ function renderSide() {
   $('#progtxt').textContent = n ? `${fmtN(done)} de ${fmtN(n)}` : '';
   $('.prog').title = n ? `${n - done} pendientes · ${done} clasificadas · ${Math.floor(done / n * 100)} %${S.f.src ? ` en «${S.f.src}»` : ''}` : '';
   $('#reveta').textContent = n ? eta(n - done).replace(/^ · /, '') : (S.srcs.length ? 'Las estaciones no tienen fotos ni videos' : '');
+  bakLine();
   if (S.revMode) { const cl = S.items.filter(i => i.cat), v = cl.filter(i => i.ver).length;
     $('#revcnt').hidden = false;
     $('#revcnt').textContent = `Revisor: ${v} verificadas · ${cl.length - v} por verificar`; } else $('#revcnt').hidden = true;
@@ -1656,6 +1699,8 @@ function openSet() { segSet('settheme', ls('bt_theme', null) || 'sys');
   $('#setfocus').checked = focusOn;
   $('#setgap').value = String(ls('bt_gap', 7));
   renderAskN();
+  const bl = bakLast();
+  $('#baklast').textContent = 'Último respaldo: ' + (bl ? new Date(bl.t).toLocaleDateString() : 'nunca');
   openOver('#setdlg'); }
 // 1.4.24: opciones nuevas de Ajustes (cada una guarda su valor en el navegador)
 const setOpt = (id, k, def, fn) => { const e = $('#' + id);
@@ -1669,6 +1714,7 @@ setOpt('onlypend', 'bt_onlypend', false);
 setOpt('vkeepall', 'bt_vkeepall', false);
 setOpt('clsnd', 'bt_clsnd', false);
 setOpt('autoempty', 'bt_autoempty', false);
+setOpt('askrev', 'bt_askrev', true);
 setOpt('obsalways', 'bt_obsalways', false, on => { if (on) { sv('bt_obs', true); obsTemp = null; if (S.cur) renderObs(S.cur); } });
 for (const k of ['shownight', 'showname', 'shownote']) setOpt(k, 'bt_' + k, k !== 'showname', cardOpts); cardOpts();
 $('#setsort').onclick = e => { const b = e.target.closest('button');
@@ -1716,7 +1762,7 @@ function clickSound() { try { actx = actx || new AudioContext();
 $('#bloop').checked = ls('bt_bloop', false); $('#bloop').onchange = e => sv('bt_bloop', e.target.checked);
 $('#setreset').onclick = () => { if (!confirm('¿Volver a los ajustes de fábrica? No se tocan fotos, especies, proyectos ni datos de estaciones.')) return;
   ['bt_adv', 'bt_autost', 'bt_bspeed', 'bt_bloop', 'bt_ev', 'bt_sort', 'bt_burst', 'bt_obs', 'bt_focus', 'bt_size', 'bt_autohide', 'bt_spsort', 'bt_lupesz',
-    'bt_onlypend', 'bt_vkeepall', 'bt_clsnd', 'bt_autoempty', 'bt_obsalways', 'bt_shownight', 'bt_showname', 'bt_shownote', 'bt_csvsep', 'bt_gap', 'bt_askn', 'bt_theme', 'bt_side', 'bt_sw', 'bt_pri', 'bt_trc', 'bt_trok'].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+    'bt_onlypend', 'bt_vkeepall', 'bt_clsnd', 'bt_autoempty', 'bt_obsalways', 'bt_shownight', 'bt_showname', 'bt_shownote', 'bt_csvsep', 'bt_gap', 'bt_askn', 'bt_theme', 'bt_side', 'bt_sw', 'bt_pri', 'bt_trc', 'bt_trok', 'bt_bakrem', 'bt_xcoord', 'bt_askrev'].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
   try { localStorage.removeItem('bt_confirm'); } catch (e) {} toast('Ajustes restablecidos. Se recarga la página…', 2000);
   setTimeout(() => location.reload(), 900); };
 
@@ -2907,14 +2953,15 @@ async function exportMainCsv() {
     const row = (cat, typ, dest) => { const o = (it.obs && it.obs[cat]) || {};
       return [projName(), station(it), it.src.pair ? camOf(it) : (S.stations[station(it)] || {}).cam || '', it.name, it.origParts ? it.origName : '', isVideo(it.name) ? 'Video' : 'Foto', cat || '', cat ? S.sci[cat] || '' : '', typ, o.n || '', o.sex || '', o.age || '', o.beh || '', o.id || '', it.note || '',
         m.date, m.time, offTxt(off), m.date ? ymd(ft) : '', m.date ? hms(ft) : '', per ? PER[per] : '', sun ? hms(sun.rise).slice(0, 5) : '', sun ? hms(sun.set).slice(0, 5) : '', moon ? moon.name : '', moon ? moon.ill : '', suspect(it) ? 'Sí' : '',
-        mod ? ymd(mod) : '', m.lat, m.lon, m.model, station(it), origin, dest, it.cls, it.cat ? (it.tagOnly ? 'Etiquetada (sin mover)' : 'Clasificada') : 'Pendiente', it.rev ? 'Sí' : '', it.rev ? it.revWhy || '' : '', it.ver || '', it.verBy || '',
+        mod ? ymd(mod) : '', xco(m.lat), xco(m.lon), m.model, station(it), origin, dest, it.cls, it.cat ? (it.tagOnly ? 'Etiquetada (sin mover)' : 'Clasificada') : 'Pendiente', it.rev ? 'Sí' : '', it.rev ? it.revWhy || '' : '', it.ver || '', it.verBy || '',
         FL[o.fl] || '', QL[o.q] || '', o.ref ? 'Sí' : '', o.dud ? 'Sí' : '', o.ns ? 'Sí' : '', o.ib || '', o.if || '', o.iv || '', camOf(it), it.bl || '', it.bb || '', o.rc || '']; };
     rows.push(row(it.cat, it.cat ? 'Principal' : '', it.cat ? (it.parts[0] === ROOT ? it.parts.join('/') : '') : ''));
     for (const x of it.extras || []) rows.push(row(x.cat, x.parts ? 'Adicional (copia)' : 'Adicional', x.parts ? x.parts.join('/') : ''));
   }
-  download(csvBlob(rows), `biotrampa_registro_${ymd(Date.now())}.csv`);
-  const r = rows.slice(1), iD = COLS.indexOf('Fecha de captura (EXIF)'), iL = COLS.indexOf('Latitud');
-  toast(`Registro exportado: ${r.length} filas (${seen.size} fotos). Sin fecha EXIF: ${r.filter(x => !x[iD]).length}. Sin GPS: ${r.filter(x => !x[iL]).length}.`, 8000);
+  const r = rows.slice(1), iD = COLS.indexOf('Fecha de captura (EXIF)'), iL = COLS.indexOf('Latitud'), noC = xcMode() === 'none';
+  const msg = `Registro exportado: ${r.length} filas (${seen.size} fotos). Sin fecha EXIF: ${r.filter(x => !x[iD]).length}.${noC ? ' Sin coordenadas.' : ` Sin GPS: ${r.filter(x => !x[iL]).length}.`}`;
+  download(csvBlob(noC ? rows.map(x => x.filter((_, j) => j !== iL && j !== iL + 1)) : rows), `biotrampa_registro_${ymd(Date.now())}.csv`);
+  toast(msg, 8000);
 }
 
 /* ---------- Resumen: avance y resultados de toda la carpeta ---------- */
@@ -3222,6 +3269,15 @@ $('#x_rt').onclick = xRun(exportRecordTable);
 $('#x_dp').onclick = xRun(exportCamtrapDP);
 $('#x_merge').onclick = xRun(() => $('#filecsv').click());
 $('#x_kml').onclick = xRun(exportKml);
+// 1.4.40: coordenadas completas, redondeadas (2 o 1 decimal) o sin ellas en el registro, camtrapR y Camtrap DP
+const xcMode = () => ls('bt_xcoord', 'full');
+const xco = v => { const m = xcMode();
+  return m === 'none' ? '' : v === '' || v == null || m === 'full' || !isFinite(+v) ? v : (+v).toFixed(+m); };
+const xcPrev = () => { $('#xcoordpv').textContent = xcMode() === 'none' ? 'Ejemplo: E01 · Jaguar · 2025-03-14 · (sin latitud ni longitud)' : `Ejemplo: E01 · Jaguar · 2025-03-14 · ${xco('17.254310')}, ${xco('-89.612070')}`; };
+$('#xcoord').value = xcMode();
+xcPrev();
+$('#xcoord').onchange = e => { sv('bt_xcoord', e.target.value);
+  xcPrev(); };
 // Antes de exportar para análisis: avisar si faltan datos de estaciones que esos formatos necesitan
 async function missingOk(what, need) {
   await prepare(true); const sts = [...new Set(S.items.map(station))], miss = [];
@@ -3293,7 +3349,7 @@ async function exportCamtrapDP() {
   const stations = [...new Set(S.items.map(station))].sort(), BASE = 'https://raw.githubusercontent.com/tdwg/camtrap-dp/1.0/';
   const dep = [['deploymentID', 'locationID', 'locationName', 'latitude', 'longitude', 'deploymentStart', 'deploymentEnd', 'cameraID', 'cameraModel', 'cameraHeight', 'baitUse', 'deploymentComments']];
   for (const s of stations) { const st = S.stations[s] || {}, c = stCoords(s), t = trapDays(s);
-    dep.push([depId(s), depId(s), s, c ? c[0].toFixed(6) : '', c ? c[1].toFixed(6) : '', t.start ? isoLocal(Date.parse(t.start + 'T00:00:00')) : '', t.end ? isoLocal(Date.parse(t.end + 'T23:59:59')) : '', st.cam || '', st.cam || '', st.h ? (+st.h / 100).toFixed(2) : '', st.bait === 'Sí' ? 'true' : st.bait === 'No' ? 'false' : '', [st.notes, t.est ? 'Fechas estimadas con la primera y la última foto' : ''].filter(Boolean).join('. ')]); }
+    dep.push([depId(s), depId(s), s, c ? xco(c[0].toFixed(6)) : '', c ? xco(c[1].toFixed(6)) : '', t.start ? isoLocal(Date.parse(t.start + 'T00:00:00')) : '', t.end ? isoLocal(Date.parse(t.end + 'T23:59:59')) : '', st.cam || '', st.cam || '', st.h ? (+st.h / 100).toFixed(2) : '', st.bait === 'Sí' ? 'true' : st.bait === 'No' ? 'false' : '', [st.notes, t.est ? 'Fechas estimadas con la primera y la última foto' : ''].filter(Boolean).join('. ')]); }
   const med = [['mediaID', 'deploymentID', 'captureMethod', 'timestamp', 'filePath', 'filePublic', 'fileName', 'fileMediatype', 'mediaComments']];
   const obs = [['observationID', 'deploymentID', 'mediaID', 'eventStart', 'eventEnd', 'observationLevel', 'observationType', 'scientificName', 'count', 'lifeStage', 'sex', 'behavior', 'individualID', 'classificationMethod', 'classifiedBy', 'classificationTimestamp', 'observationComments']];
   let nm = 0, no = 0, notime = 0; const taxa = new Map();
@@ -3309,7 +3365,7 @@ async function exportCamtrapDP() {
     taxonomic: [...taxa].map(([sci, c]) => ({ scientificName: sci, vernacularNames: { spa: c } })),
     resources: [['deployments', 'deployments-table-schema.json'], ['media', 'media-table-schema.json'], ['observations', 'observations-table-schema.json']].map(([n, sc]) => ({ name: n, path: n + '.csv', profile: 'tabular-data-resource', format: 'csv', mediatype: 'text/csv', encoding: 'utf-8', schema: BASE + sc })) };
   download(zipStore([['datapackage.json', JSON.stringify(pkg, null, 2)], ['deployments.csv', plainCsv(dep)], ['media.csv', plainCsv(med)], ['observations.csv', plainCsv(obs)]]), `camtrapdp_${depId(projName())}_${ymd(Date.now())}.zip`);
-  const miss = dep.slice(1).filter(r => !r[3] || !r[5] || !r[6]).length;
+  const miss = dep.slice(1).filter(r => (!r[3] && xcMode() !== 'none') || !r[5] || !r[6]).length;
   toast(`Camtrap DP exportado: ${stations.length} estaciones, ${nm} archivos, ${no} observaciones.${miss ? ` Ojo: ${miss} estación(es) sin coordenadas o fechas (complétalas con Editar).` : ''}${notime ? ` ${notime} archivo(s) sin fecha.` : ''}`, 9000);
 }
 async function exportRecordTable() {
@@ -3514,7 +3570,7 @@ function startTour(kind) {
     if (!el) return false;
     const r = el.getBoundingClientRect();
     return r.width > 0 && r.height > 0 && !el.closest('[hidden]'); });
-  tour = { kind, steps, i: 0 }; $('#tour').hidden = false; tourShow();
+  tour = { kind, steps, i: 0 }; $('#tournocb').checked = false; $('#tour').hidden = false; tourShow();
 }
 function tourRect(el) { /* parte visible del elemento, recortada a su panel con scroll y a la ventana */
   const r = el.getBoundingClientRect(), sc = el.closest('aside,#gal'), c = sc && sc !== el ? sc.getBoundingClientRect() : { top: 0, bottom: innerHeight, left: 0, right: innerWidth };
@@ -3525,6 +3581,7 @@ function tourShow(scroll = true) {
   const [sel, title, txt] = tour.steps[tour.i], hole = $('#tourhole'), box = $('#tourbox');
   if (sel && scroll) $(sel).scrollIntoView({ block: 'nearest', inline: 'nearest' });
   $('#tourtxt').innerHTML = `<h3>${title}</h3><p>${txt}</p>`; $('#tourn').textContent = `${tour.i + 1} de ${tour.steps.length}`;
+  $('#tournomore').hidden = tour.i > 0 || !(tour.kind === 'main' || tour.kind === 'viewer');
   $('#tourprev').disabled = tour.i === 0; $('#tournext').textContent = tour.i === tour.steps.length - 1 ? 'Terminar' : 'Siguiente';
   if (sel) { const r = tourRect($(sel)), m = 6;
     Object.assign(hole.style, { left: r.left - m + 'px', top: r.top - m + 'px', width: r.width + 2 * m + 'px', height: Math.min(r.height, innerHeight - 20) + 2 * m + 'px', display: 'block' });
@@ -3538,14 +3595,17 @@ function tourShow(scroll = true) {
 function tourGo(d) { if (!tour) return;
   const n = tour.i + d;
   if (n < 0) return;
-  if (n >= tour.steps.length) return endTour();
+  if (n >= tour.steps.length) return endTour(true);
   tour.i = n;
   tourShow(); }
-function endTour() { if (!tour) return;
-  if (tour.kind === 'main' || tour.kind === 'viewer') sv(tour.kind === 'main' ? 'bt_tour1' : 'bt_tour2', true);
+function endTour(done) { if (!tour) return;
+  // 1.4.40: si se salta sin marcar «No volver a mostrar», el recorrido automático vuelve a salir la próxima vez
+  if ((done === true || $('#tournocb').checked) && (tour.kind === 'main' || tour.kind === 'viewer')) sv(tour.kind === 'main' ? 'bt_tour1' : 'bt_tour2', true);
   $('#tour').hidden = true;
   tour = null; }
-$('#tournext').onclick = () => tourGo(1); $('#tourprev').onclick = () => tourGo(-1); $('#tourskip').onclick = endTour;
+$('#tournext').onclick = () => tourGo(1); $('#tourprev').onclick = () => tourGo(-1); $('#tourskip').onclick = () => endTour();
+$('#tourreset').onclick = () => { ['bt_tour1', 'bt_tour2'].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+  toast('Los recorridos volverán a abrirse solos.', 2500); };
 document.querySelectorAll('#tourmenu [data-tour]').forEach(b => b.onclick = () => { closePops();
   const k = b.dataset.tour;
   if (k === 'viewer' && $('#lb').hidden) { const f = S.view[0];
