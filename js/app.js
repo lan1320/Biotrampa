@@ -66,8 +66,29 @@ const S = { srcs: [], pending: [], proj: null, mapCfg: null, stations: {}, prese
   spSort: ls('bt_spsort', 'keys'), created: ls('bt_created', {}), used: ls('bt_used', {}), split: new Set(ls('bt_split', [])), vkeep: ls('bt_vkeep', {}), kf: null, fsci: ls('bt_fsci', {}) }; // fsci (1.4.24): especies cuya carpeta usa el nombre científico
 const folder = c => c.trim().replace(/[\\/:*?"<>|.]/g, '').replace(/\s+/g, '_');
 const catDir = c => folder(S.fsci[c] && S.sci[c] ? S.sci[c] : c); // carpeta de la especie: nombre común o científico (1.4.24)
-function toast(m, ms = 4000, undoBtn = false) { // undoBtn: muestra un botón "Deshacer" dentro del aviso
-  const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(toast.t);
+function toast(m, ms = 4000, undoBtn = false, strong = false) { // undoBtn: botón "Deshacer" dentro del aviso; strong: primera frase en negrita (errores graves)
+  const t = $('#toast'), msg = document.createElement('span');
+  t.textContent = '';
+  t.hidden = false;
+  clearTimeout(toast.t);
+  msg.className = 'tmsg';
+  // 1.4.41: los progresos (ms 0) llevan barra; si el texto termina en «n/total» se muestra el avance
+  const pr = ms ? null : /^([\s\S]*?)\s*(\d+)\/(\d+)$/.exec(m);
+  if (pr) m = pr[1];
+  const fs = strong && /^([\s\S]*?[.:!?])(\s[\s\S]*)$/.exec(m);
+  if (strong) { const b = document.createElement('b');
+    b.textContent = fs ? fs[1] : m;
+    msg.append(b, fs ? fs[2] : ''); } else msg.textContent = m;
+  t.appendChild(msg);
+  if (!ms) { const bar = document.createElement('span'), i = document.createElement('i');
+    bar.className = 'tprog' + (pr ? '' : ' ind');
+    if (pr) { i.style.width = Math.min(100, pr[2] / pr[3] * 100) + '%';
+      const c = document.createElement('span');
+      c.className = 'tcnt';
+      c.textContent = `${(+pr[2]).toLocaleString("es-MX")} de ${(+pr[3]).toLocaleString("es-MX")}`;
+      t.appendChild(c); }
+    bar.appendChild(i);
+    t.appendChild(bar); }
   if (undoBtn && S.hist.length) { const b = document.createElement('button');
     b.textContent = 'Deshacer';
     b.className = 'tundo';
@@ -78,6 +99,7 @@ function toast(m, ms = 4000, undoBtn = false) { // undoBtn: muestra un botón "D
     ms = Math.max(ms, 6000); }
   if (ms) toast.t = setTimeout(() => t.hidden = true, ms);
 }
+$('#toast').onclick = () => $('#toast').hidden = true; // un clic lo cierra (sus botones ya detienen el clic)
 /* ---------- Animaciones de entrada y salida de ventanas ----------
    Se vigila el atributo "hidden": al mostrarse, la ventana se dibuja invisible (.bt-pre) y se anima desde el cuadro siguiente;
    al ocultarse, la lógica de la app ya la da por cerrada, pero .bt-out la deja verse mientras se desvanece. */
@@ -320,7 +342,7 @@ async function restore(op, word) {
   } finally { S.undoing = false; }
   saveReg(); applyFilters(op.map(x => x[0]));
   if (!$('#lb').hidden && S.view.includes(op[0][0])) show(op[0][0]); else if (S.cur) show(S.cur);
-  toast(bad.length ? `No se pudo ${word.toLowerCase()} todo: ${bad[0]}` : skipped ? `${word === 'Deshacer' ? 'Deshecho' : 'Rehecho'}, pero ${skipped} foto(s) no se restauraron porque su categoría ya no existe.` : (word === 'Deshacer' ? 'Deshecho.' : 'Rehecho.'), bad.length ? 8000 : 2500);
+  toast(bad.length ? `No se pudo ${word.toLowerCase()} todo: ${bad[0]}` : skipped ? `${word === 'Deshacer' ? 'Deshecho' : 'Rehecho'}, pero ${skipped} foto(s) no se restauraron porque su categoría ya no existe.` : (word === 'Deshacer' ? 'Deshecho.' : 'Rehecho.'), bad.length ? 8000 : 2500, false, !!bad.length);
   return inv;
 }
 async function undo() { if (S.blind) return toast('En la revisión a ciegas no se usa Deshacer: vuelve a elegir la especie o pulsa U.', 4000);
@@ -417,7 +439,7 @@ async function writeReg(src) {
     src.regExists = true; src.regLast = data;
   } catch (e) { console.warn('No se pudo guardar el registro de BioTrampa en ' + src.name, e);
     if (!src.regWarned) { src.regWarned = true;
-      toast(`No se pudo guardar el registro de «${src.label}» (${e.message}). Sin él se pierde la carpeta de origen de las fotos clasificadas: revisa el espacio libre y el permiso de la carpeta.`, 12000); } }
+      toast(`No se pudo guardar el registro de «${src.label}» (${e.message}). Sin él se pierde la carpeta de origen de las fotos clasificadas: revisa el espacio libre y el permiso de la carpeta.`, 12000, false, true); } }
 }
 // IndexedDB: proyectos guardados (identificadores de carpetas que Chrome deja recordar) e imagen del mapa
 const idb = (mode, fn) => new Promise((res, rej) => { const r = indexedDB.open('biotrampa', 1);
@@ -506,7 +528,7 @@ async function writeLock(src) {
 async function dropLock(src) { try { const j = await readJson(src.h, LOCK); if (j && j.id === DEV) await src.h.removeEntry(LOCK); } catch (e) {} } // solo la nota propia
 setInterval(async () => { for (const s of S.srcs) { const o = await lockOf(s.h).catch(() => null);
   if (!o) { writeLock(s); continue; } // se renueva la propia; si otra computadora la tomó, no se pelea por ella
-  if (!s.lockWarned) { s.lockWarned = true; toast(`${o.nombre} abrió «${s.label}» en otra computadora. Si las dos clasifican a la vez, una puede borrar los cambios de la otra.`, 15000); } } }, 120e3);
+  if (!s.lockWarned) { s.lockWarned = true; toast(`${o.nombre} abrió «${s.label}» en otra computadora. Si las dos clasifican a la vez, una puede borrar los cambios de la otra.`, 15000, false, true); } } }, 120e3);
 addEventListener('pagehide', () => S.srcs.forEach(dropLock)); // al cerrar (si no alcanza, la nota caduca sola)
 async function loadSource(h) { // lee una carpeta como estación y suma sus fotos
   const src = { h, name: h.name, label: h.name, reg: {} };

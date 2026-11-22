@@ -379,9 +379,14 @@ body.home #pend{max-width:992px;margin:16px auto 0}
 #unfocus:hover,#unfocus:focus-visible{opacity:1}
 #lb.focus #fbar{display:block;position:absolute;left:50%;bottom:14px;transform:translateX(-50%);padding:4px 14px;border-radius:14px;background:#000b;color:#eee;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
 #lb.focus:hover #fbar,#lb.focus.mv #fbar{opacity:1}
-#toast{position:fixed;bottom:24px;right:24px;display:flex;align-items:center;gap:12px;background:var(--tx);color:var(--bg);padding:10px 14px;border-radius:10px;line-height:1.45;max-width:440px;z-index:75;font-size:13px;box-shadow:var(--pop)}
-.tundo{background:none;border:1px solid currentColor;color:inherit;padding:1px 10px;border-radius:6px;font-size:12px;flex:none}
-.tundo:hover{background:#ffffff22}
+#toast{position:fixed;bottom:24px;right:24px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;width:290px;box-sizing:border-box;background:#fff;color:var(--tx);padding:8px 12px;border-radius:9px;line-height:1.4;z-index:75;font-size:12.5px;box-shadow:0 8px 28px #00000038,0 1px 2px #00000022}
+:root[data-theme=dark] #toast{background:#000;color:#f2f3f2;box-shadow:0 8px 28px #000000aa,0 0 0 1px #ffffff14}
+.tmsg{flex:1;min-width:0}.tmsg b{font-weight:700}.tcnt{flex:none;color:var(--mu);font-variant-numeric:tabular-nums}
+.tprog{order:9;flex-basis:100%;height:2px;border-radius:2px;background:#e3e5e1;overflow:hidden;margin-top:2px}:root[data-theme=dark] .tprog{background:#ffffff2e}
+.tprog i{display:block;height:100%;width:35%;background:var(--ac);transition:width .2s}.tprog.ind i{animation:tind 1.2s ease-in-out infinite}
+@keyframes tind{from{transform:translateX(-100%)}to{transform:translateX(290%)}}
+.tundo{background:none;border:0;color:inherit;padding:0;font-size:inherit;font-weight:700;flex:none}
+.tundo:hover{background:none;text-decoration:underline}
 
 /* ---------- Ventanas (ajustes, resumen, atajos…) ---------- */
 .over{position:fixed;inset:0;background:var(--scrim,#00000059);z-index:60;display:flex;align-items:flex-start;justify-content:center;padding:6vh 16px;overflow:auto}
@@ -453,7 +458,7 @@ table.st tr.tot td{font-weight:600;border-top:1.5px solid var(--ln)}
   .form .two{grid-template-columns:1fr}
   .over{padding:4vh 12px}
   .over .panel{padding:14px 16px 18px}
-  #toast{left:12px;right:12px;max-width:none}
+  #toast{left:12px;right:12px;width:auto}
   #multi{max-width:calc(100vw - 24px)}}
 
 /* ---------- Impresión ---------- */
