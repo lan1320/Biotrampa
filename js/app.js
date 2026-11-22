@@ -103,6 +103,7 @@ $('#toast').onclick = () => $('#toast').hidden = true; // un clic lo cierra (sus
 /* ---------- Tooltips (1.4.42): uno solo, lee title o data-tip de cualquier elemento ---------- */
 const TIPKEY = /^(?:tecla )?((?:(?:Ctrl\/Cmd|Ctrl|Cmd|Shift|Alt)\+)*(?:\S|Esc|Enter|Espacio|Retroceso|Supr|Tab))$/i, MAC = /Mac|iP/.test(navigator.platform);
 let tipEl = null, tipT = 0;
+const NOTIP = '#grid, #cats, #indbody, #lbcats, #filtbtn, #filtbox, #gfilter'; // 1.4.43: sin tooltip en fotos, especies, individuos y filtros (el title se queda para lectores de pantalla)
 function tipShow(el) {
   if (!el.isConnected) return;
   const [a, b] = (el._tt || el.title || el.dataset.tip || '').split('\n'), m = /^(.*?)\s*\(([^()]+)\)$/.exec(a), k = m && TIPKEY.exec(m[2]), tip = $('#tip');
@@ -136,12 +137,13 @@ document.addEventListener('mouseover', e => { if (matchMedia('(hover: none)').ma
   tipHide();
   if (!el) return;
   tipEl = el;
+  const off = el.closest(NOTIP);
   if (el.title) { el._tt = el.title; // con el mouse encima se quita el title para que no salga también el del navegador; tipHide lo devuelve
     el.removeAttribute('title'); }
-  tipT = setTimeout(() => tipShow(el), 400); });
+  if (!off) tipT = setTimeout(() => tipShow(el), 400); });
 document.addEventListener('focusin', e => { const el = tipTarget(e.target);
   tipHide();
-  if (el && e.target.matches(':focus-visible')) { tipEl = el;
+  if (el && e.target.matches(':focus-visible') && !el.closest(NOTIP)) { tipEl = el;
     tipShow(el); } });
 for (const ev of ['mousedown', 'focusout', 'scroll', 'wheel']) document.addEventListener(ev, tipHide, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') tipHide(); }, true);
