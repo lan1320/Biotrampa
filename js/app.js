@@ -100,6 +100,52 @@ function toast(m, ms = 4000, undoBtn = false, strong = false) { // undoBtn: bot�
   if (ms) toast.t = setTimeout(() => t.hidden = true, ms);
 }
 $('#toast').onclick = () => $('#toast').hidden = true; // un clic lo cierra (sus botones ya detienen el clic)
+/* ---------- Tooltips (1.4.42): uno solo, lee title o data-tip de cualquier elemento ---------- */
+const TIPKEY = /^(?:tecla )?((?:(?:Ctrl\/Cmd|Ctrl|Cmd|Shift|Alt)\+)*(?:\S|Esc|Enter|Espacio|Retroceso|Supr|Tab))$/i, MAC = /Mac|iP/.test(navigator.platform);
+let tipEl = null, tipT = 0;
+function tipShow(el) {
+  if (!el.isConnected) return;
+  const [a, b] = (el._tt || el.title || el.dataset.tip || '').split('\n'), m = /^(.*?)\s*\(([^()]+)\)$/.exec(a), k = m && TIPKEY.exec(m[2]), tip = $('#tip');
+  if (!a) return;
+  const txt = k ? m[1] : a, s = document.createElement('span');
+  s.textContent = txt;
+  tip.textContent = '';
+  tip.append(s);
+  if (k) { const kb = document.createElement('kbd');
+    kb.textContent = MAC ? k[1].replace(/Ctrl\/Cmd\+Shift\+/i, '⇧⌘').replace(/Ctrl\/Cmd\+/i, '⌘').replace(/Shift\+/i, '⇧') : k[1].replace(/Ctrl\/Cmd/i, 'Ctrl');
+    tip.append(kb); }
+  if (b) { const d = document.createElement('span');
+    d.className = 'tsub';
+    d.textContent = b;
+    tip.append(d); }
+  tip.className = b || txt.length > 40 ? 'long' : '';
+  tip.hidden = false;
+  const r = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.max(8, Math.min(r.left + r.width / 2 - w / 2, innerWidth - w - 8)) + 'px';
+  tip.style.top = (r.bottom + 8 + h <= innerHeight - 8 ? r.bottom + 8 : Math.max(8, r.top - 8 - h)) + 'px'; }
+function tipHide() { clearTimeout(tipT);
+  if (tipEl && tipEl._tt != null) { if (!tipEl.hasAttribute('title')) tipEl.title = tipEl._tt;
+    tipEl._tt = null; }
+  tipEl = null;
+  $('#tip').hidden = true; }
+const tipTarget = t => { const el = t.closest && t.closest('[title],[data-tip]');
+  return el && !el.closest('#toast') ? el : null; };
+document.addEventListener('mouseover', e => { if (matchMedia('(hover: none)').matches) return; // en pantallas táctiles no
+  if (tipEl && tipEl.contains(e.target)) return; // sigue dentro del mismo elemento (su title está quitado mientras se ve)
+  const el = tipTarget(e.target);
+  tipHide();
+  if (!el) return;
+  tipEl = el;
+  if (el.title) { el._tt = el.title; // con el mouse encima se quita el title para que no salga también el del navegador; tipHide lo devuelve
+    el.removeAttribute('title'); }
+  tipT = setTimeout(() => tipShow(el), 400); });
+document.addEventListener('focusin', e => { const el = tipTarget(e.target);
+  tipHide();
+  if (el && e.target.matches(':focus-visible')) { tipEl = el;
+    tipShow(el); } });
+for (const ev of ['mousedown', 'focusout', 'scroll', 'wheel']) document.addEventListener(ev, tipHide, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') tipHide(); }, true);
+document.documentElement.addEventListener('mouseleave', tipHide);
 /* ---------- Animaciones de entrada y salida de ventanas ----------
    Se vigila el atributo "hidden": al mostrarse, la ventana se dibuja invisible (.bt-pre) y se anima desde el cuadro siguiente;
    al ocultarse, la lógica de la app ya la da por cerrada, pero .bt-out la deja verse mientras se desvanece. */
