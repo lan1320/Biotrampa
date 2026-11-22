@@ -42,7 +42,8 @@ function readDownList() { // devuelve los periodos válidos, o null (y avisa) si
 }
 
 /* ---------- Resumen: secciones nuevas ---------- */
-const xsec = (id, title, tip, body) => { const f = ls('bt_sumfold', {}); return `<details class="ssec" id="${id}"${f[id] ? '' : ' open'}><summary title="${esc(tip)}">${title}</summary><p class="ssub">${esc(tip)}</p>${body}</details>`; };
+const xsec = (id, title, tip, body) => { const f = ls('bt_sumfold', {});
+  return `<details class="ssec" id="${id}"${f[id] ? '' : ' open'}><summary title="${esc(tip)}">${title}</summary><p class="ssub">${esc(tip)}</p>${body}</details>`; };
 function extraSummary() {
   const sp = sumData.cats.filter(c => sumData.evs.some(e => e.c === c && !isNaN(e.t)));
   const tr = ls('bt_tras', []), a = sp.includes(tr[0]) ? tr[0] : sp[0], b = sp.includes(tr[1]) && tr[1] !== a ? tr[1] : sp.find(c => c !== a);
@@ -57,10 +58,14 @@ function extraSummary() {
     + indSummaryHtml();
 }
 function bindExtraSummary() {
-  document.querySelectorAll('#sumbody [data-ficha]').forEach(r => r.onclick = () => { closeOver(true); openFicha(r.dataset.ficha); }); // 1.4.24
+  document.querySelectorAll('#sumbody [data-ficha]').forEach(r => r.onclick = () => { closeOver(true);
+    openFicha(r.dataset.ficha); }); // 1.4.24
   document.querySelectorAll('#sumbody img.indth').forEach(im => thumbAny(im, S.items[im.dataset.ix])); // miniatura de cada individuo
   drawFun(); drawAcu();
-  if ($('#tr_a')) { const go = () => { sv('bt_tras', [$('#tr_a').value, $('#tr_b').value]); drawTras(); }; $('#tr_a').onchange = $('#tr_b').onchange = go; drawTras(); }
+  if ($('#tr_a')) { const go = () => { sv('bt_tras', [$('#tr_a').value, $('#tr_b').value]);
+    drawTras(); };
+    $('#tr_a').onchange = $('#tr_b').onchange = go;
+    drawTras(); }
   if ($('#fungap')) $('#fungap').onchange = e => { sv('bt_gap', +e.target.value); drawFun(); };
 }
 
@@ -70,28 +75,39 @@ function drawFun() {
   const box = $('#funchart'); if (!box) return;
   const { stations, td, its } = sumData;
   const rows = stations.filter(s => td[s].start && td[s].end).map(s => ({ s, t: td[s], dn: (S.stations[s] && S.stations[s].down) || [], ph: new Set(its.filter(i => station(i) === s && goodTs(i)).map(i => ymd(fixTs(i)))) }));
-  if (!rows.length) { box.innerHTML = '<p class="hint tiny">Faltan las fechas de instalación y retiro (o fotos con fecha) para dibujar la línea de tiempo.</p>'; return; }
+  if (!rows.length) { box.innerHTML = '<p class="hint tiny">Faltan las fechas de instalación y retiro (o fotos con fecha) para dibujar la línea de tiempo.</p>';
+    return; }
   const t0 = Math.min(...rows.map(r => Date.parse(r.t.start))), t1 = Math.max(...rows.map(r => Date.parse(r.t.end))) + DAY;
   const W = 720, L = 150, rh = 24, H = rows.length * rh + 24, x = t => L + (t - t0) / (t1 - t0) * (W - L - 8);
   const MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
   let svg = `<svg viewBox="0 0 ${W} ${H}" class="funsvg" role="img" aria-label="Línea de tiempo del funcionamiento de las cámaras">`;
   const d0 = new Date(t0), months = [];
-  for (let k = 0; k < 600; k++) { const t = Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() + k, 1); if (t > t1) break; if (t >= t0) months.push(t); }
+  for (let k = 0; k < 600; k++) { const t = Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() + k, 1);
+    if (t > t1) break;
+    if (t >= t0) months.push(t); }
   const step = Math.max(1, Math.ceil(months.length / 12));
-  months.forEach((t, k) => { svg += `<line x1="${x(t)}" x2="${x(t)}" y1="0" y2="${H - 18}" class="grid"/>`; if (k % step === 0) { const d = new Date(t); svg += `<text x="${x(t) + 2}" y="${H - 6}" class="ax">${MES[d.getUTCMonth()]} ${d.getUTCFullYear()}</text>`; } });
+  months.forEach((t, k) => { svg += `<line x1="${x(t)}" x2="${x(t)}" y1="0" y2="${H - 18}" class="grid"/>`;
+    if (k % step === 0) { const d = new Date(t);
+    svg += `<text x="${x(t) + 2}" y="${H - 6}" class="ax">${MES[d.getUTCMonth()]} ${d.getUTCFullYear()}</text>`; } });
   rows.forEach((r, k) => {
     const y = k * rh + 4, a = Date.parse(r.t.start), b = Date.parse(r.t.end) + DAY;
     svg += `<text x="${L - 8}" y="${y + 13}" class="lbl">${esc(r.s.length > 22 ? r.s.slice(0, 21) + '…' : r.s)}<title>${esc(r.s)}</title></text>`;
     svg += `<rect x="${x(a)}" y="${y + 3}" width="${Math.max(1, x(b) - x(a))}" height="14" rx="5" class="run${r.t.est ? ' est' : ''}"><title>${esc(r.s)}: ${r.t.start} a ${r.t.end}${r.t.est ? ' (estimado con las fotos)' : ''} · ${r.t.days} días-trampa${r.t.down ? ` (${r.t.down} sin funcionar)` : ''}</title></rect>`;
-    for (const p of r.dn) { if (!p.a || !p.b) continue; const pa = Date.parse(p.a), pb = Date.parse(p.b) + DAY; svg += `<rect x="${x(pa)}" y="${y + 1}" width="${Math.max(1.5, x(pb) - x(pa))}" height="18" class="down"><title>Sin funcionar: ${p.a} a ${p.b}${p.why ? ' · ' + esc(p.why) : ''}</title></rect>`; }
-    for (const d of r.ph) { const t = Date.parse(d); if (t < t0 || t >= t1) continue; svg += `<rect x="${x(t)}" y="${y + 6}" width="${Math.max(1.2, x(t + DAY) - x(t))}" height="8" rx="1" class="ph"><title>${d}: hay fotos</title></rect>`; }
+    for (const p of r.dn) { if (!p.a || !p.b) continue;
+      const pa = Date.parse(p.a), pb = Date.parse(p.b) + DAY;
+      svg += `<rect x="${x(pa)}" y="${y + 1}" width="${Math.max(1.5, x(pb) - x(pa))}" height="18" class="down"><title>Sin funcionar: ${p.a} a ${p.b}${p.why ? ' · ' + esc(p.why) : ''}</title></rect>`; }
+    for (const d of r.ph) { const t = Date.parse(d);
+      if (t < t0 || t >= t1) continue;
+      svg += `<rect x="${x(t)}" y="${y + 6}" width="${Math.max(1.2, x(t + DAY) - x(t))}" height="8" rx="1" class="ph"><title>${d}: hay fotos</title></rect>`; }
   });
   svg += '</svg>';
   const gap = +ls('bt_gap', 7), sug = [];
   for (const r of rows) {
     const dn = downSet(r.s); let run = null;
     const end = () => { if (run && run.n >= gap) sug.push({ s: r.s, ...run }); run = null; };
-    for (const d of dayList(r.t.start, r.t.end)) { if (!r.ph.has(d) && !dn.has(d)) { if (!run) run = { a: d, n: 0 }; run.b = d; run.n++; } else end(); }
+    for (const d of dayList(r.t.start, r.t.end)) { if (!r.ph.has(d) && !dn.has(d)) { if (!run) run = { a: d, n: 0 };
+      run.b = d;
+      run.n++; } else end(); }
     end();
   }
   const tot = rows.reduce((a, r) => a + r.t.down, 0);
@@ -100,9 +116,13 @@ function drawFun() {
     + sug.slice(0, 30).map((g, k) => `<div>${esc(g.s)}: ${g.a} a ${g.b} (${g.n} días) <button class="lnk2" data-sug="${k}">Marcar como sin funcionar</button></div>`).join('') + (sug.length > 30 ? `<div>y ${sug.length - 30} más…</div>` : '') + '</div>';
   box.innerHTML = html;
   box.querySelectorAll('[data-sug]').forEach(b => b.onclick = () => {
-    const g = sug[+b.dataset.sug], st = { ...(S.stations[g.s] || {}) }; st.down = [...(st.down || []), { a: g.a, b: g.b, why: 'sin fotos (confirmado)' }].sort((p, q) => p.a.localeCompare(q.a));
+    const g = sug[+b.dataset.sug], st = { ...(S.stations[g.s] || {}) };
+      st.down = [...(st.down || []), { a: g.a, b: g.b, why: 'sin fotos (confirmado)' }].sort((p, q) => p.a.localeCompare(q.a));
     if (!st.start || !st.end) { const t = trapDays(g.s); st.start = st.start || t.start; st.end = st.end || t.end; }
-    S.stations[g.s] = st; saveReg(); renderSummary(); toast(`«${g.s}»: ${g.n} día(s) marcados sin funcionar. Se descontaron de los días-trampa.`, 5000);
+    S.stations[g.s] = st;
+      saveReg();
+      renderSummary();
+      toast(`«${g.s}»: ${g.n} día(s) marcados sin funcionar. Se descontaron de los días-trampa.`, 5000);
   });
 }
 
@@ -113,21 +133,34 @@ function drawAcu() {
   const { stations, td, its } = sumData, units = [];
   for (const s of stations) {
     const t = td[s]; if (!t.start || !t.end) continue; const dn = downSet(s), by = new Map();
-    for (const it of its) if (station(it) === s && goodTs(it)) { const d = ymd(fixTs(it)); for (const c of allCats(it)) if (c !== GH && S.cats.includes(c)) { if (!by.has(d)) by.set(d, new Set()); by.get(d).add(c); } }
+    for (const it of its) if (station(it) === s && goodTs(it)) { const d = ymd(fixTs(it));
+      for (const c of allCats(it)) if (c !== GH && S.cats.includes(c)) { if (!by.has(d)) by.set(d, new Set());
+      by.get(d).add(c); } }
     for (const d of dayList(t.start, t.end)) if (!dn.has(d)) units.push(by.has(d) ? [...by.get(d)] : null);
   }
-  const n = units.length; if (n < 2) { box.innerHTML = '<p class="hint tiny">Se necesitan estaciones con fechas (o fotos con fecha) para la curva.</p>'; return; }
+  const n = units.length;
+    if (n < 2) { box.innerHTML = '<p class="hint tiny">Se necesitan estaciones con fechas (o fotos con fecha) para la curva.</p>';
+    return; }
   const R = 100, mean = new Float64Array(n), idx = Array.from({ length: n }, (_, i) => i);
   for (let r = 0; r < R; r++) {
     for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; }
-    const seen = new Set(); for (let k = 0; k < n; k++) { const u = units[idx[k]]; if (u) for (const c of u) seen.add(c); mean[k] += seen.size / R; }
+    const seen = new Set();
+      for (let k = 0; k < n; k++) { const u = units[idx[k]];
+      if (u) for (const c of u) seen.add(c);
+      mean[k] += seen.size / R; }
   }
-  const tot = mean[n - 1]; if (!tot) { box.innerHTML = '<p class="hint tiny">Todavía no hay especies clasificadas en fotos con fecha.</p>'; return; }
+  const tot = mean[n - 1];
+    if (!tot) { box.innerHTML = '<p class="hint tiny">Todavía no hay especies clasificadas en fotos con fecha.</p>';
+    return; }
   const W = 720, H = 220, L = 34, B = 26, X = k => L + k / (n - 1) * (W - L - 10), Y = v => H - B - v / Math.ceil(tot) * (H - B - 10);
-  const pts = []; const stp = Math.max(1, Math.floor(n / 240)); for (let k = 0; k < n; k += stp) pts.push(`${X(k).toFixed(1)},${Y(mean[k]).toFixed(1)}`); pts.push(`${X(n - 1).toFixed(1)},${Y(tot).toFixed(1)}`);
+  const pts = [];
+    const stp = Math.max(1, Math.floor(n / 240));
+    for (let k = 0; k < n; k += stp) pts.push(`${X(k).toFixed(1)},${Y(mean[k]).toFixed(1)}`);
+    pts.push(`${X(n - 1).toFixed(1)},${Y(tot).toFixed(1)}`);
   let svg = `<svg viewBox="0 0 ${W} ${H}" class="acusvg" role="img" aria-label="Curva de acumulación de especies">`;
   for (let v = 0; v <= Math.ceil(tot); v += Math.max(1, Math.round(Math.ceil(tot) / 5))) svg += `<line x1="${L}" x2="${W - 10}" y1="${Y(v)}" y2="${Y(v)}" class="grid"/><text x="${L - 6}" y="${Y(v) + 4}" class="ax" style="text-anchor:end">${v}</text>`;
-  for (let k = 0; k <= 4; k++) { const d = Math.round((n - 1) * k / 4); svg += `<text x="${X(d)}" y="${H - 8}" class="ax">${d + 1}</text>`; }
+  for (let k = 0; k <= 4; k++) { const d = Math.round((n - 1) * k / 4);
+    svg += `<text x="${X(d)}" y="${H - 8}" class="ax">${d + 1}</text>`; }
   svg += `<polygon points="${X(0)},${Y(0)} ${pts.join(' ')} ${X(n - 1)},${Y(0)}" class="area"/><polyline points="${pts.join(' ')}" class="cur"/><line x1="${L}" x2="${W - 10}" y1="${H - B}" y2="${H - B}" class="base"/></svg>`;
   const last = Math.max(0, Math.floor(n * .9) - 1), rise = tot - mean[last];
   box.innerHTML = `<div class="sumnums"><div><b>${Math.round(tot)}</b><span>especies registradas</span></div><div><b>${n}</b><span>días-trampa</span></div><div><b class="acc">${rise < .5 ? 'Se aplana' : 'Sigue subiendo'}</b><span>último 10 % del esfuerzo</span></div></div>` + svg + `<p class="hint tiny">Eje horizontal: días-trampa acumulados (${n}); vertical: especies. Con todo el esfuerzo se registraron <b>${Math.round(tot)}</b> especie(s) (Fantasmas no cuenta). En el último 10 % del esfuerzo la curva subió en promedio <b>${rise.toFixed(1)}</b> especie(s): ${rise < .5 ? 'casi ya no sube, así que es poco probable que falten especies comunes.' : 'todavía sube; con más días-trampa probablemente aparecerían más especies.'} Es el promedio de 100 órdenes al azar de los días-trampa.</p>`;
@@ -135,7 +168,10 @@ function drawAcu() {
 
 /* Traslape de actividad (coeficiente Δ): densidades circulares con núcleo de von Mises.
    Ancho de banda: regla de Taylor (2008). Es un valor aproximado: para publicar, calcúlalo con el paquete overlap de R. */
-function besI(nu, x) { let term = Math.pow(x / 2, nu) / (nu === 2 ? 2 : 1), s = 0; for (let k = 0; k < 2000; k++) { s += term; term *= (x * x / 4) / ((k + 1) * (k + 1 + nu)); if (term < s * 1e-14) break; } return s; }
+function besI(nu, x) { let term = Math.pow(x / 2, nu) / (nu === 2 ? 2 : 1), s = 0;
+  for (let k = 0; k < 2000; k++) { s += term;
+  term *= (x * x / 4) / ((k + 1) * (k + 1 + nu));
+  if (term < s * 1e-14) break; } return s; }
 function vmKappa(th) {
   const n = th.length, C = th.reduce((a, t) => a + Math.cos(t), 0) / n, Sn = th.reduce((a, t) => a + Math.sin(t), 0) / n, R = Math.min(.999, Math.hypot(C, Sn));
   const k = R < .53 ? 2 * R + R ** 3 + 5 * R ** 5 / 6 : R < .85 ? -.4 + 1.39 * R + .43 / (1 - R) : 1 / (R ** 3 - 4 * R ** 2 + 3 * R);
@@ -144,16 +180,28 @@ function vmKappa(th) {
 function actDensity(th, G = 288) {
   const n = th.length, k = vmKappa(th), nu = Math.min(100, Math.max(.5, Math.pow(3 * n * k * k * besI(2, 2 * k) / (4 * Math.sqrt(Math.PI) * besI(0, k) ** 2), .4)));
   const i0e = besI(0, nu) * Math.exp(-nu), f = new Float64Array(G);
-  for (let g = 0; g < G; g++) { const a = g / G * 2 * Math.PI; let s = 0; for (const t of th) s += Math.exp(nu * (Math.cos(a - t) - 1)); f[g] = s / (n * 2 * Math.PI * i0e); }
+  for (let g = 0; g < G; g++) { const a = g / G * 2 * Math.PI;
+    let s = 0;
+    for (const t of th) s += Math.exp(nu * (Math.cos(a - t) - 1));
+    f[g] = s / (n * 2 * Math.PI * i0e); }
   return f;
 }
-function overlapDelta(A, B, G = 288) { const f = actDensity(A, G), g = actDensity(B, G); let s = 0; for (let i = 0; i < G; i++) s += Math.min(f[i], g[i]); return s * 2 * Math.PI / G; }
+function overlapDelta(A, B, G = 288) { const f = actDensity(A, G), g = actDensity(B, G);
+  let s = 0;
+  for (let i = 0; i < G; i++) s += Math.min(f[i], g[i]);
+  return s * 2 * Math.PI / G; }
 function drawTras() {
   const box = $('#trchart'); if (!box) return; const a = $('#tr_a').value, b = $('#tr_b').value;
   if (a === b) { box.innerHTML = '<p class="hint tiny">Elige dos especies distintas.</p>'; return; }
-  const th = c => sumData.evs.filter(e => e.c === c && !isNaN(e.t)).map(e => { const d = new Date(e.t); return (d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600) / 24 * 2 * Math.PI; });
-  const A = th(a), B = th(b); if (A.length < 2 || B.length < 2) { box.innerHTML = '<p class="hint tiny">Cada especie necesita al menos 2 eventos con fecha.</p>'; return; }
-  const G = 288, f = actDensity(A, G), g = actDensity(B, G); let dl = 0, mx = 0; for (let i = 0; i < G; i++) { dl += Math.min(f[i], g[i]); mx = Math.max(mx, f[i], g[i]); } dl *= 2 * Math.PI / G;
+  const th = c => sumData.evs.filter(e => e.c === c && !isNaN(e.t)).map(e => { const d = new Date(e.t);
+    return (d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600) / 24 * 2 * Math.PI; });
+  const A = th(a), B = th(b);
+    if (A.length < 2 || B.length < 2) { box.innerHTML = '<p class="hint tiny">Cada especie necesita al menos 2 eventos con fecha.</p>';
+    return; }
+  const G = 288, f = actDensity(A, G), g = actDensity(B, G);
+    let dl = 0, mx = 0;
+    for (let i = 0; i < G; i++) { dl += Math.min(f[i], g[i]);
+    mx = Math.max(mx, f[i], g[i]); } dl *= 2 * Math.PI / G;
   const W = 720, H = 220, L = 10, Bm = 26, X = i => L + i / G * (W - 2 * L), Y = v => H - Bm - v / mx * (H - Bm - 10);
   const line = arr => Array.from(arr, (v, i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ') + ` ${X(G).toFixed(1)},${Y(arr[0]).toFixed(1)}`;
   const mn = Float64Array.from(f, (v, i) => Math.min(v, g[i]));
@@ -167,8 +215,12 @@ function drawTras() {
 /* ---------- Respaldo del proyecto: solo datos (nunca fotos ni videos) ---------- */
 function backupData() {
   const registros = {};
-  for (const src of S.srcs) { const files = {}; for (const it of S.items) if (it.src === src) { const e = regEntry(it); if (e) files[relPath(it)] = e; } registros[src.label] = { carpeta: src.name, par: src.pair || null, files }; }
-  const ajustes = {}; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('bt_')) ajustes[k] = localStorage.getItem(k); } } catch (e) {}
+  for (const src of S.srcs) { const files = {};
+    for (const it of S.items) if (it.src === src) { const e = regEntry(it);
+    if (e) files[relPath(it)] = e; } registros[src.label] = { carpeta: src.name, par: src.pair || null, files }; }
+  const ajustes = {};
+    try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i);
+    if (k && k.startsWith('bt_')) ajustes[k] = localStorage.getItem(k); } } catch (e) {}
   return { app: 'BioTrampa', tipo: 'respaldo', version: '1.3', fecha: new Date().toISOString(), proyecto: projName(), estaciones: S.stations, correcciones: S.offsets, individuos: { especies: S.indSp, list: S.ind.list, act: S.ind.act }, registros, ajustes };
 }
 function saveBackup() {
@@ -187,7 +239,8 @@ function fillFromReg(it, r) { // completa lo que le falta a la foto con los dato
   for (const [c, o] of Object.entries(r.obs || {})) if (!it.obs[c] || !Object.keys(it.obs[c]).length) { it.obs[c] = o; ch = true; }
   if (r.rv && !it.rev) { it.rev = true; it.revWhy = r.rw || ''; ch = true; }
   if (r.vf && !it.ver) { it.ver = r.vf; it.verBy = r.vb || ''; ch = true; }
-  if (it.cat && Array.isArray(r.xt)) for (const c of r.xt) if (c && c !== it.cat && !hasCat(it, c)) { it.extras.push({ cat: c }); ch = true; }
+  if (it.cat && Array.isArray(r.xt)) for (const c of r.xt) if (c && c !== it.cat && !hasCat(it, c)) { it.extras.push({ cat: c });
+    ch = true; }
   if (r.bl && !it.bl) { it.bl = r.bl; it.bb = r.bb || ''; it.br = r.br || ''; ch = true; }
   return ch;
 }
@@ -195,7 +248,12 @@ async function restoreBackup(j) {
   const nReg = Object.keys(j.registros || {}).length, nInd = Object.keys((j.individuos && j.individuos.list) || {}).length;
   if (!confirm(`Respaldo de «${j.proyecto}» del ${String(j.fecha || '').slice(0, 10)}.\n\nSe restaurarán la lista de especies (con teclas y nombres científicos), los datos rápidos y los ajustes de este navegador${S.srcs.length ? `; y, en el proyecto abierto, los datos de las estaciones y de las fotos que falten (${nReg} estación(es) en el respaldo)` : '. Abre antes el proyecto si también quieres recuperar los datos de sus fotos'}${nInd ? `; y ${nInd} individuo(s) del catálogo` : ''}.\n\nNo se mueve ni se borra ninguna foto y no se reemplaza lo que ya tengas escrito. ¿Continuar?`)) return;
   for (const [k, v] of Object.entries(j.ajustes || {})) if (typeof v === 'string') try { localStorage.setItem(k, v); } catch (e) {}
-  S.cats = ls('bt_cats', S.cats); S.keys = ls('bt_keys', S.keys); S.sci = Object.assign({}, SCI, ls('bt_sci', {})); S.presets = ls('bt_presets', S.presets); GH = ls('bt_gh', GH); S.indSp = ls('bt_indsp', S.indSp);
+  S.cats = ls('bt_cats', S.cats);
+    S.keys = ls('bt_keys', S.keys);
+    S.sci = Object.assign({}, SCI, ls('bt_sci', {}));
+    S.presets = ls('bt_presets', S.presets);
+    GH = ls('bt_gh', GH);
+    S.indSp = ls('bt_indsp', S.indSp);
   let nst = 0, nph = 0;
   for (const src of S.srcs) {
     const r = (j.registros || {})[src.label] || Object.values(j.registros || {}).find(x => x.carpeta === src.name); if (!r) continue;
@@ -211,7 +269,9 @@ async function restoreBackup(j) {
 }
 $('#filebak').onchange = async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return; let j;
-  try { const z = /\.zip$/i.test(f.name) && await readZipBin(await f.arrayBuffer()), txt = z ? z['respaldo.json'] && new TextDecoder().decode(z['respaldo.json']) : await f.text(); if (!txt) throw new Error('no tiene respaldo.json'); j = JSON.parse(txt); } // 1.4.37: también un .zip vuelto a comprimir
+  try { const z = /\.zip$/i.test(f.name) && await readZipBin(await f.arrayBuffer()), txt = z ? z['respaldo.json'] && new TextDecoder().decode(z['respaldo.json']) : await f.text();
+    if (!txt) throw new Error('no tiene respaldo.json');
+    j = JSON.parse(txt); } // 1.4.37: también un .zip vuelto a comprimir
   catch (x) { return toast('No se pudo leer el respaldo: ' + x.message, 6000); }
   if (!j || j.tipo !== 'respaldo') return toast('Ese archivo no es un respaldo de BioTrampa.', 5000);
   await restoreBackup(j);
@@ -230,12 +290,15 @@ async function blindSet(items, cat) { // cat = null borra la respuesta a ciegas
   const who = $('#reviewer').value.trim(), cur = S.cur;
   for (const i of items) { i.bl = cat || ''; i.bb = cat ? who : ''; i.br = ''; }
   saveReg(); applyFilters(items);
-  if (cur && cat && $('#adv').checked) { const k = S.view.indexOf(cur), nx = S.view.slice(k + 1).find(x => !x.bl && !groupOf(x).includes(cur)); show(nx || cur); } else if (cur) show(cur);
+  if (cur && cat && $('#adv').checked) { const k = S.view.indexOf(cur), nx = S.view.slice(k + 1).find(x => !x.bl && !groupOf(x).includes(cur));
+    show(nx || cur); } else if (cur) show(cur);
   toast(cat ? `A ciegas: ${items.length} foto(s) → ${cat}. No se movió ningún archivo.` : 'Respuesta a ciegas borrada.', 2200);
 }
 async function applySp(it, cat) { // clasifica de verdad (mueve la foto) aunque la revisión a ciegas esté activa; devuelve si quedó en esa especie
   cat = addSpecies(cat) || cat; // 1.4.37: una especie que no está en tu lista se agrega (antes la foto se movía sin botón)
-  await locked(async () => { const was = S.blindOff; S.blindOff = true; try { await classify([it], cat, true); } finally { S.blindOff = was; } });
+  await locked(async () => { const was = S.blindOff;
+    S.blindOff = true;
+    try { await classify([it], cat, true); } finally { S.blindOff = was; } });
   return it.cat === cat;
 }
 function openDis(list, title, la, lb, onA, onB) { // desacuerdos: barra con Especie / Individuo y cada foto con sus dos respuestas (1.4.32)
@@ -248,17 +311,28 @@ function openDis(list, title, la, lb, onA, onB) { // desacuerdos: barra con Espe
     const img = r.querySelector('img'); if (d.it) { img.dataset.id = d.it.id; thumb(img); } else img.remove();
     r.querySelector('.dinfo b').textContent = d.it.origName || d.it.name;
     r.querySelector('.dinfo small').textContent = [station(d.it), d.kind === 'id' ? `ID del individuo (${d.c})` : ''].filter(Boolean).join(' · ');
-    const ba = r.querySelector('.da'), bb = r.querySelector('.db'); ba.querySelector('small').textContent = la; ba.querySelector('b').textContent = d.a; bb.querySelector('small').textContent = lb; bb.querySelector('b').textContent = d.b;
+    const ba = r.querySelector('.da'), bb = r.querySelector('.db');
+      ba.querySelector('small').textContent = la;
+      ba.querySelector('b').textContent = d.a;
+      bb.querySelector('small').textContent = lb;
+      bb.querySelector('b').textContent = d.b;
     ba.title = 'Queda esta respuesta'; bb.title = 'Queda esta respuesta (si es otra especie, la foto se mueve a su carpeta)';
-    const done = v => { r.classList.add('done'); r.querySelectorAll('.dch').forEach(x => x.remove()); r.querySelector('.dinfo small').textContent = `Resuelta: queda ${v}`; disCount(); };
-    ba.onclick = async () => { if (await onA(d) !== false) done(d.a); }; bb.onclick = async () => { if (await onB(d) !== false) done(d.b); }; // 1.4.37: si no se pudo mover, la fila sigue pendiente
+    const done = v => { r.classList.add('done');
+      r.querySelectorAll('.dch').forEach(x => x.remove());
+      r.querySelector('.dinfo small').textContent = `Resuelta: queda ${v}`;
+      disCount(); };
+    ba.onclick = async () => { if (await onA(d) !== false) done(d.a); };
+      bb.onclick = async () => { if (await onB(d) !== false) done(d.b); }; // 1.4.37: si no se pudo mover, la fila sigue pendiente
     r.querySelector('.dop').onclick = () => { closeOver(true); show(d.it); };
   }
   disCount(); disTab(list.some(d => d.kind !== 'id') || !list.length ? 'sp' : 'id'); openOver('#revdlg');
 }
 function disCount() { const n = k => $('#revbody').querySelectorAll(`.disrow:not(.done)${k ? `[data-k="${k}"]` : ''}`).length;
-  $('#rev_n').textContent = `${n()} por resolver`; document.querySelectorAll('#revdlg [data-rk]').forEach(b => { b.querySelector('em').textContent = n(b.dataset.rk); b.hidden = !$('#revbody').querySelector(`[data-k="${b.dataset.rk}"]`); }); }
-function disTab(k) { document.querySelectorAll('#revdlg [data-rk]').forEach(b => b.classList.toggle('on', b.dataset.rk === k)); $('#rev_h').textContent = k === 'id' ? 'Individuo' : 'Especie';
+  $('#rev_n').textContent = `${n()} por resolver`;
+    document.querySelectorAll('#revdlg [data-rk]').forEach(b => { b.querySelector('em').textContent = n(b.dataset.rk);
+    b.hidden = !$('#revbody').querySelector(`[data-k="${b.dataset.rk}"]`); }); }
+function disTab(k) { document.querySelectorAll('#revdlg [data-rk]').forEach(b => b.classList.toggle('on', b.dataset.rk === k));
+  $('#rev_h').textContent = k === 'id' ? 'Individuo' : 'Especie';
   $('#revbody').querySelectorAll('.disrow').forEach(r => r.hidden = r.dataset.k !== k); }
 document.querySelectorAll('#revdlg [data-rk]').forEach(b => b.onclick = () => disTab(b.dataset.rk));
 function blindDis() {
@@ -279,7 +353,9 @@ $('#filerev').onchange = async e => {
   await prepare(true);
   const clean = v => (v || '').replace(/^'(?=[=+@\-])/, ''), g = (r, n) => ix(n) < 0 ? '' : clean(r[ix(n)]);
   const key = (name, d, t, st) => norm(name) + '|' + (d ? d + ' ' + (t || '') : norm(st));
-  const mine = new Map(); for (const it of S.items) { const m = it.meta || {}; mine.set(key(it.origName || it.name, m.date, m.time, station(it)), it); }
+  const mine = new Map();
+    for (const it of S.items) { const m = it.meta || {};
+    mine.set(key(it.origName || it.name, m.date, m.time, station(it)), it); }
   const list = []; let miss = 0, same = 0;
   for (const r of rows.slice(1)) {
     const typ = g(r, 'Tipo'); if (typ && typ !== 'Principal') continue;
@@ -291,7 +367,12 @@ $('#filerev').onchange = async e => {
     if (ib && ia !== ib) list.push({ it, a: ia || 'sin ID', b: ib, c: a, kind: 'id' }); else same++;
   }
   openDis(list, `Comparación con «${f.name}»: ${same} coinciden, ${list.length} desacuerdo(s)`, 'Tú', 'Otra persona', async () => {},
-    async d => { if (d.kind === 'sp') { if (!(await applySp(d.it, d.sp))) return false; } else { const o = obsOf(d.it, d.c); o.id = d.b; delete o.ns; ensureInd(d.b, d.c); saveReg(); refreshCards([d.it]); } });
+    async d => { if (d.kind === 'sp') { if (!(await applySp(d.it, d.sp))) return false; } else { const o = obsOf(d.it, d.c);
+      o.id = d.b;
+      delete o.ns;
+      ensureInd(d.b, d.c);
+      saveReg();
+      refreshCards([d.it]); } });
   if (miss) toast(`${miss} fila(s) del CSV no se encontraron en este proyecto (otras fotos o sin fecha EXIF).`, 7000);
 };
 
@@ -299,7 +380,8 @@ $('#filerev').onchange = async e => {
 async function exportCTtable() {
   if (!S.items.length) return toast('Abre una carpeta primero.'); await prepare(true);
   const sts = [...new Set(S.items.map(station))].sort(), maxP = Math.max(0, ...sts.map(s => ((S.stations[s] || {}).down || []).length));
-  const head = ['Station', 'Cameras', 'Latitude', 'Longitude', 'Setup_date', 'Retrieval_date']; for (let k = 1; k <= maxP; k++) head.push(`Problem${k}_from`, `Problem${k}_to`);
+  const head = ['Station', 'Cameras', 'Latitude', 'Longitude', 'Setup_date', 'Retrieval_date'];
+    for (let k = 1; k <= maxP; k++) head.push(`Problem${k}_from`, `Problem${k}_to`);
   const rows = [head];
   for (const s of sts) {
     const t = trapDays(s), c = stCoords(s), dn = (S.stations[s] || {}).down || [];
