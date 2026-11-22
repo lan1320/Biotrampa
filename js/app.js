@@ -472,6 +472,7 @@ function setSpecies(p) { // proyecto nuevo: setSpecies({ indSp: [] }) = sin espe
 }
 function resetAll() {
   closeLb();
+  S.srcs.forEach(dropLock); // 1.4.39: se suelta la nota de «ocupada» de las estaciones que se cierran
   S.srcs = [];
   S.pending = [];
   S.items = [];
@@ -491,8 +492,26 @@ function resetAll() {
     for (const m of [fullUrls, refUrls]) { m.forEach(u => URL.revokeObjectURL(u));
       m.clear(); } } // 1.4.37: imágenes de la ficha, comparar e imprimir del proyecto anterior
 }
+/* 1.4.39: estación ocupada. Al abrir una estación se deja una nota en su carpeta (quién y desde cuándo). Si otra computadora
+   la tiene abierta, se avisa antes de abrirla: dos personas a la vez en la misma carpeta (Drive, OneDrive…) se borran los cambios.
+   La nota se renueva cada 2 min y caduca a los 10 (por si la otra computadora se apagó sin cerrar BioTrampa). */
+const LOCK = '.biotrampa_ocupado.json', LOCK_MS = 10 * 60e3;
+const DEV = (() => { let d = ls('bt_dev', ''); if (!d) { d = Math.random().toString(36).slice(2) + Date.now().toString(36); sv('bt_dev', d); } return d; })(); // esta computadora (este navegador)
+const lockOf = async h => { const j = await readJson(h, LOCK); return j && j.id !== DEV && Date.now() - (j.latido || 0) < LOCK_MS ? j : null; }; // nota vigente de OTRA computadora, o null
+async function writeLock(src) {
+  if (S.ro || !src.h || !src.h.getFileHandle) return;
+  try { const w = await (await src.h.getFileHandle(LOCK, { create: true })).createWritable();
+    await w.write(JSON.stringify({ app: 'BioTrampa', nota: 'Estación abierta en BioTrampa. Se borra sola al cerrar.', id: DEV, nombre: $('#reviewer').value.trim() || 'otra persona', desde: src.lockSince || (src.lockSince = Date.now()), latido: Date.now() }));
+    await w.close(); } catch (e) {} }
+async function dropLock(src) { try { const j = await readJson(src.h, LOCK); if (j && j.id === DEV) await src.h.removeEntry(LOCK); } catch (e) {} } // solo la nota propia
+setInterval(async () => { for (const s of S.srcs) { const o = await lockOf(s.h).catch(() => null);
+  if (!o) { writeLock(s); continue; } // se renueva la propia; si otra computadora la tomó, no se pelea por ella
+  if (!s.lockWarned) { s.lockWarned = true; toast(`${o.nombre} abrió «${s.label}» en otra computadora. Si las dos clasifican a la vez, una puede borrar los cambios de la otra.`, 15000); } } }, 120e3);
+addEventListener('pagehide', () => S.srcs.forEach(dropLock)); // al cerrar (si no alcanza, la nota caduca sola)
 async function loadSource(h) { // lee una carpeta como estación y suma sus fotos
   const src = { h, name: h.name, label: h.name, reg: {} };
+  if (!S.ro && h.getFileHandle) { const o = await lockOf(h).catch(() => null);
+    if (o && !confirm(`«${h.name}» está abierta en otra computadora por ${o.nombre} desde el ${ymd(o.desde)} a las ${hms(o.desde).slice(0, 5)}.\n\nSi las dos trabajan a la vez en la misma estación, una puede borrar los cambios de la otra.\n\nAceptar: abrirla de todos modos.\nCancelar: esperar (queda en el proyecto para abrirla después).`)) throw Object.assign(new Error(`está ocupada por ${o.nombre}`), { busy: true }); }
   await loadSrcReg(src); await loadIndFile(src); const want = src.label; src.label = uniqLabel(src.label);
   toast(`Leyendo «${src.label}»…`, 0); const before = S.items.length;
   try { await scan(h, [], src); } catch (e) { S.items = S.items.filter(i => i.src !== src);
@@ -501,7 +520,7 @@ async function loadSource(h) { // lee una carpeta como estación y suma sus foto
   if (src._off) S.offsets[src.label] = src._off;
   delete src._st;
   delete src._off; // 1.4.37: después de leer (si falla, no queda una estación fantasma)
-  attachCopies(src); S.srcs.push(src);
+  attachCopies(src); S.srcs.push(src); writeLock(src);
   if (want !== src.label) toast(`Ya había una estación llamada «${want}»; esta se llamará «${src.label}». Puedes cambiarle el nombre en Proyecto.`, 8000);
   return S.items.length - before;
 }
@@ -550,7 +569,7 @@ async function addHandle(h, quiet) { // agrega una carpeta ya elegida (con el se
     await afterScan(quiet ? '' : `«${lbl}» agregada: ${n} archivo(s). ${S.srcs.length > 1 ? `El proyecto tiene ${S.srcs.length} estaciones.` : 'Agrega las demás cámaras con el «+» de Estaciones o arrastrándolas a la ventana.'}`);
     if (isNew) openWizard(); else if (ls('bt_autost', true)) await autoFillStation(lbl);
     return n;
-  } catch (e) { toast('No se pudo leer la carpeta: ' + e.message, 8000); return 0; }
+  } catch (e) { toast(e.busy ? `«${h.name}» no se agregó: ${e.message}. Agrégala cuando la otra persona la cierre.` : 'No se pudo leer la carpeta: ' + e.message, 8000); return 0; }
 }
 /* Datos de la estación tomados de sus fotos: primera y última fecha, y promedio del GPS. Solo llena lo que falta. */
 async function autoFillStation(lbl, silent) {
@@ -612,16 +631,16 @@ async function openProject(id, open) { // open: abrir en el visor la foto donde 
   S.proj = { id: rec.id, name: rec.name };
   S.mapCfg = rec.mapCfg || null;
   setSpecies(rec.sp || Object.assign({ indSp: S.indSp }, ls('bt_sp_legacy', {}))); // 1.4.13: la lista de especies de este proyecto
-  const lost = [];
+  const lost = [], busy = [];
   for (const h of rec.handles || []) {
     let p = 'prompt';
     try { p = await h.queryPermission({ mode: 'readwrite' });
       if (p !== 'granted') p = await h.requestPermission({ mode: 'readwrite' }); } catch (e) { p = 'prompt'; }
-    if (p === 'granted') { try { await loadSource(h); } catch (e) { lost.push(h.name);
+    if (p === 'granted') { try { await loadSource(h); } catch (e) { (e.busy ? busy : lost).push(h.name);
         S.pending.push({ h, label: h.name }); } } else S.pending.push({ h, label: h.name }); // 1.4.37: si no se pudo leer (disco desconectado) se queda en el proyecto para reintentar
   }
   await saveProj();
-  await afterScan(`Proyecto «${rec.name}»: ${S.srcs.length} estación(es), ${S.items.length} archivo(s).${S.pending.length ? ` Falta dar permiso a ${S.pending.length}.` : ''}${lost.length ? ` No se encontraron: ${lost.join(', ')} (¿se movieron o borraron?).` : ''}`);
+  await afterScan(`Proyecto «${rec.name}»: ${S.srcs.length} estación(es), ${S.items.length} archivo(s).${S.pending.length ? ` Falta dar permiso a ${S.pending.length}.` : ''}${lost.length ? ` No se encontraron: ${lost.join(', ')} (¿se movieron o borraron?).` : ''}${busy.length ? ` Ocupadas en otra computadora: ${busy.join(', ')}.` : ''}`);
   if (rec.last) continueAt(rec.last, open);
 }
 function continueAt(last, open) { // vuelve a la estación y la foto donde te quedaste
@@ -682,6 +701,7 @@ function removeStation(src) {
   if (!confirm(`¿Quitar «${src.label}» del proyecto? Sus ${n} archivo(s) no se tocan: solo dejan de mostrarse aquí. Puedes volver a agregarla cuando quieras.`)) return;
   S.items = S.items.filter(i => i.src !== src);
   S.srcs = S.srcs.filter(s => s !== src);
+  dropLock(src);
   if (!S.srcs.some(s => (s.pair || s.label) === (src.pair || src.label))) delete S.stations[src.pair || src.label];
   delete S.offsets[src.label];
   if (S.f.src === src.label) S.f.src = null;
@@ -3643,6 +3663,12 @@ async function selfCheck() {
       if (it2.name !== 'IMG_1_1.JPG' || (await it.h.getFile()).size !== 1234 || (await it2.h.getFile()).size !== 999) fail.push('nombres repetidos en Clasificadas');
       await moveBack(it2); await moveBack(it);
       if (it.parts.join('/') !== 'DCIM' || it2.parts.join('/') !== 'DCIM/B' || it2.name !== 'IMG_1.JPG' || (await it2.h.getFile()).size !== 999) fail.push('nombres repetidos: volver cada una a su carpeta'); }
+    { // 1.4.39: nota de estación ocupada: la de otra computadora avisa; la propia y la vieja (más de 10 min) no
+      const put = async j => { const w = await (await top.getFileHandle(LOCK, { create: true })).createWritable(); await w.write(JSON.stringify(j)); await w.close(); };
+      await put({ id: 'otra', nombre: 'Ana', desde: Date.now(), latido: Date.now() }); const a = await lockOf(top);
+      await put({ id: DEV, latido: Date.now() }); const b = await lockOf(top);
+      await put({ id: 'otra', latido: Date.now() - LOCK_MS - 1000 }); const c = await lockOf(top);
+      if (!a || a.nombre !== 'Ana' || b || c) fail.push('aviso de estación ocupada'); }
     { // fila de especies del visor: de 40 especies falsas caben máx. 9 en 1 renglón y el resto se cuenta en «Más especies»
       const lb = $('#lb'), row = $('#lbcats'), more = $('#lbmore'), mp = more.parentNode, mn = more.nextSibling, was = lb.hidden, keep = [...row.childNodes];
       lb.hidden = false;
