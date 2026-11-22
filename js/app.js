@@ -3342,7 +3342,7 @@ $('#x_kml').onclick = xRun(exportKml);
 const xcMode = () => ls('bt_xcoord', 'full');
 const xco = v => { const m = xcMode();
   return m === 'none' ? '' : v === '' || v == null || m === 'full' || !isFinite(+v) ? v : (+v).toFixed(+m); };
-const xcPrev = () => { $('#xcoordpv').textContent = xcMode() === 'none' ? 'Ejemplo: E01 · Jaguar · 2025-03-14 · (sin latitud ni longitud)' : `Ejemplo: E01 · Jaguar · 2025-03-14 · ${xco('17.254310')}, ${xco('-89.612070')}`; };
+const xcPrev = () => { $('#xcoordpv').textContent = xcMode() === 'none' ? 'Ejemplo: E01 · Jaguar · 2025-03-14 · (sin latitud ni longitud)' : `Ejemplo: E01 · Jaguar · 2025-03-14 · ${xco('19.432608')}, ${xco('-99.133209')}`; };
 $('#xcoord').value = xcMode();
 xcPrev();
 $('#xcoord').onchange = e => { sv('bt_xcoord', e.target.value);
