@@ -73,7 +73,7 @@ function candidates(it, c, fl) { // mismo lado primero, los que tienen avisos al
 }
 const bestPhotos = (k, fl, zp) => (k.same.length ? k.same : fl && fl !== 'N' ? [] : k.ph).slice().sort((a, b) => !!(b.o.tr || []).length - !!(a.o.tr || []).length || !!zoneOf(b.o, zp) - !!zoneOf(a.o, zp) || refFirst(a, b));
 async function openIdent(it, c, mode) {
-  Object.assign(IDV, { c, id: null, p: null, drawing: null, pen: { l: false, r: false }, er: { l: false, r: false }, m: [], zp: null, full: true, step: 3, menu: null, more: false, cmp: false, mode: mode || 'pend', hist: { l: [], r: [] }, redo: { l: [], r: [] } }); resetView();
+  Object.assign(IDV, { c, id: null, p: null, drawing: null, pen: { l: false, r: false }, er: { l: false, r: false }, m: [], zp: null, menu: null, more: false, cmp: false, mode: mode || 'pend', hist: { l: [], r: [] }, redo: { l: [], r: [] } }); resetView();
   IDV.g = groupOf(it).filter(x => hasCat(x, c)); if (!IDV.g.includes(it)) IDV.g.unshift(it);
   $('#idv_burstc').checked = IDV.g.length > 1; $('#idv_burstl').hidden = IDV.g.length < 2; $('#idv_burstl').lastChild.textContent = ` Toda la ráfaga (${IDV.g.length})`; $('#idv_burstl').title = 'Al confirmar el individuo, también se asigna a las otras fotos de la ráfaga que no tengan uno';
   for (const k of ['lb', 'lc', 'rb', 'rc']) $('#idv_' + k).value = 1;
@@ -115,18 +115,12 @@ function renderParts() { // paso 2: qué parte se encierra y las zonas que ya ti
   for (const z of zs) { const d = document.createElement('div'); d.className = 'idzone'; d.innerHTML = `<i></i>${esc(PNAME(z.p))}<button title="Quitar este recuadro" aria-label="Quitar este recuadro"><i class="ic">${icon('trash')}</i></button>`;
     d.querySelector('button').onclick = () => { IDV.o.zn = zs.filter(x => x !== z); if (!IDV.o.zn.length) delete IDV.o.zn; saveReg(); renderParts(); drawZones('l'); idHint(); }; box.appendChild(d); }
 }
-function renderTog() { // paso 3: ver una zona (las dos fotos agrandadas al mismo tamaño) o las fotos completas
-  return; const g = $('#idv_tog'), zs = (IDV.o.zn || []).filter(z => PARTS.includes(z.p) || z.p); // 1.4.15: Lan pidió que las fotos no se acerquen solas a la zona
-  for (const p of [...zs.map(z => z.p), null]) { const b = document.createElement('button'); b.textContent = p ? PNAME(p) : 'Completas'; b.className = (p ? !IDV.full && IDV.zp === p : IDV.full) ? 'on' : '';
-    b.onclick = () => { IDV.full = !p; if (p) IDV.zp = p; resetView(); renderTog(); renderCands(); layoutId(); drawZones('l'); drawZones('r'); idHint(); }; g.appendChild(b); }
-}
 function setStep() { // 1.4.18: ya no hay pasos; siempre las dos fotos y la columna completa
-  IDV.step = 3; resetView(); IDV.drawing = null; IDV.pen = { l: false, r: false }; IDV.er = { l: false, r: false }; $('#idv_nf').hidden = true; $('#idv_s3').classList.remove('nfon');
-  IDV.full = true;
+  resetView(); IDV.drawing = null; IDV.pen = { l: false, r: false }; IDV.er = { l: false, r: false }; $('#idv_nf').hidden = true; $('#idv_s3').classList.remove('nfon');
   idHint(); requestAnimationFrame(() => { layoutId(); drawZones('l'); drawZones('r'); });
 }
 function sideObs(side) { return side === 'l' ? IDV.o : IDV.p && IDV.p.o; }
-const needZone = side => side === 'l' ? !!IDV.zm && !!IDV.zp : IDV.step === 3 && !IDV.full && !!(IDV.zp && IDV.p && !zoneOf(IDV.p.o, IDV.zp)); // dónde arrastrar dibuja un recuadro
+const needZone = side => side === 'l' && !!IDV.zm && !!IDV.zp; // dónde arrastrar dibuja un recuadro
 function idHint() {
   for (const side of ['l', 'r']) { const o = sideObs(side), n = ((o && o.tr) || []).length, h = $(`#idv_${side}hint`), P = IDV.zp; if (!n) IDV.er[side] = false;
     h.textContent = IDV.er[side] ? 'Toca una roseta para borrarla' : IDV.pen[side] ? `Dibuja alrededor de cada roseta (al soltar se cierra) · ${n} calcada(s)${n < TROK ? `, mínimo ${TROK}` : ''}` : o && needZone(side) ? `Arrastra un recuadro sobre ${P === 'pata' || P === 'cola' || P === 'cabeza' || P === 'cadera' ? 'la' : 'el'} ${P}${side === 'l' && zoneOf(o, P) ? ' (cambia la que ya tiene)' : side === 'r' ? ' en esta foto del catálogo' : ''}`
@@ -134,7 +128,6 @@ function idHint() {
     h.hidden = !h.textContent;
     const tb = $(`#idv_${side} .idtools`); tb.hidden = !o; tb.querySelector('[data-t=pen]').classList.toggle('on', IDV.pen[side]); tb.querySelector('[data-t=undo]').disabled = !IDV.hist[side].length; tb.querySelector('[data-t=redo]').disabled = !IDV.redo[side].length; tb.querySelector('[data-t=erase]').classList.toggle('on', IDV.er[side]); tb.querySelector('[data-t=erase]').disabled = !n; tb.querySelector('[data-t=eye]').classList.toggle('on', IDV.eye); tb.querySelector('[data-t=zone]')?.classList.toggle('on', !!IDV.zm);
     $('#idv_' + side).classList.toggle('pen', IDV.pen[side] || (o && needZone(side))); $('#idv_' + side).classList.toggle('erase', IDV.er[side]); }
-  const c = $('#idv_s2cnt'); if (c) { const n = ((IDV.o && IDV.o.tr) || []).length; c.textContent = n ? `${n} roseta(s) calcada(s) en esta foto.${n < TROK ? ` Para un individuo nuevo hacen falta al menos ${TROK}.` : ''}` : `Ninguna todavía. Es opcional para comparar, pero si resulta ser un individuo nuevo necesitas al menos ${TROK} (es la foto con rosetas que se entrega).`; }
 }
 async function loadSide(side, item) {
   const box = $('#idv_' + side), img = box.querySelector('img'), tok = IDV['t' + side] = (IDV['t' + side] || 0) + 1; // si se pide otra foto mientras carga, gana la última
@@ -164,11 +157,11 @@ $('#idv_play').onclick = () => { const v = VS.v; if (v) v.paused ? v.play().catc
 $('#idv_seek').oninput = e => { if (VS.v) { VS.v.pause(); VS.v.currentTime = +e.target.value; } };
 $('#idv_gf').onclick = () => { const v = VS.v; if (!v) return; v.pause(); IDV.o.vt = v.currentTime; saveReg(); loadSide('l', IDV.it); toast('Frame guardado: este cuadro, con sus rosetas, es el que se compara.', 3000); }; // shortcut: las rosetas no se borran al cambiar de cuadro; si se calca en otro momento hay que guardar ese frame
 $('#idv_l .idvt').onpointerdown = e => e.stopPropagation(); // no arrastra la foto
-function layoutId() { // con una parte elegida, cada foto se agranda hasta que esa zona llena el recuadro: así da igual si el animal estaba cerca o lejos
+function layoutId() { // cada foto cabe completa en su recuadro, con su propio zoom y desplazamiento
   for (const side of ['l', 'r']) { const box = $('#idv_' + side), img = box.querySelector('img'), inn = box.querySelector('.idin'), W = img.naturalWidth, H = img.naturalHeight;
     if (!W || !img.getAttribute('src')) { inn.style.width = inn.style.height = '0px'; continue; }
-    const bw = box.clientWidth, bh = box.clientHeight, z = null, V = IDV.v[side]; // 1.4.15: sin acercarse a la zona
-    const k = z ? Math.min(bw / z.w, bh / z.h) * .92 : Math.min(bw / W, bh / H), cx = z ? z.x + z.w / 2 : W / 2, cy = z ? z.y + z.h / 2 : H / 2;
+    const bw = box.clientWidth, bh = box.clientHeight, V = IDV.v[side]; // 1.4.15: sin acercarse a la zona
+    const k = Math.min(bw / W, bh / H), cx = W / 2, cy = H / 2;
     Object.assign(inn.style, { width: W * k + 'px', height: H * k + 'px', left: bw / 2 - cx * k + 'px', top: bh / 2 - cy * k + 'px', transformOrigin: `${cx * k}px ${cy * k}px`, transform: `translate(${V.x}px,${V.y}px) scale(${V.z})` });
     inn.querySelector('svg').setAttribute('viewBox', `0 0 ${W} ${H}`);
     for (const m of box.querySelectorAll('img,video')) m.style.filter = `brightness(${$('#idv_' + side + 'b').value}) contrast(${$('#idv_' + side + 'c').value})`; }
@@ -177,7 +170,7 @@ function layoutId() { // con una parte elegida, cada foto se agranda hasta que e
 const trPath = pts => 'M' + pts.map(p => p[0] + ' ' + p[1]).join('L') + 'Z';
 function drawZones(side) {
   const box = $('#idv_' + side), svg = box.querySelector('svg'), img = box.querySelector('img'), o = sideObs(side), W = img.naturalWidth || 1000, fs = W * .018, d = IDV.drawing && IDV.drawing.side === side ? IDV.drawing : null;
-  const zoom = IDV.step === 3 && !IDV.full, zs = [...((o && o.zn) || []).filter(z => !(zoom && z.p === IDV.zp) && !(d && d.z && z.p === IDV.zp && side === 'l')), ...(d && d.z ? [d.z] : [])]; // la zona que se está viendo ya es el marco: no se dibuja
+  const zs = [...((o && o.zn) || []).filter(z => !(d && d.z && z.p === IDV.zp && side === 'l')), ...(d && d.z ? [d.z] : [])]; // el recuadro que se está cambiando no se dibuja dos veces
   let h = zs.map(z => `<rect x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}"/>${z.p ? `<text x="${z.x}" y="${z.y - fs * .4}" font-size="${fs}">${esc(z.p)}</text>` : ''}`).join('');
   if (IDV.eye) { const trs = (o && o.tr) || [], r = W * .011;
     h += trs.map((t, i) => { const mx = Math.max(...t.map(p => p[0])), my = Math.min(...t.map(p => p[1])), m = side === 'r' ? IDV.m[i] : 0;
@@ -224,8 +217,8 @@ function renderVerdict() {
   else if (!p) v.textContent = `Aviso: de ${id} no hay fotos del lado ${(FL[IDV.o.fl] || '').toLowerCase()}. No se puede comparar, pero puedes agregarla: será su primera de este lado.`; // 1.4.27: antes no dejaba
   else if (!trs.length) { v.textContent = `Esta foto de ${id} no tiene rosetas calcadas. Cálcalas con el lápiz, o compara a ojo (queda como dudosa).`; dud.checked = true; }
   else if (n) { v.innerHTML = `<b class="no">${n} no coincide${n > 1 ? 'n' : ''}.</b> Una roseta distinta basta: no es ${esc(id)}.`; same.disabled = true; }
-  else if (y >= Math.min(TROK, trs.length)) { v.innerHTML = `<b class="ok">${y} coinciden.</b> Suficiente para decir que es el mismo.`; dud.checked = IDV.o.q === 'M'; }
-  else { v.textContent = y ? `${y} de ${Math.min(TROK, trs.length)} necesarias. Con menos, queda como dudosa.` : ''; dud.checked = true; }
+  else if (y >= TROK) { v.innerHTML = `<b class="ok">${y} coinciden.</b> Suficiente para decir que es el mismo.`; dud.checked = IDV.o.q === 'M'; } // 1.4.37: la misma regla que en Comparar
+  else { v.textContent = y || trs.length < TROK ? `${y} de ${TROK} necesarias${trs.length < TROK ? ` (esta foto solo tiene ${trs.length} calcada${trs.length > 1 ? 's' : ''}: calca más)` : ''}. Con menos, queda como dudosa.` : ''; dud.checked = true; }
 }
 function applyInd(id, opt = {}) { // asigna el individuo a la foto (y, si se pide, a su ráfaga); «no se puede saber» solo a esta foto
   if (S.busy) return toast('Espera: todavía se está moviendo una foto…', 2000);
@@ -266,7 +259,8 @@ for (const side of ['l', 'r']) { // zoom y desplazamiento sincronizados; arrastr
     else if (o && needZone(side)) { mode = 'zn'; a = imgPt(e); }
     if (mode && !a) mode = null;
     drag = { x: e.clientX, y: e.clientY, x0: IDV.v[side].x, y0: IDV.v[side].y, moved: false, mode, a }; if (mode === 'tr') IDV.drawing = { side, tr: [a.map(Math.round)] }; box.setPointerCapture(e.pointerId); });
-  box.addEventListener('pointermove', e => { if (drag && !e.buttons) drag = IDV.drawing = null; if (!drag) return; // 1.4.36: arrastre pegado (se soltó fuera) → se suelta const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true; if (!drag.moved) return;
+  box.addEventListener('pointermove', e => { if (drag && !e.buttons) drag = IDV.drawing = null; if (!drag) return; // 1.4.36: arrastre pegado (se soltó fuera) → se suelta
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true; if (!drag.moved) return;
     if (drag.mode === 'tr') { const b = imgPt(e), t = IDV.drawing.tr, l = t[t.length - 1], W = box.querySelector('img').naturalWidth; if (b && Math.hypot(b[0] - l[0], b[1] - l[1]) > W * .002) { t.push(b.map(Math.round)); drawZones(side); } }
     else if (drag.mode === 'zn') { const a = drag.a, b = imgPt(e); if (!b) return; IDV.drawing = { side, z: { x: Math.min(a[0], b[0]), y: Math.min(a[1], b[1]), w: Math.abs(a[0] - b[0]), h: Math.abs(a[1] - b[1]) } }; drawZones(side); }
     else if (IDV.v[side].z > 1) { const V = IDV.v[side], inn = box.querySelector('.idin'), mx = (V.z - 1) * inn.offsetWidth / 2, my = (V.z - 1) * inn.offsetHeight / 2; V.x = Math.max(-mx, Math.min(mx, drag.x0 + dx)); V.y = Math.max(-my, Math.min(my, drag.y0 + dy)); layoutId(); } }); // 1.4.36: la foto acercada no se sale del recuadro
@@ -304,7 +298,7 @@ function idTool(side, t) { const o = sideObs(side); if (!o) return;
 addEventListener('keydown', e => { // atajos dentro de «Identificar individuo» (antes de los de la galería: Ctrl+Z aquí deshace el trazo, no la clasificación)
   if ($('#idv').hidden || [...document.querySelectorAll('.over')].some(o => !o.hidden && o !== $('#idv') && $('#idv').compareDocumentPosition(o) & Node.DOCUMENT_POSITION_FOLLOWING)) return;
   if (/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
-  const k = e.key.toLowerCase(), ctl = (e.ctrlKey || e.metaKey) && !e.altKey, side = IDV.step === 3 ? IDV.hov : 'l'; let done = true;
+  const k = e.key.toLowerCase(), ctl = (e.ctrlKey || e.metaKey) && !e.altKey, side = IDV.hov; let done = true;
   if (ctl && k === 'z') idUndo(side, e.shiftKey); else if (ctl && k === 'y') idUndo(side, true);
   else if (e.ctrlKey || e.metaKey || e.altKey) done = false;
   else if (k === 'escape') { if (IDV.menu) { IDV.menu = null; idSeg(); } else { closeOver(); idClosed(); } }
@@ -318,7 +312,7 @@ addEventListener('keydown', e => { // atajos dentro de «Identificar individuo»
   else if (k === 's') { const sk = $('#idv_skip'); if (sk) sk.click(); }
   else if (k === 'enter' && !$('#idv_same').disabled && !document.activeElement.closest('button,summary,label')) $('#idv_same').click();
   else if (k === 'arrowdown' || k === 'arrowup') idMove(k === 'arrowdown' ? 1 : -1);
-  else if (/^[1-9]$/.test(k) && IDV.step === 3 && IDV.p) { const i = +k - 1, n = ((IDV.p.o.tr) || []).length; if (i < n) { IDV.m[i] = ((IDV.m[i] || 0) + 1) % 3; renderVerdict(); drawZones('r'); } }
+  else if (/^[1-9]$/.test(k) && IDV.p) { const i = +k - 1, n = ((IDV.p.o.tr) || []).length; if (i < n) { IDV.m[i] = ((IDV.m[i] || 0) + 1) % 3; renderVerdict(); drawZones('r'); } }
   else done = false;
   if (done) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
 addEventListener('keyup', e => { if (e.key === ' ') IDV.space = false; });
@@ -422,8 +416,9 @@ async function exportPackage() { const ids = Object.keys(S.ind.list).sort(); if 
   const list = JSON.parse(JSON.stringify(S.ind.list)), files = [], used = new Set();
   for (const id of ids) { const refs = [];
     for (const fl of ['I', 'D', 'A']) { const p = bestRef(id, fl); if (!p || (fl === 'A' && refs.length)) continue;
-      try { const f = await p.it.h.getFile(), ext = (f.name.match(/\.[^.]+$/) || ['.jpg'])[0].toLowerCase(); let n = `${folder(id)}_${sideName(fl)}${ext}`; while (used.has(n)) n = '_' + n; used.add(n);
-        files.push(['referencias/' + n, new Uint8Array(await f.arrayBuffer())]); refs.push({ fl: p.o.fl || fl, file: n, tr: p.o.tr || [], ...(p.o.dib ? { dib: 1 } : {}), ref: 1 }); } catch (e) {} }
+      try { const b = await bitmapOf(p), c = document.createElement('canvas'); c.width = b.width; c.height = b.height; c.getContext('2d').drawImage(b, 0, 0); b.close && b.close(); // 1.4.37: redibujada: sin EXIF (GPS) y un video entra como su cuadro
+        const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', .92)); let n = `${folder(id)}_${sideName(fl)}.jpg`; while (used.has(n)) n = '_' + n; used.add(n);
+        files.push(['referencias/' + n, new Uint8Array(await blob.arrayBuffer())]); refs.push({ fl: p.o.fl || fl, file: n, tr: p.o.tr || [], ...(p.o.dib ? { dib: 1 } : {}), ref: 1 }); } catch (e) {} }
     list[id].refs = refs; }
   const data = JSON.stringify({ app: 'BioTrampa', tipo: 'paquete de individuos', version: 1, proyecto: projName(), fecha: ymd(Date.now()), especies: S.indSp, individuos: list }, null, 1);
   $('#toast').hidden = true; download(zipStore([['catalogo.json', data], ...files, ['LEEME.txt', 'Paquete de individuos de BioTrampa: catalogo.json (datos, rosetas calcadas) y referencias/ (una imagen por individuo y lado).\r\nÁbrelo en BioTrampa: Individuos › ⋯ › Importar paquete. Los individuos que ya tengas no se reemplazan.\r\nNo incluye coordenadas de las estaciones.\r\n']]), `paquete_individuos_${depId(projName())}_${ymd(Date.now())}.zip`);
@@ -470,7 +465,8 @@ function CanvasEd(host, o = {}) {
   can.addEventListener('pointerdown', e => { if (!d.img || e.button) return; CanvasEd.act = d; const q = pt(e), t = IDV.space ? 'pan' : d.tool;
     if (t === 'erase') { const k = trHit(d.tr, q, 12 / sc()); if (k >= 0) { d.snap(); d.tr.splice(k, 1); d.render(); o.onchange && o.onchange(d); } return; }
     if (t === 'pen') d.cur = [q]; if (t === 'zone') { d.snap(); d.zs = q; } drag = { x: e.clientX, y: e.clientY, cx: d.view.cx, cy: d.view.cy, t }; can.setPointerCapture(e.pointerId); });
-  can.addEventListener('pointermove', e => { if (drag && !e.buttons) { drag = null; d.cur = null; } if (!drag) return; // 1.4.36: arrastre pegado → se suelta const q = pt(e), s = sc();
+  can.addEventListener('pointermove', e => { if (drag && !e.buttons) { drag = null; d.cur = null; } if (!drag) return; // 1.4.36: arrastre pegado → se suelta
+    const q = pt(e), s = sc();
     if (drag.t === 'pen') { const l = d.cur[d.cur.length - 1]; if (Math.hypot(q[0] - l[0], q[1] - l[1]) > 2.5 / s) { d.cur.push(q.map(Math.round)); d.render(); } }
     else if (drag.t === 'zone') { d.zone = [d.zs, q]; d.render(); }
     else { d.view.cx = drag.cx - (e.clientX - drag.x) / s / W(); d.view.cy = drag.cy - (e.clientY - drag.y) / s / H(); d.render(); } });
@@ -532,12 +528,13 @@ $('#imp_ok').onclick = async () => { const l = IMP.list.filter(m => !m.sheet); i
   for (const m of l) { try { const blob = m.file && !m.crop ? m.file : await new Promise(r => { const c = document.createElement('canvas'); c.width = m.img.width; c.height = m.img.height; c.getContext('2d').drawImage(m.img, 0, 0); c.toBlob(r, 'image/png'); });
       const name = `${folder(m.id)}_${sideName(m.fl)}${m.file && !m.crop ? (m.file.name.match(/\.[^.]+$/) || ['.png'])[0] : '.png'}`, w = await saveRefImage(blob, name);
       if (!S.ind.list[m.id]) { ensureInd(m.id, IMP.sp); Object.assign(S.ind.list[m.id], { nombre: m.nombre.trim(), sexo: m.sexo, ...(m.edad ? { edad: m.edad } : {}), importado: ymd(Date.now()) }); nw++; } else more++;
-      const rec = S.ind.list[m.id]; (rec.refs = rec.refs || []).push({ fl: m.fl, ...w, tr: m.tr, ...(m.dib ? { dib: 1 } : {}), ref: 1 }); } catch (e) { toast(`No se pudo guardar ${m.name}: ${e.message}`, 6000); return; } }
+      const rec = S.ind.list[m.id]; (rec.refs = rec.refs || []).push({ fl: m.fl, ...w, tr: m.tr, ...(m.dib ? { dib: 1 } : {}), ref: 1 }); m.done = true; } catch (e) { indTouch(); saveReg(); renderIndPane(); IMP.list = IMP.list.filter(x => !x.done); IMP.sel = 0; impRender(); toast(`No se pudo guardar ${m.name}: ${e.message}`, 6000); return; } } // 1.4.37: las que sí se guardaron quedan en el catálogo
   indTouch(); saveReg(); closeOver(); renderIndPane(); toast(`${nw} individuo(s) nuevo(s) y ${more} referencia(s) para individuos que ya tenías. Las imágenes quedan en «${REFD}» dentro de la carpeta de la primera estación.`, 7000); };
 
 /* ---------- 1.4.17: fotos de un individuo ordenadas de mejor a peor (comparar, ficha, imprimir) ---------- */
 const QORD = { B: 2, R: 1, M: 0 }, QCL = { B: 'qb', R: 'qr', M: 'qm' };
-const phKey = p => String(p.it.id); // texto: se compara con data-key del HTML (con número nunca coincidía y no cargaban las fotos grandes ni las de imprimir)
+// 1.4.37: clave estable (cámara + carpeta y nombre originales); antes era la posición en la lista, que cambia al agregar estaciones o clasificar
+const phKey = p => p.ext ? p.it.id : [camOf(p.it), ...(p.it.origParts || p.it.parts), p.it.origName || p.it.name].join('/');
 const phScore = p => ((p.o.tr || []).length ? 3 : 0) + (p.o.ref || p.ext ? 2 : 0) + (QORD[p.o.q] ?? 1) - (p.o.dud && !p.o.iv ? 2 : 0) - (p.o.fl === 'A' ? .5 : 0);
 function photosOf(id, fl) { return [...extRefs(id), ...indPhotos(id)].filter(p => !fl || p.o.fl === fl || (p.o.fl === 'A' && !p.ext)).sort((a, b) => phScore(b) - phScore(a)); }
 function mainOf(id, fl) { const k = ((S.ind.list[id] || {}).main || {})[fl], l = photosOf(id, fl); return (k && l.find(p => phKey(p) === k)) || l[0]; } // 1.4.33: la foto principal de cada lado (elegida en la ficha o la mejor)
@@ -549,7 +546,7 @@ function phStrip(box, list, isOn, onPick) { box.textContent = ''; if (!list.leng
   for (const p of list) { const b = document.createElement('button'); b.className = 'phth' + (isOn(p) ? ' on' : ''); b.title = phTitle(p); b.innerHTML = `<img alt=""><span class="phbd">${phBadges(p)}</span>`; b.onclick = () => onPick(p); box.appendChild(b); thumbAny(b.querySelector('img'), p.it) /* 1.4.24: después de agregarla (sin conectar, la miniatura no se cargaba) */; }
   const on = box.querySelector('.on'); if (on) on.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
 const BASEC = new Map(); // imágenes reducidas (para la cuadrícula de comparar y la impresión)
-async function baseCanvas(p, max = 1400) { const key = phKey(p) + '|' + max; if (BASEC.has(key)) return BASEC.get(key);
+async function baseCanvas(p, max = 1400) { const key = phKey(p) + '|' + max + '|' + (p.o.vt ?? ''); if (BASEC.has(key)) return BASEC.get(key);
   const b = await bitmapOf(p), k = Math.min(1, max / b.width), c = document.createElement('canvas'); c.width = Math.round(b.width * k); c.height = Math.round(b.height * k); c.getContext('2d').drawImage(b, 0, 0, c.width, c.height); b.close && b.close();
   const r = { c, k }; if (BASEC.size > 80) BASEC.delete(BASEC.keys().next().value); BASEC.set(key, r); return r; }
 function tracedCanvas(base, trs, opt = {}) { const c = document.createElement('canvas'); c.width = base.c.width; c.height = base.c.height; const x = c.getContext('2d'); x.drawImage(base.c, 0, 0);
@@ -623,7 +620,7 @@ $('#cmp_next').onclick = cmpNext;
 $('#cmp_dist').onclick = () => { for (const [x, y] of [[CMP.a, CMP.b], [CMP.b, CMP.a]]) { const r = S.ind.list[x]; r.dist = [...new Set([...(r.dist || []), y])]; } indTouch(); saveReg(); toast(`${CMP.a} y ${CMP.b} quedan marcados como distintos: ya no se sugieren.`, 4000); if (cmpPairs().length) cmpNext(); else cmpRender(); };
 
 /* ---------- 1.4.15: ficha: dónde y cuándo apareció ---------- */
-function indTimeline(ph) { const pts = ph.filter(p => goodTs(p.it)).map(p => ({ t: fixTs(p.it), s: station(p.it), k: p.it.id })); if (!pts.length) return '';
+function indTimeline(ph) { const pts = ph.filter(p => goodTs(p.it)).map(p => ({ t: fixTs(p.it), s: station(p.it), k: phKey(p) })); if (!pts.length) return '';
   const sts = [...new Set(pts.map(p => p.s))].sort(), t0 = Math.min(...pts.map(p => p.t)), t1 = Math.max(...pts.map(p => p.t)), span = Math.max(t1 - t0, 864e5), W = 640, L = 110, R = 12, row = 24, H = sts.length * row + 26, X = t => L + (t - t0) / span * (W - L - R);
   let s = `<svg class="indtl" viewBox="0 0 ${W} ${H}" role="img" aria-label="Fechas y estaciones donde apareció">`;
   sts.forEach((st, i) => { const y = i * row + 12; s += `<text x="0" y="${y + 4}">${esc(st.length > 16 ? st.slice(0, 15) + '…' : st)}</text><line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}"/>`; pts.filter(p => p.s === st).forEach(p => s += `<circle cx="${X(p.t).toFixed(1)}" cy="${y}" r="4.5" data-key="${esc(p.k)}"><title>${ymd(p.t)} · ${esc(st)}</title></circle>`); });
@@ -710,7 +707,7 @@ $('#filepkg').onchange = e => { const f = e.target.files[0]; e.target.value = ''
 /* ---------- Ficha de un individuo (1.4.17: visor con flechas, referencias arriba, números, filtros, estaciones, horas, visto con, historial) ---------- */
 const FI = { filt: 'T', st: '', open: -1, tok: 0 };
 const fullUrls = new Map(); // imágenes completas de la cabecera de la ficha (pocas, se liberan al pasar de 12)
-async function fullUrl(p) { const k = phKey(p); if (fullUrls.has(k)) return fullUrls.get(k); const u = p.ext ? await refUrl(p.it.ref) : URL.createObjectURL(await repaired(p.it, p.o.vt));
+async function fullUrl(p) { const k = phKey(p) + '|' + (p.o.vt ?? ''); if (fullUrls.has(k)) return fullUrls.get(k); const u = p.ext ? await refUrl(p.it.ref) : URL.createObjectURL(await repaired(p.it, p.o.vt));
   if (!p.ext) { fullUrls.set(k, u); if (fullUrls.size > 12) { const [k0, u0] = fullUrls.entries().next().value; URL.revokeObjectURL(u0); fullUrls.delete(k0); } } return u; }
 function openFicha(id) { if (!S.ind.list[id]) return toast(`${id} no está en el catálogo.`, 3000); if (S.fichaId !== id) Object.assign(FI, { filt: 'T', st: '', open: -1, sec: 'f', pick: null }); FI.open = -1; S.fichaId = id; renderFicha(); openOver('#inddlg'); }
 function ficAll(id) { return [...extRefs(id), ...indPhotos(id).sort((a, b) => (phTime(a) || 0) - (phTime(b) || 0))]; } // referencias importadas primero, luego por fecha
@@ -814,7 +811,7 @@ function ficPhotoCol(id) { const L = ficList(id), p = FI.cur, rec = S.ind.list[i
   $('#fp_png').onclick = () => exportCard(id, p);
   if ($('#fp_vis')) $('#fp_vis').onclick = () => { closeOver(true); show(p.it); };
   $('#fp_out').onclick = () => { if (p.ext) { if (!confirm(`¿Quitar esta referencia importada de ${id}? La imagen se queda en la carpeta «${REFD}».`)) return; const k = +phKey(p).split(':').pop(); rec.refs.splice(k, 1); if (!rec.refs.length) delete rec.refs; indTouch(); }
-    else { if (!confirm(`¿Quitar esta foto de ${id}? Queda sin identificar.`)) return; delete p.o.id; delete p.o.ref; delete p.o.dud; delete p.o.iv; refreshCards([p.it]); }
+    else { if (!confirm(`¿Quitar esta foto de ${id}? Queda sin identificar.`)) return; delete p.o.id; delete p.o.ref; delete p.o.dud; delete p.o.iv; refreshCards([p.it]); locked(() => indFolders([p.it])); } // 1.4.37: sale de la carpeta del individuo
     saveReg(); if (!ficList(id).length) FI.open = -1; renderFicha(); }; }
 function ficMove(d) { const L = ficList(S.fichaId); if (L.length < 2) return; FI.open = (FI.open + d + L.length) % L.length; ficPhoto(S.fichaId); }
 $('#ind_pv').onclick = () => ficMove(-1); $('#ind_nx').onclick = () => ficMove(1); $('#ind_cl').onclick = () => { FI.open = -1; renderFicha(); };
@@ -1000,7 +997,7 @@ async function selfCheck13() {
   const fail = [];
   const th = [1, 1.2, 1.5, 2, 5, 5.2, 22, 23].map(h => h / 24 * 2 * Math.PI), dl = overlapDelta(th, th); if (!(dl > .99 && dl < 1.01)) fail.push('traslape de la misma especie: ' + dl.toFixed(3));
   const day = [10, 11, 12, 13, 14].map(h => h / 24 * 2 * Math.PI), night = [22, 23, 0, 1, 2].map(h => h / 24 * 2 * Math.PI); if (!(overlapDelta(day, night) < .5)) fail.push('traslape día/noche debe ser bajo');
-  const z = readZip(await zipStore([['a.json', '{"x":"ñ"}'], ['b.txt', 'hola']]).arrayBuffer()); if (z['a.json'] !== '{"x":"ñ"}' || z['b.txt'] !== 'hola') fail.push('respaldo: el .zip no se lee igual');
+  { const z = await readZipBin(await zipStore([['respaldo.json', '{"x":"ñ"}']]).arrayBuffer()); if (new TextDecoder().decode(z['respaldo.json']) !== '{"x":"ñ"}') fail.push('respaldo: el .zip no se lee igual'); }
   const k = '__prueba__'; S.stations[k] = { start: '2026-03-01', end: '2026-03-30', down: [{ a: '2026-03-11', b: '2026-03-20' }] };
   const t = trapDays(k); if (t.days !== 20 || t.down !== 10) fail.push(`días-trampa con 10 días sin funcionar: ${t.days} (esperado 20)`); delete S.stations[k];
   if (newIndId('Jaguar').slice(0, 4) !== 'JAG-') fail.push('código de individuo');
@@ -1008,7 +1005,14 @@ async function selfCheck13() {
   { const t = trSmooth([[0, 0], [10, 0], [10, 10], [0, 10]]), b = trBox(t); if (t.length < 6 || b[0] < 0 || b[2] > 10) fail.push('suavizado del trazo de rosetas'); }
   { const sd = new Map([['A', { I: 1, D: 1 }], ['B', { I: 1, D: 0 }]]), ph = [{ id: 'A', fl: 'I' }, { id: 'A', fl: 'D' }, { id: 'B', fl: 'I', dud: 1 }, { id: 'B', fl: 'A', dud: 1, iv: 'x' }]; // exportar por lado y sin dudosas
     const n = (m, d) => ph.filter(indKeep(m, d, sd)).length; if (n('I', false) !== 2 || n('I', true) !== 3 || n('D', false) !== 2 || n('B', true) !== 2 || n('T', false) !== 3) fail.push(`exportar por lado: ${n('I', false)} ${n('I', true)} ${n('D', false)} ${n('B', true)} ${n('T', false)}`); }
-  console[fail.length ? 'error' : 'info']('selfCheck 1.3: ' + (fail.length ? 'FALLA ' + fail.join('; ') : 'todo bien (traslape, respaldo, días sin funcionar, exportar individuos por lado, paquete de individuos, trazo de rosetas)'));
+  { // 1.4.37: el lápiz de rosetas de verdad (con eventos del ratón); en la 1.4.36 un comentario lo dejó sin funcionar y la prueba no lo vio
+    const host = document.createElement('div'); host.style.cssText = 'position:fixed;left:0;top:0;width:300px;height:200px'; document.body.appendChild(host);
+    const ed = CanvasEd(host, { tools: ['pan', 'pen'] }), cv = document.createElement('canvas'); cv.width = 300; cv.height = 200; ed.set(cv, []); ed.setTool('pen');
+    const can = host.querySelector('canvas'), r = can.getBoundingClientRect(), ev = (t, x, y, b) => can.dispatchEvent(new PointerEvent(t, { clientX: r.left + x, clientY: r.top + y, button: 0, buttons: b, pointerId: 1 }));
+    try { ev('pointerdown', 50, 50, 1); for (let i = 1; i <= 20; i++) ev('pointermove', 50 + i * 5, 50 + i * 3, 1); ev('pointerup', 150, 110, 0); } finally { host.remove(); }
+    if (ed.tr.length !== 1) fail.push('lápiz de rosetas (ficha, comparar, importar)'); }
+  if (parseDay('13/05/2026') !== '2026-05-13' || parseDay('05/13/2026') || parseDay('2026-04-31')) fail.push('fechas del CSV de estaciones');
+  console[fail.length ? 'error' : 'info']('selfCheck 1.3: ' + (fail.length ? 'FALLA ' + fail.join('; ') : 'todo bien (traslape, respaldo, días sin funcionar, exportar individuos por lado, paquete de individuos, trazo y lápiz de rosetas, fechas)'));
   return fail;
 }
 if (location.hash === '#test') selfCheck().then(selfCheck13);

@@ -80,6 +80,7 @@ function animOut(el) { el.classList.remove('bt-pre'); el.classList.add('bt-out')
 function watchAnim(els) { if (!MOTION) return; const mo = new MutationObserver(ms => { for (const m of ms) { const el = m.target, was = m.oldValue !== null; if (was === el.hidden) continue; el.hidden ? animOut(el) : animIn(el); } });
   els.forEach(el => { mo.observe(el, { attributes: true, attributeFilter: ['hidden'], attributeOldValue: true }); el.addEventListener('animationend', e => { if (e.target === el && el.hidden) el.classList.remove('bt-out'); }); }); }
 const pad = n => String(n).padStart(2, '0');
+const minOf = l => l.reduce((a, b) => b < a ? b : a, Infinity), maxOf = l => l.reduce((a, b) => b > a ? b : a, -Infinity); // 1.4.37: Math.min(...l) falla con más de ~125 000 elementos
 const ymd = d => { d = new Date(d); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }; // fecha LOCAL (no UTC)
 const hms = d => { d = new Date(d); return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; };
 const norm = s => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); // sin acentos ni mayúsculas
@@ -191,7 +192,6 @@ function period(it) {
   const h = new Date(t).getHours(); return h >= 6 && h < 8 || h >= 18 && h < 20 ? 'crep' : h >= 8 && h < 18 ? 'day' : 'night';
 }
 const PER = { day: 'día', crep: 'crepúsculo', night: 'noche' };
-const isNight = it => { const p = period(it); return p === null ? null : p === 'night'; };
 // Fase lunar por fecha (algoritmo astronómico simple; luna nueva de referencia: 6 ene 2000)
 function moonOf(ts) {
   const syn = 29.530588853, age = (((ts / 864e5 + 2440587.5 - 2451550.1) % syn) + syn) % syn, ill = Math.round((1 - Math.cos(2 * Math.PI * age / syn)) / 2 * 100);
@@ -358,13 +358,14 @@ function setSpecies(p) { // proyecto nuevo: setSpecies({ indSp: [] }) = sin espe
 }
 function resetAll() {
   closeLb(); S.srcs = []; S.pending = []; S.items = []; S.multi.clear(); S.f.src = null; S.f.cat = 'all'; S.empty = null; S.rate = []; S.stations = {}; S.offsets = {}; S.mapCfg = null; S.proj = null; S.ind = { list: {}, act: 0 }; S.indDirty = false; resetThumbs();
+  if (typeof BASEC !== 'undefined') { BASEC.clear(); for (const m of [fullUrls, refUrls]) { m.forEach(u => URL.revokeObjectURL(u)); m.clear(); } } // 1.4.37: imágenes de la ficha, comparar e imprimir del proyecto anterior
 }
 async function loadSource(h) { // lee una carpeta como estación y suma sus fotos
   const src = { h, name: h.name, label: h.name, reg: {} };
   await loadSrcReg(src); await loadIndFile(src); const want = src.label; src.label = uniqLabel(src.label);
-  if (src._st) S.stations[src.pair || src.label] = src._st; if (src._off) S.offsets[src.label] = src._off; delete src._st; delete src._off;
   toast(`Leyendo «${src.label}»…`, 0); const before = S.items.length;
   try { await scan(h, [], src); } catch (e) { S.items = S.items.filter(i => i.src !== src); throw e; } // sin fotos huérfanas si falla a la mitad
+  if (src._st) S.stations[src.pair || src.label] = src._st; if (src._off) S.offsets[src.label] = src._off; delete src._st; delete src._off; // 1.4.37: después de leer (si falla, no queda una estación fantasma)
   attachCopies(src); S.srcs.push(src);
   if (want !== src.label) toast(`Ya había una estación llamada «${want}»; esta se llamará «${src.label}». Puedes cambiarle el nombre en Proyecto.`, 8000);
   return S.items.length - before;
@@ -419,7 +420,7 @@ async function autoFillStation(lbl, silent) {
 /* Asistente al crear un proyecto: nombre, lista de especies y datos automáticos de las estaciones */
 function openWizard() {
   if (!S.proj) return; $('#pj_n').value = S.proj.name; $('#pj_auto').checked = ls('bt_autost', true);
-  $('#pj_sp').innerHTML = `<option value="keep">Empezar vacía (solo Fantasmas)</option><option value="imp">Importar una lista (.json)…</option>`; // 1.4.13: sin lista de ejemplo
+  $('#pj_sp').innerHTML = `<option value="keep">Empezar vacía (solo Fantasmas)</option><option value="ne">Lista de ejemplo (fauna del noreste de México)</option><option value="imp">Importar una lista (.json)…</option>`; // 1.4.37: vuelve la lista de ejemplo (su código seguía)
   openOver('#pjdlg'); setTimeout(() => { $('#pj_n').focus(); $('#pj_n').select(); }, 0);
 }
 $('#pj_n').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('#pj_ok').click(); } });
@@ -457,7 +458,7 @@ async function openProject(id, open) { // open: abrir en el visor la foto donde 
   const lost = [];
   for (const h of rec.handles || []) {
     let p = 'prompt'; try { p = await h.queryPermission({ mode: 'readwrite' }); if (p !== 'granted') p = await h.requestPermission({ mode: 'readwrite' }); } catch (e) { p = 'prompt'; }
-    if (p === 'granted') { try { await loadSource(h); } catch (e) { lost.push(h.name); } } else S.pending.push({ h, label: h.name });
+    if (p === 'granted') { try { await loadSource(h); } catch (e) { lost.push(h.name); S.pending.push({ h, label: h.name }); } } else S.pending.push({ h, label: h.name }); // 1.4.37: si no se pudo leer (disco desconectado) se queda en el proyecto para reintentar
   }
   await saveProj();
   await afterScan(`Proyecto «${rec.name}»: ${S.srcs.length} estación(es), ${S.items.length} archivo(s).${S.pending.length ? ` Falta dar permiso a ${S.pending.length}.` : ''}${lost.length ? ` No se encontraron: ${lost.join(', ')} (¿se movieron o borraron?).` : ''}`);
@@ -478,7 +479,7 @@ async function grantPending(i) { // Chrome pide un clic por carpeta para dar per
   const p = S.pending[i]; if (!p) return;
   try { if ((await p.h.requestPermission({ mode: 'readwrite' })) !== 'granted') return toast(`No se concedió el permiso para «${p.label}».`, 5000);
     S.pending.splice(i, 1); const n = await loadSource(p.h); await saveProj(); afterScan(`«${p.label}» lista: ${n} archivo(s).`); }
-  catch (e) { toast(`No se pudo abrir «${p.label}»: ${e.message}`, 7000); }
+  catch (e) { if (!S.pending.includes(p)) { S.pending.splice(i, 0, p); renderPending(); renderProjMenu(); } toast(`No se pudo abrir «${p.label}»: ${e.message}`, 7000); }
 }
 function renderPending() {
   const b = $('#pend'); b.hidden = !S.pending.length; if (!S.pending.length) return;
@@ -489,7 +490,7 @@ function renderPending() {
 async function grantAll() { // Chrome pide confirmar cada carpeta; se piden seguidas. Si Chrome exige otro clic, quedan los botones de las que falten.
   const list = [...S.pending]; let ok = 0, tot = 0;
   for (const p of list) { let r = 'prompt'; try { r = await p.h.requestPermission({ mode: 'readwrite' }); } catch (e) { break; }
-    if (r !== 'granted') continue; S.pending = S.pending.filter(x => x !== p); try { tot += await loadSource(p.h); ok++; } catch (e) {} }
+    if (r !== 'granted') continue; S.pending = S.pending.filter(x => x !== p); try { tot += await loadSource(p.h); ok++; } catch (e) { S.pending.push(p); } }
   await saveProj(); await afterScan(ok ? `${ok} estación(es) abiertas: ${tot} archivo(s).${S.pending.length ? ` Faltan ${S.pending.length}: pulsa su botón.` : ''}` : 'Chrome no concedió el permiso. Pulsa el botón de cada estación.');
 }
 async function renameStation(src) {
@@ -722,7 +723,8 @@ function applyFilters(changed) { // changed: fotos que cambiaron (solo se actual
   // Si las tarjetas visibles no cambian, solo se actualizan sus etiquetas (rápido con miles de fotos)
   const sig = S.view.map(i => { const g = S.groups.get(i); return g && g[0] !== i ? '' : i.id + (g ? 'x' + g.length : ''); }).join(',');
   if (sig === S.sig && $('#grid').children.length) refreshCards(changed); else { S.sig = sig; renderGrid(); }
-  renderSide(); updTitle(); renderChips(); if (!$('#pind').hidden) renderIndPane();
+  renderSide(); updTitle(); renderChips();
+  if (!$('#pind').hidden && (!changed || changed.some(i => allCats(i).some(indOn) || Object.keys(i.obs || {}).some(indOn)))) renderIndPane(); // 1.4.37: solo si cambió una foto de especie con individuos
 }
 /* Encabezado de la galería: estación (o proyecto), número de fotos y fechas */
 function updTitle() {
@@ -742,7 +744,8 @@ function renderChips() {
   $('#viewbtn').textContent = `${S.burst ? 'Ráfagas agrupadas' : 'Sin agrupar ráfagas'} · ${S.sort === 'date' ? 'por fecha de captura' : 'por nombre de archivo'}`;
 }
 $('#catchip').onclick = () => { S.f.cat = 'all'; applyFilters(); };
-$('#ftabs').addEventListener('click', async e => { const b = e.target.closest('button[data-st]'); if (!b) return; const k = b.dataset.st, again = S.f.st === k; S.f.st = k; if (k === 'all') S.f.cat = 'all'; // 1.4.32: «Todas» vuelve a todas las especies $('#st').value = 'all';
+$('#ftabs').addEventListener('click', async e => { const b = e.target.closest('button[data-st]'); if (!b) return; const k = b.dataset.st, again = S.f.st === k; S.f.st = k; if (k === 'all') S.f.cat = 'all'; // 1.4.32: «Todas» vuelve a todas las especies
+  $('#st').value = 'all';
   if (k === 'empty' && !again) await findEmpty(); updFilt(); applyFilters(); $('#gal').scrollTop = 0; });
 function cardState(d, it) {
   const isDone = i => S.blind ? !!i.bl : !!i.cat, g = S.groups.get(it), done = g ? g.every(isDone) : isDone(it), per = period(it);
@@ -1061,7 +1064,8 @@ function renderAskN() { const box = $('#askn'), l = ls('bt_askn', []); box.textC
 let actx = null; function clickSound() { try { actx = actx || new AudioContext(); const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime; o.frequency.value = 880; g.gain.setValueAtTime(.12, t); g.gain.exponentialRampToValueAtTime(.001, t + .08); o.connect(g).connect(actx.destination); o.start(t); o.stop(t + .09); } catch (e) {} } // el tema pudo cambiar con el botón de arriba
 $('#bloop').checked = ls('bt_bloop', false); $('#bloop').onchange = e => sv('bt_bloop', e.target.checked);
 $('#setreset').onclick = () => { if (!confirm('¿Volver a los ajustes de fábrica? No se tocan fotos, especies, proyectos ni datos de estaciones.')) return;
-  ['bt_adv', 'bt_autost', 'bt_bspeed', 'bt_bloop', 'bt_ev', 'bt_sort', 'bt_burst', 'bt_obs', 'bt_focus', 'bt_size', 'bt_autohide', 'bt_spsort', 'bt_lupesz'].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+  ['bt_adv', 'bt_autost', 'bt_bspeed', 'bt_bloop', 'bt_ev', 'bt_sort', 'bt_burst', 'bt_obs', 'bt_focus', 'bt_size', 'bt_autohide', 'bt_spsort', 'bt_lupesz',
+    'bt_onlypend', 'bt_vkeepall', 'bt_clsnd', 'bt_autoempty', 'bt_obsalways', 'bt_shownight', 'bt_showname', 'bt_shownote', 'bt_csvsep', 'bt_gap', 'bt_askn', 'bt_theme', 'bt_side', 'bt_sw', 'bt_pri', 'bt_trc'].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
   try { localStorage.removeItem('bt_confirm'); } catch (e) {} toast('Ajustes restablecidos. Se recarga la página…', 2000); setTimeout(() => location.reload(), 900); };
 
 
@@ -1420,6 +1424,7 @@ async function findEmpty() {
     for (let p = 0; p < L; p++) { for (let i = 0; i < g.length; i++) tmp[i] = g[i].sg.g[p]; const srt = Array.from(tmp).sort((a, b) => a - b); bg[p] = srt[srt.length >> 1]; }
     for (const it of g) { let ch = 0; const v = it.sg.g; for (let p = 0; p < L; p++) if (Math.abs(v[p] - bg[p]) > 0.9) ch++; it.chg = ch / L; if (it.chg < EMPTY_FRAC) S.empty.add(it); }
   }
+  for (const it of list) delete it.sg; // 1.4.37: ~7 KB por foto; con decenas de miles llenaba la memoria
   $('#toast').hidden = true;
   const pend = [...S.empty].filter(i => !i.cat).length;
   toastAct(`${pend} foto(s) pendiente(s) probablemente vacía(s) entre ${used} analizadas.${few ? ` ${few} foto(s) no se analizaron: su cámara tiene menos de 5 fotos (de día o de noche).` : ''} Revísalas antes de mandarlas a ${GH}.`, pend ? 'Revisarlas una por una' : '', () => {
@@ -1427,14 +1432,14 @@ async function findEmpty() {
 }
 
 /* ---------- Comparar con la foto anterior de la misma cámara (mantener C) ---------- */
-let cmpUrl = null;
+let cmpUrl = null, cmpWant = false;
 async function startCompare() {
-  const it = S.cur; if (!it || cmpUrl) return;
+  const it = S.cur; if (!it || cmpUrl) return; cmpWant = true;
   const same = S.items.filter(x => srcOf(x) === srcOf(it)).sort((a, b) => a.origName.localeCompare(b.origName, undefined, { numeric: true }));
   const prev = same[same.indexOf(it) - 1]; if (!prev) return toast('No hay una foto anterior de esta cámara.', 2000);
-  try { cmpUrl = URL.createObjectURL(await prev.h.getFile()); $('#big').src = cmpUrl; const m = $('#cmpmsg'); m.textContent = 'Anterior: ' + prev.origName; m.hidden = false; } catch (e) { cmpUrl = null; }
+  try { const f = await prev.h.getFile(); if (!cmpWant || S.cur !== it) return; cmpUrl = URL.createObjectURL(f); $('#big').src = cmpUrl; const m = $('#cmpmsg'); m.textContent = 'Anterior: ' + prev.origName; m.hidden = false; } catch (e) { cmpUrl = null; } // 1.4.37: si se soltó C antes de cargar, no se queda pegada
 }
-function endCompare() { if (!cmpUrl) return; URL.revokeObjectURL(cmpUrl); cmpUrl = null; $('#cmpmsg').hidden = true; if (bigUrl) { $('#big').src = bigSUrl || bigUrl; if (V.z > 1 || lupeOn) useFull(); } }
+function endCompare() { cmpWant = false; if (!cmpUrl) return; URL.revokeObjectURL(cmpUrl); cmpUrl = null; $('#cmpmsg').hidden = true; if (bigUrl) { $('#big').src = bigSUrl || bigUrl; if (V.z > 1 || lupeOn) useFull(); } }
 
 /* ---------- Teclado ---------- */
 // 1.4.27: con el video enfocado (tras tocar sus controles), las flechas lo adelantaban en vez de pasar a la siguiente foto
@@ -1483,11 +1488,12 @@ function galleryKey(e) { // teclas en la galería (con el visor cerrado)
   const items = S.multi.size ? [...S.multi] : S.kf && S.view.includes(S.kf) ? groupOf(S.kf) : null; if (!items) return;
   const k = e.key.length === 1 ? e.key.toUpperCase() : e.key, dg = /^(Digit|Numpad)([1-9])$/.exec(e.code), whole = !S.multi.size;
   const heads = S.view.filter(i => groupOf(i)[0] === i), nx = S.kf ? heads[heads.indexOf(groupOf(S.kf)[0]) + 1] : null;
-  if (k === 'U') { e.preventDefault(); return locked(() => unclassify(items, whole)); }
+  const ans = i => S.blind ? i.bl : i.cat; // 1.4.37: en una ráfaga, igual que el visor: no se tocan las fotos que ya tienen otra especie
+  if (k === 'U') { e.preventDefault(); return locked(() => unclassify(whole ? items.filter(i => ans(i) === ans(S.kf)) : items, whole)); }
   if (k === 'M') { e.preventDefault(); const all = items.every(i => i.rev); items.forEach(i => { i.rev = !all; if (all) i.revWhy = ''; }); saveReg(); refreshCards(); renderChips(); return toast(all ? 'Marca de revisión quitada.' : `${items.length} foto(s) marcada(s) para revisar.`, 2000); }
   if (e.shiftKey) return;
   const c = dg ? S.cats[dg[2] - 1] : (/^[A-Z]$/.test(k) ? catByKey(k) : null); if (!c) return; e.preventDefault();
-  locked(async () => { await classify(items, c, whole); if (whole && $('#adv').checked && nx && S.view.includes(nx)) setKf(nx); else if (S.kf && !S.view.includes(S.kf) && nx && S.view.includes(nx)) setKf(nx); });
+  locked(async () => { await classify(whole ? items.filter(i => i === S.kf || !ans(i)) : items, c, whole); if (whole && $('#adv').checked && nx && S.view.includes(nx)) setKf(nx); else if (S.kf && !S.view.includes(S.kf) && nx && S.view.includes(nx)) setKf(nx); });
 }
 function selectAll() { S.view.forEach(i => S.multi.add(i)); refreshCards(); toast(`${S.multi.size} fotos seleccionadas. Pulsa la tecla de una especie o usa la barra de abajo. Esc cancela.`, 3500); }
 $('#selall').onclick = () => { closePops(); selectAll(); };
@@ -1658,7 +1664,7 @@ async function classify(items, cat, silent) {
   if (!S.srcs.length) return; if (S.blind && !S.blindOff) return blindSet(items, cat); const touched = [...items, ...S.multi]; // tarjetas a actualizar (también las seleccionadas)
   items = items.filter(i => i.cat !== cat); if (!items.length) return;
   if (items.length >= 5 && !silent && !confirm(`¿Clasificar ${items.length} fotografías como "${cat}"${noMove() ? '' : ' y moverlas a su carpeta'}?`)) return; // con pocas fotos no se pregunta: se puede deshacer
-    const cur = S.cur, idx = S.view.indexOf(cur), ix = items.map(i => S.view.indexOf(i)).concat(idx).filter(i => i >= 0), pend = x => !x.cat && !items.includes(x), nxt = cur ? ((ls('bt_onlypend', false) && (S.view.slice(Math.max(...ix) + 1).find(pend) || S.view.slice(0, Math.min(...ix)).reverse().find(pend))) || S.view[Math.max(...ix) + 1] || S.view[Math.min(...ix) - 1]) : null; // 1.4.24: «solo pendientes» salta las ya clasificadas
+    const cur = S.cur, idx = S.view.indexOf(cur), ix = items.map(i => S.view.indexOf(i)).concat(idx).filter(i => i >= 0), pend = x => !x.cat && !items.includes(x), nxt = cur ? ((ls('bt_onlypend', false) && (S.view.slice(maxOf(ix) + 1).find(pend) || S.view.slice(0, minOf(ix)).reverse().find(pend))) || S.view[maxOf(ix) + 1] || S.view[minOf(ix) - 1]) : null; // 1.4.24: «solo pendientes» salta las ya clasificadas
   let ok = 0; const bad = [], ch = [], stB = new Map();
   for (const it of items) { const st = station(it); if (!stB.has(st)) stB.set(st, S.items.filter(i => station(i) === st && !i.cat).length); }
   for (const it of items) {
@@ -1752,7 +1758,7 @@ const COLS = ['Proyecto', 'Estación', 'ID cámara', 'Nombre del archivo', 'Nomb
 const cesc = v => { v = v == null ? '' : String(v).replace(/\0/g, '');
   if (/^[=+@\t\r]/.test(v) || /^-(?!\d)/.test(v)) v = "'" + v; // evita que Excel lo tome como fórmula
   return /[",\n\r;]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
-const csvBlob = rows => new Blob(['\ufeff' + rows.map(r => r.map(cesc).join(ls('bt_csvsep', ','))).join('\r\n')], { type: 'text/csv;charset=utf-8' }); // 1.4.24: separador elegido en Ajustes
+const csvBlob = rows => new Blob([csvText(rows)], { type: 'text/csv;charset=utf-8' }); // 1.4.24: separador elegido en Ajustes (csvText, en Resumen)
 function download(blob, name) { const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
 async function exportMainCsv() {
   if (!S.items.length) return toast('Abre una carpeta primero.');
@@ -1846,7 +1852,7 @@ function renderSummary() {
   const filtered = S.view.length < S.items.length, only = sumF.only && filtered, its = only ? S.view : S.items;
   const stations = [...new Set(its.map(station))].sort(), cats = S.cats.filter(c => its.some(i => hasCat(i, c)));
   const evs = buildEvents(its), done = its.filter(i => i.cat).length, ghN = its.filter(i => hasCat(i, GH)).length;
-  const ts = its.filter(goodTs).map(fixTs), first = ts.length ? Math.min(...ts) : null, last = ts.length ? Math.max(...ts) : null;
+  const ts = its.filter(goodTs).map(fixTs), first = ts.length ? minOf(ts) : null, last = ts.length ? maxOf(ts) : null;
   const td = Object.fromEntries(stations.map(s => [s, trapDays(s)])), tdTot = stations.reduce((a, s) => a + td[s].days, 0);
   const M = { f: {}, e: {}, i: {} }; for (const c of cats) { M.f[c] = {}; M.e[c] = {}; M.i[c] = {}; }
   for (const it of its) for (const c of allCats(it)) if (M.f[c]) { const s = station(it); M.f[c][s] = (M.f[c][s] || 0) + 1; }
@@ -1922,8 +1928,11 @@ $('#sumbody').addEventListener('change', e => {
   saveReg(); setTimeout(() => { const id = document.activeElement && document.activeElement.id; renderSummary(); if (id && document.getElementById(id)) document.getElementById(id).focus(); }, 0);
 });
 // Importar estaciones desde un CSV (de Excel o de la libreta de campo); solo se actualizan las estaciones que existen en la carpeta
-const parseDay = v => { v = (v || '').trim(); let m; if ((m = v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return `${m[1]}-${pad(+m[2])}-${pad(+m[3])}`;
-  if ((m = v.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/))) { const y = m[3].length === 2 ? '20' + m[3] : m[3]; return `${y}-${pad(+m[2])}-${pad(+m[1])}`; } return ''; };
+const parseDay = v => { v = (v || '').trim(); let m, y, mo, d;
+  if ((m = v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) [y, mo, d] = [+m[1], +m[2], +m[3]];
+  else if ((m = v.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/))) [y, mo, d] = [+(m[3].length === 2 ? '20' + m[3] : m[3]), +m[2], +m[1]];
+  else return '';
+  const t = new Date(y, mo - 1, d); return t.getMonth() === mo - 1 && t.getDate() === d ? `${y}-${pad(mo)}-${pad(d)}` : ''; }; // 1.4.37: una fecha imposible (mes 13, 31 de abril) va a «Datos no válidos»
 $('#filest').onchange = async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return; const rows = parseCsv(await f.text()); if (rows.length < 2) return toast('El archivo no tiene filas de estaciones.', 4000);
   const H = rows[0].map(norm), col = (...ks) => H.findIndex(h => ks.some(k => h.startsWith(k)));
@@ -2082,7 +2091,7 @@ $('#fileimp').onchange = async e => { const f = e.target.files[0]; e.target.valu
 function sumReport() { const { stations, cats, val, td, tdTot, evs, its } = sumData, ev = evMin(), es = n => n.toLocaleString('es-MX', { maximumFractionDigits: 2, minimumFractionDigits: n % 1 ? 2 : 0 });
   const D = t => new Date(t).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }), pts = its.filter(goodTs).map(fixTs), sp = cats.filter(c => val('e', c, null)).sort((a, b) => val('e', b, null) - val('e', a, null));
   const nm = c => S.sci[c] ? `<i>${esc(S.sci[c])}</i>` : esc(c); let nt = 0; const tab = (cap, body, note = '') => `<p class="rtc"><b>Tabla ${++nt}.</b> ${cap}</p><table class="rtb">${body}</table>${note ? `<p class="rfn">${note}</p>` : ''}`;
-  let h = `<p class="rkick">Anexo</p><h1>Resultados del monitoreo con cámaras trampa</h1><p class="rmeta">${esc(projName())}${pts.length ? ` · ${D(Math.min(...pts))} al ${D(Math.max(...pts))}` : ''}</p>
+  let h = `<p class="rkick">Anexo</p><h1>Resultados del monitoreo con cámaras trampa</h1><p class="rmeta">${esc(projName())}${pts.length ? ` · ${D(minOf(pts))} al ${D(maxOf(pts))}` : ''}</p>
   <h2>Método</h2><p>Se instalaron ${stations.length} estaciones de fototrampeo que funcionaron un total de ${es(tdTot)} días-trampa. ${ev ? `Se consideraron independientes los registros de una misma especie en una misma estación separados por al menos ${ev} minutos.` : 'Cada fotografía se consideró un registro independiente.'} El índice de abundancia relativa (IAR) se calculó como el número de eventos independientes por cada 100 días-trampa, y la ocupación naive como la proporción de estaciones con al menos un registro de la especie.</p>
   <h2>Resultados</h2><p>Se obtuvieron ${es(its.length)} fotografías, de las cuales ${es(evs.length)} corresponden a eventos independientes de ${sp.length} especie(s).</p>`;
   h += tab('Especies registradas, eventos independientes, índice de abundancia relativa (IAR, eventos/100 días-trampa) y ocupación naive.', `<tr><th class="l">Especie</th><th class="l">Nombre común</th><th>Eventos</th><th>IAR</th><th>Ocupación naive</th></tr>`

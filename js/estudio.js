@@ -165,15 +165,6 @@ function drawTras() {
 }
 
 /* ---------- Respaldo del proyecto: solo datos (nunca fotos ni videos) ---------- */
-function readZip(buf) { // lee los .zip sin compresión que crea BioTrampa (zipStore)
-  const v = new DataView(buf), out = {}, dec = new TextDecoder(); let o = 0;
-  while (o + 30 <= v.byteLength && v.getUint32(o, true) === 0x04034b50) {
-    const meth = v.getUint16(o + 8, true), size = v.getUint32(o + 18, true), nl = v.getUint16(o + 26, true), xl = v.getUint16(o + 28, true), d = o + 30 + nl + xl;
-    if (meth !== 0) throw new Error('el .zip está comprimido; usa el archivo tal como lo guardó BioTrampa');
-    out[dec.decode(new Uint8Array(buf, o + 30, nl))] = dec.decode(new Uint8Array(buf, d, size)); o = d + size;
-  }
-  return out;
-}
 function backupData() {
   const registros = {};
   for (const src of S.srcs) { const files = {}; for (const it of S.items) if (it.src === src) { const e = regEntry(it); if (e) files[relPath(it)] = e; } registros[src.label] = { carpeta: src.name, par: src.pair || null, files }; }
@@ -220,7 +211,7 @@ async function restoreBackup(j) {
 }
 $('#filebak').onchange = async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return; let j;
-  try { const txt = /\.zip$/i.test(f.name) ? readZip(await f.arrayBuffer())['respaldo.json'] : await f.text(); if (!txt) throw new Error('no tiene respaldo.json'); j = JSON.parse(txt); }
+  try { const z = /\.zip$/i.test(f.name) && await readZipBin(await f.arrayBuffer()), txt = z ? z['respaldo.json'] && new TextDecoder().decode(z['respaldo.json']) : await f.text(); if (!txt) throw new Error('no tiene respaldo.json'); j = JSON.parse(txt); } // 1.4.37: también un .zip vuelto a comprimir
   catch (x) { return toast('No se pudo leer el respaldo: ' + x.message, 6000); }
   if (!j || j.tipo !== 'respaldo') return toast('Ese archivo no es un respaldo de BioTrampa.', 5000);
   await restoreBackup(j);
@@ -242,8 +233,10 @@ async function blindSet(items, cat) { // cat = null borra la respuesta a ciegas
   if (cur && cat && $('#adv').checked) { const k = S.view.indexOf(cur), nx = S.view.slice(k + 1).find(x => !x.bl && !groupOf(x).includes(cur)); show(nx || cur); } else if (cur) show(cur);
   toast(cat ? `A ciegas: ${items.length} foto(s) → ${cat}. No se movió ningún archivo.` : 'Respuesta a ciegas borrada.', 2200);
 }
-async function applySp(it, cat) { // clasifica de verdad (mueve la foto) aunque la revisión a ciegas esté activa
+async function applySp(it, cat) { // clasifica de verdad (mueve la foto) aunque la revisión a ciegas esté activa; devuelve si quedó en esa especie
+  cat = addSpecies(cat) || cat; // 1.4.37: una especie que no está en tu lista se agrega (antes la foto se movía sin botón)
   await locked(async () => { const was = S.blindOff; S.blindOff = true; try { await classify([it], cat, true); } finally { S.blindOff = was; } });
+  return it.cat === cat;
 }
 function openDis(list, title, la, lb, onA, onB) { // desacuerdos: barra con Especie / Individuo y cada foto con sus dos respuestas (1.4.32)
   $('#h_rev').textContent = title; const box = $('#revbody'); box.textContent = '';
@@ -258,7 +251,7 @@ function openDis(list, title, la, lb, onA, onB) { // desacuerdos: barra con Espe
     const ba = r.querySelector('.da'), bb = r.querySelector('.db'); ba.querySelector('small').textContent = la; ba.querySelector('b').textContent = d.a; bb.querySelector('small').textContent = lb; bb.querySelector('b').textContent = d.b;
     ba.title = 'Queda esta respuesta'; bb.title = 'Queda esta respuesta (si es otra especie, la foto se mueve a su carpeta)';
     const done = v => { r.classList.add('done'); r.querySelectorAll('.dch').forEach(x => x.remove()); r.querySelector('.dinfo small').textContent = `Resuelta: queda ${v}`; disCount(); };
-    ba.onclick = async () => { await onA(d); done(d.a); }; bb.onclick = async () => { await onB(d); done(d.b); };
+    ba.onclick = async () => { if (await onA(d) !== false) done(d.a); }; bb.onclick = async () => { if (await onB(d) !== false) done(d.b); }; // 1.4.37: si no se pudo mover, la fila sigue pendiente
     r.querySelector('.dop').onclick = () => { closeOver(true); show(d.it); };
   }
   disCount(); disTab(list.some(d => d.kind !== 'id') || !list.length ? 'sp' : 'id'); openOver('#revdlg');
@@ -274,7 +267,7 @@ function blindDis() {
   const same = S.items.filter(i => i.bl && i.bl === i.cat).length;
   openDis(l, `Revisión a ciegas: ${same} coinciden, ${l.length} desacuerdo(s)`, 'Clasificación', 'A ciegas',
     async d => { d.it.br = 'A'; saveReg(); },
-    async d => { if (d.it.cat !== d.sp) await applySp(d.it, d.sp); d.it.br = 'B'; saveReg(); refreshCards([d.it]); });
+    async d => { if (d.it.cat !== d.sp && !(await applySp(d.it, d.sp))) return false; d.it.br = 'B'; saveReg(); refreshCards([d.it]); });
 }
 // 2) Comparar con el CSV (registro completo) de otra persona: se emparejan las fotos por nombre original y fecha EXIF
 $('#filerev').onchange = async e => {
@@ -298,7 +291,7 @@ $('#filerev').onchange = async e => {
     if (ib && ia !== ib) list.push({ it, a: ia || 'sin ID', b: ib, c: a, kind: 'id' }); else same++;
   }
   openDis(list, `Comparación con «${f.name}»: ${same} coinciden, ${list.length} desacuerdo(s)`, 'Tú', 'Otra persona', async () => {},
-    async d => { if (d.kind === 'sp') await applySp(d.it, d.sp); else { const o = obsOf(d.it, d.c); o.id = d.b; delete o.ns; ensureInd(d.b, d.c); saveReg(); refreshCards([d.it]); } });
+    async d => { if (d.kind === 'sp') { if (!(await applySp(d.it, d.sp))) return false; } else { const o = obsOf(d.it, d.c); o.id = d.b; delete o.ns; ensureInd(d.b, d.c); saveReg(); refreshCards([d.it]); } });
   if (miss) toast(`${miss} fila(s) del CSV no se encontraron en este proyecto (otras fotos o sin fecha EXIF).`, 7000);
 };
 
