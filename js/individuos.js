@@ -121,6 +121,7 @@ async function setLeft(it, first) { // la foto que se identifica (al abrir, o al
     saveReg(); } IDV.flg = false; // 1.4.18: el lado propuesto (como la anterior) solo se guarda al confirmarlo
   IDV.it = it;
   IDV.o = obsOf(it, IDV.c);
+  IDV.out = new Set(); // 1.4.44: candidatos descartados en el mosaico (solo para esta foto)
   renderQueue();
   if (!IDV.o.fl && IDV.lastFl) { IDV.o.fl = IDV.lastFl;
     IDV.flg = true; } IDV.menu = !IDV.o.fl ? 'fl' : !IDV.o.q ? 'q' : null;
@@ -134,13 +135,17 @@ async function setLeft(it, first) { // la foto que se identifica (al abrir, o al
   idCmp(false);
   renderParts();
   renderBurst();
+  renderPair();
   idSeg();
   renderCands(true);
+  if (IDV.pk && !IDV.o.id) pairShow(); // 1.4.44: al abrir, las dos cámaras lado a lado
   await loadSide('l', it); // 1.4.19: la foto se ve completa; se compara al tocar un candidato
 }
 function idCmp(on) { IDV.cmp = on;
-  $('#idv_r').hidden = !on;
-  $('#idv_stage').classList.toggle('two', on);
+  $('#idv_r').hidden = !on || IDV.mos;
+  $('#idv_mosg').hidden = !IDV.mos; // 1.4.44: el mosaico ocupa el lugar de la otra foto
+  $('#idv_mosb').classList.toggle('on', !!IDV.mos);
+  $('#idv_stage').classList.toggle('two', on || !!IDV.mos);
   requestAnimationFrame(() => { layoutId();
     drawZones('l');
     drawZones('r'); }); }
@@ -216,7 +221,7 @@ function setStep() { // 1.4.18: ya no hay pasos; siempre las dos fotos y la colu
   $('#idv_s3').classList.remove('nfon');
   idHint(); requestAnimationFrame(() => { layoutId(); drawZones('l'); drawZones('r'); });
 }
-function sideObs(side) { return side === 'l' ? IDV.o : IDV.p && IDV.p.o; }
+function sideObs(side) { return side === 'l' ? IDV.o : !IDV.pv && IDV.p && IDV.p.o; } // 1.4.44: la foto de la cámara en par no tiene trazos
 const needZone = side => side === 'l' && !!IDV.zm && !!IDV.zp; // dónde arrastrar dibuja un recuadro
 function idHint() {
   for (const side of ['l', 'r']) { const o = sideObs(side), n = ((o && o.tr) || []).length, h = $(`#idv_${side}hint`), P = IDV.zp;
@@ -334,9 +339,13 @@ function drawZones(side) {
   svg.innerHTML = h;
 }
 function setPick(id, p) {
-  IDV.id = id; IDV.p = p; IDV.pen.r = false; IDV.m = ((p && p.o.tr) || []).map(() => 0);
+  IDV.id = id; IDV.p = p; IDV.pv = null; IDV.pen.r = false; IDV.m = ((p && p.o.tr) || []).map(() => 0);
   $('#idv_rcap').textContent = p ? `${id} · ${p.ext ? 'referencia importada' : station(p.it)}${p.it.meta && p.it.meta.date ? ' · ' + p.it.meta.date : ''} · ${(FL[p.o.fl] || 'sin lado').toLowerCase()}${p.o.ref ? ' · referencia' : ''}` : id ? `${id}: no tiene fotos de este lado` : '';
   resetView('r'); IDV.hist.r = []; IDV.redo.r = []; renderVerdict(); loadSide('r', p ? p.it : null);
+}
+function candInfo(k, o, shown) { // aviso (w) y datos de un candidato, para la lista y el mosaico
+  const w = k.fast ? `${k.fast.d.toFixed(0)} km en ${k.fast.h < 1 ? Math.round(k.fast.h * 60) + ' min' : Math.round(k.fast.h) + ' h'}: muy improbable` : k.sexOff ? `sexo distinto: esta foto ${SEXS[o.sex]}` : '';
+  return { w, info: w || (k.other ? 'solo se conoce el otro lado' : !shown.length ? 'sin fotos de este lado' : [k.sameSt ? 'misma estación' : isFinite(k.dmin) ? `a ${k.dmin.toFixed(1)} km` : '', isFinite(k.tmin) ? `${Math.round(k.tmin / DAY)} día(s)` : '', k.rec.marcas ? k.rec.marcas : ''].filter(Boolean).join(' · ') || `${k.ph.length} foto(s)`) };
 }
 function renderCands(repick) { // repick: elegir de nuevo el candidato (si la foto ya tiene individuo, se muestra ese)
   const { it, c, o } = IDV, box = $('#idv_cands'), cw = $('#idv_chipsw'), vd = $('#idv_verdict'); box.after(cw, vd); box.textContent = '';
@@ -344,6 +353,7 @@ function renderCands(repick) { // repick: elegir de nuevo el candidato (si la fo
     if (IDV.id || IDV.p) setPick(null, null);
     box.innerHTML = '<p class="idph">Elige lado y claridad para verlos.</p>';
     $('#idv_same').disabled = true;
+    renderMos();
     return; } // 1.4.18
   const l = candidates(it, c, o.fl), zp = IDV.zp;
   IDV.cands = l;
@@ -355,8 +365,7 @@ function renderCands(repick) { // repick: elegir de nuevo el candidato (si la fo
     const d = document.createElement('div'), on = IDV.id === k.id, shown = bestPhotos(k, o.fl, zp);
     d.className = 'cand' + (on ? ' on' : '') + (k.other || !shown.length ? ' off' : '');
     d.dataset.id = k.id;
-    const w = k.fast ? `${k.fast.d.toFixed(0)} km en ${k.fast.h < 1 ? Math.round(k.fast.h * 60) + ' min' : Math.round(k.fast.h) + ' h'}: muy improbable` : k.sexOff ? `sexo distinto: esta foto ${SEXS[o.sex]}` : '';
-    const info = w || (k.other ? 'solo se conoce el otro lado' : !shown.length ? 'sin fotos de este lado' : [k.sameSt ? 'misma estación' : isFinite(k.dmin) ? `a ${k.dmin.toFixed(1)} km` : '', isFinite(k.tmin) ? `${Math.round(k.tmin / DAY)} día(s)` : '', k.rec.marcas ? k.rec.marcas : ''].filter(Boolean).join(' · ') || `${k.ph.length} foto(s)`);
+    const { w, info } = candInfo(k, o, shown);
     d.innerHTML = '<button class="ch"><img alt=""><span class="cn"><span></span><small></small></span><b></b></button>';
     d.querySelector('.cn span').textContent = k.id;
     d.querySelector('.cn small').textContent = [k.rec.nombre, k.sex ? k.sex.toLowerCase() : ''].filter(Boolean).join(' · ');
@@ -364,8 +373,10 @@ function renderCands(repick) { // repick: elegir de nuevo el candidato (si la fo
     box.appendChild(d);
     const im = d.querySelector('img'), first = shown[0] || [...k.ph].sort(refFirst)[0];
     if (first) thumbAny(im, first.it);
-    d.querySelector('.ch').onclick = () => { if (on && IDV.cmp) return idCmp(false);
-      if (!on) setPick(k.id, shown[0] || null);
+    d.querySelector('.ch').onclick = () => { if (on && IDV.cmp && !IDV.mos && !IDV.pv) return idCmp(false);
+      if (!on || IDV.pv) setPick(k.id, (on && IDV.p) || shown[0] || null);
+      IDV.mos = false;
+      IDV.pv = null;
       idCmp(true);
       renderCands(); }; // 1.4.19: tocar el candidato abre la comparación; otra vez, la cierra
     const all = [...shown, ...k.ph.filter(p => !shown.includes(p))]; // 1.4.19: todas sus fotos (las del mismo lado primero)
@@ -376,6 +387,7 @@ function renderCands(repick) { // repick: elegir de nuevo el candidato (si la fo
         t.title = `${station(p.it)} · lado ${(FL[p.o.fl] || 'sin dato').toLowerCase()}${p.o.ref ? ' · referencia' : ''}${(p.o.tr || []).length ? ' · rosetas calcadas' : ''}`;
         t.className = (p === IDV.p ? 'on' : '') + (p.o.ref ? ' ref' : '');
         t.onclick = () => { setPick(k.id, p);
+          IDV.mos = false;
           idCmp(true);
           renderCands(); };
         th.appendChild(t); }
@@ -388,6 +400,7 @@ function renderCands(repick) { // repick: elegir de nuevo el candidato (si la fo
     b.onclick = () => { IDV.more = true;
       renderCands(); };
     box.appendChild(b); }
+  renderMos();
   if (!l.length) box.innerHTML = `<p class="hint tiny">Todavía no hay otros individuos de ${esc(c)} en el catálogo. Si es la primera vez que ves a este animal, pulsa «Individuo nuevo».</p>`;
 }
 function renderVerdict() {
@@ -422,6 +435,10 @@ function applyInd(id, opt = {}) { // asigna el individuo a la foto (y, si se pid
   IDV.flg = false; if (IDV.o.fl) IDV.lastFl = IDV.o.fl; // 1.4.18
   const { it, c, o } = IDV, who = $('#reviewer').value.trim(), dud = opt.nuevo ? !!opt.dud : opt.dud || $('#idv_dud').checked, list = [it];
   if (id && $('#idv_burstc').checked) for (const x of IDV.g) if (x !== it && !(x.obs && x.obs[c] && x.obs[c].id)) list.push(x);
+  const pk = id && $('#idv_pairc').checked && (IDV.pr || []).includes(IDV.pk) ? IDV.pk : null; // 1.4.44: el mismo paso visto por la cámara en par
+  if (pk && !list.includes(pk) && !(pk.obs && pk.obs[c] && pk.obs[c].id)) { const op = obsOf(pk, c);
+    if (!op.fl && (o.fl === 'I' || o.fl === 'D')) op.fl = o.fl === 'I' ? 'D' : 'I'; // la otra cámara ve el otro lado
+    list.push(pk); }
   const first = id && !indPhotos(id).length, y = IDV.m.filter(x => x === 1).length;
   for (const x of list) { const ox = obsOf(x, c);
     if (id) { ox.id = id;
@@ -448,8 +465,55 @@ function applyInd(id, opt = {}) { // asigna el individuo a la foto (y, si se pid
     refreshCards(list);
     if (!$('#pind').hidden) renderIndPane();
     if (S.cur && !$('#lb').hidden) show(S.cur); }); // 1.4.14: la foto pasa a la subcarpeta del individuo
-  toast((!id ? 'Esta foto quedó como «no se puede saber».' : first ? `${id} creado${dud ? ' (dudoso)' : ''}. Esta foto es su referencia.` : `${list.length} foto(s) → ${id}${dud ? ' (dudosa)' : ''}.`) + (nx ? '' : ` Ya no quedan fotos de ${c} ${IDV.mode === 'dud' ? 'dudosas' : 'sin identificar'}.`), first ? 6000 : 3000);
+  toast((!id ? 'Esta foto quedó como «no se puede saber».' : first ? `${id} creado${dud ? ' (dudoso)' : ''}. Esta foto es su referencia.` : `${list.length} foto(s) → ${id}${dud ? ' (dudosa)' : ''}${pk && list.includes(pk) ? `, con la de ${camOf(pk)}` : ''}.`) + (nx ? '' : ` Ya no quedan fotos de ${c} ${IDV.mode === 'dud' ? 'dudosas' : 'sin identificar'}.`), first ? 6000 : 3000);
 }
+/* ---------- 1.4.44: mosaico de candidatos y cámara en par ---------- */
+function renderMos() { // la mejor foto del mismo lado de cada candidato: × descarta a simple vista, tocar compara
+  const g = $('#idv_mosg'), { o } = IDV; if (!IDV.mos) return; g.textContent = '';
+  if (!o.fl || !o.q) return void (g.innerHTML = '<p class="idmosh">Elige lado y claridad para ver a los candidatos.</p>');
+  const l = IDV.mosl = (IDV.cands || []).slice().sort((a, b) => IDV.out.has(a.id) - IDV.out.has(b.id)); // los descartados al final
+  if (!l.length) return void (g.innerHTML = `<p class="idmosh">Todavía no hay otros individuos de ${esc(IDV.c)} en el catálogo.</p>`);
+  l.forEach((k, i) => { const shown = bestPhotos(k, o.fl, IDV.zp), p = shown[0], { w, info } = candInfo(k, o, shown), out = IDV.out.has(k.id), d = document.createElement('div'), t = out ? 'Volver a mostrar' : 'Descartar';
+    d.className = 'mt' + (out || !p ? ' off' : '') + (k.id === IDV.id ? ' on' : '');
+    d.innerHTML = `<button class="mtb"><span class="mti">${p ? '<img alt="">' : '<em>Sin foto de este lado</em>'}${i < 9 ? `<kbd>${i + 1}</kbd>` : ''}</span><span class="mtn"><b></b><small></small></span><small class="mtx${w && !out ? ' w' : ''}"></small></button><button class="mto" title="${t}" aria-label="${t}"><i class="ic sm">${icon(out ? 'undo' : 'x')}</i></button>`;
+    d.querySelector('.mtn b').textContent = k.id;
+    d.querySelector('.mtn small').textContent = [k.rec.nombre, k.sex ? k.sex.toLowerCase() : ''].filter(Boolean).join(' · ');
+    d.querySelector('.mtx').textContent = out ? 'descartado' : info;
+    if (p) thumbAny(d.querySelector('img'), p.it);
+    d.querySelector('.mtb').onclick = () => mosPick(i);
+    d.querySelector('.mto').onclick = () => { if (out) IDV.out.delete(k.id); else IDV.out.add(k.id); renderMos(); };
+    g.appendChild(d); });
+}
+function mosPick(i) { const k = (IDV.mosl || [])[i]; if (!k) return;
+  setPick(k.id, bestPhotos(k, IDV.o.fl, IDV.zp)[0] || null);
+  IDV.mos = false;
+  idCmp(true);
+  renderCands(); }
+$('#idv_mosb').onclick = () => { IDV.mos = !IDV.mos; idCmp(IDV.cmp); renderMos(); };
+const PAIRW = 60e3; // shortcut: ventana fija de 60 s entre las dos cámaras del par; si sus relojes difieren más, corrige la hora de una cámara
+function pairShots(it, c) { // fotos de la otra cámara de la misma estación, de la misma especie, tomadas casi al mismo tiempo
+  if (!it.src || !it.src.pair || !goodTs(it)) return [];
+  const t = fixTs(it);
+  return S.items.filter(x => x.src && x.src !== it.src && station(x) === station(it) && hasCat(x, c) && goodTs(x) && Math.abs(fixTs(x) - t) <= PAIRW).sort((a, b) => Math.abs(fixTs(a) - t) - Math.abs(fixTs(b) - t)); }
+const pairDt = x => Math.round((fixTs(x) - fixTs(IDV.it)) / 1000);
+function renderPair() { const l = IDV.pr = pairShots(IDV.it, IDV.c), box = $('#idv_pair');
+  if (!l.includes(IDV.pk)) IDV.pk = l[0] || null;
+  $('#idv_pairw').hidden = !l.length; box.textContent = '';
+  for (const x of l) { const b = document.createElement('button'), im = document.createElement('img'), d = pairDt(x);
+    b.className = x === IDV.pk ? 'on' : '';
+    b.title = `${camOf(x)} · ${x.origName || x.name}`;
+    im.alt = '';
+    im.dataset.id = x.id;
+    b.append(im, Object.assign(document.createElement('span'), { textContent: (d > 0 ? '+' : '') + d + ' s' }));
+    b.onclick = () => { IDV.pk = x; renderPair(); pairShow(); };
+    box.appendChild(b);
+    thumb(im); } }
+function pairShow() { const x = IDV.pk, d = pairDt(x); // la foto de la otra cámara ocupa el lugar del candidato hasta que se toca uno
+  IDV.pv = x; IDV.mos = false;
+  $('#idv_rcap').textContent = `${camOf(x)} (en par) · ${x.origName || x.name} · ${d ? Math.abs(d) + ' s ' + (d > 0 ? 'después' : 'antes') : 'mismo segundo'}`;
+  resetView('r');
+  loadSide('r', x);
+  idCmp(true); }
 // 1.4.15: newInd() abre el formulario de individuo nuevo (más abajo)
 $('#idv_same').onclick = () => { if (IDV.id) applyInd(IDV.id); };
 $('#idv_new').onclick = () => { if (IDV.o.q === 'M') { $('#idv_warn').hidden = false; return; } newInd(); };
@@ -588,6 +652,8 @@ addEventListener('keydown', e => { // atajos dentro de «Identificar individuo»
   else if (/^[idan]$/.test(k)) idSet('fl', k.toUpperCase()); // 1.4.18: lado I/D/A/N, claridad 1/2/3, S salta, Enter confirma, ↑ ↓ candidatos
   else if (/^[1-3]$/.test(k) && (!IDV.o.q || IDV.menu === 'q')) idSet('q', 'BRM'[+k - 1]);
   else if (k === 's') { const sk = $('#idv_skip'); if (sk) sk.click(); }
+  else if (k === 'm') $('#idv_mosb').click(); // 1.4.44: lista o mosaico
+  else if (IDV.mos && /^[1-9]$/.test(k)) mosPick(+k - 1);
   else if (k === 'enter' && !$('#idv_same').disabled && !document.activeElement.closest('button,summary,label')) $('#idv_same').click();
   else if (k === 'arrowdown' || k === 'arrowup') idMove(k === 'arrowdown' ? 1 : -1);
   else if (/^[1-9]$/.test(k) && IDV.p) { const i = +k - 1, n = ((IDV.p.o.tr) || []).length;

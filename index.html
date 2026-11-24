@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BioTrampa 1.4</title>
 <link rel="icon" href="data:,"><!-- sin ícono por ahora (icono.svg queda en la carpeta para más adelante) -->
-<link rel="stylesheet" href="css/styles.css?v=1.4.43">
+<link rel="stylesheet" href="css/styles.css?v=1.4.44">
 </head>
 <body class="home">
 <div id="app">
@@ -144,7 +144,7 @@
         <section id="hlast" hidden></section>
         <section class="hprojs"><h2>Proyectos</h2><div id="homelist"><button id="open2" class="hnew"><i class="ic" data-ic="plus"></i><b>Nuevo proyecto</b><span>Haz clic o suelta aquí la carpeta de una cámara</span></button></div></section>
         <span class="sp"></span>
-        <p class="hfoot">También puedes arrastrar una carpeta a esta ventana · Versión 1.4.43</p>
+        <p class="hfoot">También puedes arrastrar una carpeta a esta ventana · Versión 1.4.44</p>
       </div><div id="grid"></div></section>
     <div id="lb" hidden>
       <button id="unfocus" title="Mostrar controles (H o Esc)">Mostrar controles</button>
@@ -229,6 +229,7 @@
     <div class="idimg empty" id="idv_r" hidden><div class="idin"><img alt="Foto del catálogo"><svg class="pts" aria-hidden="true"></svg></div><span class="idlab" id="idv_rcap"></span>
       <div class="idtools"><button data-t="pen" title="Calcar rosetas (una vez por individuo y lado) (P)" aria-label="Calcar rosetas"><i class="ic" data-ic="pen"></i></button><button data-t="erase" title="Borrar una roseta (E)" aria-label="Borrar una roseta"><i class="ic" data-ic="erase"></i></button><i class="tsep"></i><button data-t="undo" title="Deshacer (Ctrl+Z)" aria-label="Deshacer"><i class="ic" data-ic="undo"></i></button><button data-t="redo" title="Rehacer (Ctrl+Shift+Z)" aria-label="Rehacer"><i class="ic" data-ic="redo"></i></button><i class="tsep"></i><button data-t="eye" title="Mostrar u ocultar los trazos (H)" aria-label="Mostrar u ocultar los trazos"><i class="ic" data-ic="eye"></i></button><button data-t="color" title="Color del trazo" aria-label="Color del trazo"><span class="tsw"></span></button></div>
       <span class="idhint" id="idv_rhint" hidden></span></div>
+    <div class="idmos" id="idv_mosg" hidden></div>
   </div>
   <div class="idcol">
     <div class="ptop idtop"><div class="idtt"><h2 id="h_idv">Identificar</h2><p id="idv_sub" class="idsub"></p></div><span class="sp"></span><button class="pclose" title="Cerrar (Esc)" aria-label="Cerrar"><i class="ic" data-ic="x"></i></button></div>
@@ -239,7 +240,8 @@
       <div class="idpk"><span class="idpkl">Lado</span><div class="idpkw"><button class="idbox" id="idv_flb" aria-haspopup="true"></button><div class="idmenu" id="idv_fl" hidden></div></div></div>
       <div class="idpk"><span class="idpkl">Claridad</span><div class="idpkw"><button class="idbox" id="idv_qb" aria-haspopup="true"></button><div class="idmenu" id="idv_q" hidden></div></div><div id="idv_bstw"><div class="idbst" id="idv_bst"></div></div></div>
       <div class="idpk" id="idv_zw" hidden><span class="idpkl">Parte del cuerpo</span><div class="idseg c3" id="idv_parts"></div><div id="idv_zones"></div></div>
-      <div class="idpk"><div class="idckh"><span class="idpkl">Candidatos</span><small>↑ ↓</small></div><div id="idv_cands" class="idcands"></div><div id="idv_chipsw"><div class="idchips" id="idv_chips"></div></div><p class="idverdict" id="idv_verdict"></p>
+      <div class="idpk" id="idv_pairw" hidden><span class="idpkl">La otra cámara</span><div class="idbst" id="idv_pair"></div><label class="chk idpairc"><input type="checkbox" id="idv_pairc" checked> Es el mismo animal en las dos</label></div>
+      <div class="idpk"><div class="idckh"><span class="idpkl">Candidatos</span><small>↑ ↓</small><button class="ib sm" id="idv_mosb" title="Ver los candidatos en mosaico (M)" aria-label="Ver los candidatos en mosaico"><i class="ic sm" data-ic="grid"></i></button></div><div id="idv_cands" class="idcands"></div><div id="idv_chipsw"><div class="idchips" id="idv_chips"></div></div><p class="idverdict" id="idv_verdict"></p>
         <div class="idwarn" id="idv_warn" hidden>La foto está marcada como <b>mala</b>: un individuo nuevo así puede ser un jaguar que ya conoces.<div class="idrow"><button id="idv_wns">No se puede saber</button><button id="idv_wnew">Crear (dudoso)</button></div></div></div>
       <details class="idadj"><summary>Ajustar imagen</summary><label>Esta foto: brillo <input type="range" id="idv_lb" min="0.5" max="3" step="0.05" value="1"></label><label>contraste <input type="range" id="idv_lc" min="0.5" max="2.5" step="0.05" value="1"></label>
         <label>La otra: brillo <input type="range" id="idv_rb" min="0.5" max="3" step="0.05" value="1"></label><label>contraste <input type="range" id="idv_rc" min="0.5" max="2.5" step="0.05" value="1"></label><label>Grosor del trazo <input type="range" id="idv_trw" min="1" max="6" step="0.5" value="2.2"></label><button class="lnk2" id="idv_adjr">Restablecer</button></details>
@@ -297,8 +299,8 @@
 <input id="filest" type="file" accept=".csv,text/csv" hidden><input id="fileimp" type="file" accept=".json,application/json" hidden><input id="filecsv" type="file" accept=".csv,text/csv" multiple hidden><input id="filebak" type="file" accept=".zip,.json,application/zip,application/json" hidden><input id="filerev" type="file" accept=".csv,text/csv" hidden><input id="fileind" type="file" accept=".json,application/json" hidden><input id="filepkg" type="file" accept=".zip,application/zip" hidden>
 <div id="tip" role="tooltip" hidden></div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
-<script src="js/app.js?v=1.4.43"></script>
-<script src="js/estudio.js?v=1.4.43"></script>
-<script src="js/individuos.js?v=1.4.43"></script>
+<script src="js/app.js?v=1.4.44"></script>
+<script src="js/estudio.js?v=1.4.44"></script>
+<script src="js/individuos.js?v=1.4.44"></script>
 </body>
 </html>
