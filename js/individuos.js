@@ -472,12 +472,13 @@ function renderFic() {
   const o = IDV.o, shown = bestPhotos(k, o.fl, IDV.zp), all = [...shown, ...k.ph.filter(p => !shown.includes(p))], { w, info } = candInfo(k, o, shown);
   if (IDV.ffid !== k.id) { IDV.ffid = k.id; IDV.ff = 'T'; } // 1.4.50: con cada candidato, todas sus fotos (las de este lado primero)
   const lists = { L: shown, T: all, R: all.filter(p => (p.o.tr || []).length) }, l = lists[IDV.ff], n = k.ph.length;
-  box.innerHTML = `<button class="ficbk"><i class="ic sm">${icon('left')}</i>Candidatos</button><h3></h3><p class="ficn"></p><p class="ficw${w ? ' w' : ''}"></p><div class="ficr"></div><div class="idff">${Object.entries(FICF).map(([f, t]) => `<button data-f="${f}"${f === IDV.ff ? ' class="on"' : ''}>${t} <b>${lists[f].length}</b></button>`).join('')}</div><div class="idfg"></div>`;
+  box.innerHTML = `<div class="ficbar"><button class="ficbk"><i class="ic sm">${icon('left')}</i>Candidatos</button><button class="ficx" title="Cerrar (Esc dos veces)" aria-label="Cerrar"><i class="ic">${icon('x')}</i></button></div><h3></h3><p class="ficn"></p><p class="ficw${w ? ' w' : ''}"></p><div class="ficr"></div><div class="idff">${Object.entries(FICF).map(([f, t]) => `<button data-f="${f}"${f === IDV.ff ? ' class="on"' : ''}>${t} <b>${lists[f].length}</b></button>`).join('')}</div><div class="idfg"></div>`;
   box.querySelector('h3').textContent = k.id;
   box.querySelector('.ficn').textContent = [candName(k), `${n} foto${n === 1 ? '' : 's'}`].filter(Boolean).join(' · ');
   box.querySelector('.ficw').textContent = info;
   box.querySelector('.ficr').append(cw); // las rosetas de siempre (1–9 en el teclado), arriba de las fotos
   box.querySelector('.ficbk').onclick = ficBack;
+  box.querySelector('.ficx').onclick = () => { closeOver(); idClosed(); };
   box.querySelectorAll('.idff button').forEach(b => b.onclick = () => { IDV.ff = b.dataset.f; renderFic(); });
   const g = box.querySelector('.idfg');
   if (!l.length) g.innerHTML = '<p class="hint tiny">Ninguna foto con este filtro.</p>';

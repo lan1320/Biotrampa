@@ -1301,3 +1301,9 @@ html,body{overscroll-behavior:none}
 .idtools .tgrip{width:14px;margin:0 2px 0 4px;flex:none;cursor:grab;touch-action:none;background:radial-gradient(circle,#ffffff80 1.2px,transparent 1.6px) 0 0/7px 7px;align-self:stretch;margin-block:8px}
 .idtools.drag .tgrip{cursor:grabbing}
 .idtools button[data-t=erase] .ic svg{width:16px;height:16px}
+/* 1.4.53: en la ficha del candidato, «‹ Candidatos» va hasta arriba, en lugar del título Identificar */
+.idcol:has(#idv_s3.onfic)>.idtop{display:none}
+#idv .idbody.onfic{padding-top:12px}
+.ficbar{display:flex;align-items:center;justify-content:space-between}
+.ficx{width:32px;height:32px;padding:0;border:0;border-radius:8px;background:none;color:var(--mu);display:flex;align-items:center;justify-content:center}
+.ficx:hover{background:var(--ac2);color:var(--tx)}
