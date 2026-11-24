@@ -1260,13 +1260,7 @@ html,body{overscroll-behavior:none}
 .idstage{position:relative}
 .idadjp{position:absolute;top:58px;right:10px;z-index:3;width:250px;margin:0;padding:12px 14px;border-radius:10px;background:var(--pn);box-shadow:0 10px 30px #0000004d;display:flex;flex-direction:column;gap:8px}
 .idadjp .lnk2{align-self:flex-start}
-.idlc{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:0 2px}
-.idlc .idpk{position:relative;padding:0}
-.idlc .idpkl{position:absolute;left:12px;top:7px;z-index:1;margin:0;font-size:11px;font-weight:400;color:var(--fa);pointer-events:none}
-.idlc .idbox{height:52px;padding:16px 12px 0;border:0;border-radius:10px;background:var(--pn2);font-size:14px;font-weight:500}
-.idlc .idbox.open{box-shadow:0 0 0 2px var(--ac)}
-.idlc .idbox small,.idlc .idbox kbd{display:none}
-.idlc .idbox::after{margin-top:-14px}
+.idlc{display:flex;flex-direction:column;gap:14px} /* 1.4.52: lado y claridad otra vez uno debajo del otro, como antes */
 .idfoot3{border-top:0}
 .idprog{display:none}
 #idv_burstl input{appearance:none;-webkit-appearance:none;position:relative;width:30px;height:18px;margin:0;border-radius:9px;background:var(--scr);transition:background-color .15s;flex:none}
@@ -1299,3 +1293,11 @@ html,body{overscroll-behavior:none}
 .idfg small{font-size:11px;color:var(--mu)}
 #idv .idadjp{margin:0}
 #idv_s3:not(.onfic) #idv_chipsw,#idv .idverdict{display:none} /* 1.4.50: las rosetas solo en la ficha; sin la línea del veredicto */
+/* 1.4.52: Candidatos centrado con botones más grandes; barra de la foto que se arrastra; sin el nombre sobre tu foto; lápiz y borrador iguales */
+#idv .idckh{align-items:center}
+#idv .idckh .idpkl{margin-bottom:0}
+#idv .idvw{padding:3px;border-radius:10px}#idv .idvw button{width:38px;height:32px;border-radius:7px}#idv .idvw .ic{width:19px;height:19px}
+#idv_lcap{display:none}
+.idtools .tgrip{width:14px;margin:0 2px 0 4px;flex:none;cursor:grab;touch-action:none;background:radial-gradient(circle,#ffffff80 1.2px,transparent 1.6px) 0 0/7px 7px;align-self:stretch;margin-block:8px}
+.idtools.drag .tgrip{cursor:grabbing}
+.idtools button[data-t=erase] .ic svg{width:16px;height:16px}

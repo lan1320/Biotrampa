@@ -574,6 +574,15 @@ $('#idv_dud').onchange = e => { if (IDV.o.id) { if (e.target.checked) IDV.o.dud 
 for (const k of ['lb', 'lc', 'rb', 'rc', 'trw']) $('#idv_' + k).oninput = layoutId;
 $('#idv_adjr').onclick = () => { for (const k of ['lb', 'lc', 'rb', 'rc', 'trw']) $('#idv_' + k).value = $('#idv_' + k).defaultValue;
   layoutId(); }; // 1.4.21: restablecer
+document.querySelectorAll('#idv .idtools').forEach(tb => { // 1.4.52: la barra de la foto se arrastra desde los puntitos (por si tapa al animal)
+  const g = document.createElement('i'); g.className = 'tgrip'; g.title = 'Arrastra para mover la barra'; tb.prepend(g);
+  g.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); g.setPointerCapture(e.pointerId); tb.classList.add('drag');
+    const r = tb.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
+    g.onpointermove = m => { const b = tb.parentElement.getBoundingClientRect();
+      tb.style.left = Math.max(0, Math.min(b.width - r.width, m.clientX - b.left - dx)) + 'px';
+      tb.style.top = Math.max(0, Math.min(b.height - r.height, m.clientY - b.top - dy)) + 'px';
+      tb.style.right = 'auto'; };
+    g.onpointerup = () => { g.onpointermove = null; tb.classList.remove('drag'); }; }); });
 for (const side of ['l', 'r']) { // zoom y desplazamiento sincronizados; arrastrar dibuja el recuadro de una parte que falta, o calca una roseta con el lápiz
   const box = $('#idv_' + side); let drag = null;
   box.querySelector('.idtools').onclick = e => { const b = e.target.closest('button'); if (b) idTool(side, b.dataset.t); };
