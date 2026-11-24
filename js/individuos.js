@@ -463,6 +463,7 @@ function applyInd(id, opt = {}) { // asigna el individuo a la foto (y, si se pid
   toast((!id ? 'Esta foto quedó como «no se puede saber».' : first ? `${id} creado${dud ? ' (dudoso)' : ''}. Esta foto es su referencia.` : `${list.length} foto(s) → ${id}${dud ? ' (dudosa)' : ''}${pk && list.includes(pk) ? `, con la de ${camOf(pk)}` : ''}.`) + (nx ? '' : ` Ya no quedan fotos de ${c} ${IDV.mode === 'dud' ? 'dudosas' : 'sin identificar'}.`), first ? 6000 : 3000);
 }
 /* ---------- 1.4.49: ficha del candidato en la columna (sus rosetas y todas sus fotos) ---------- */
+function ficBack() { IDV.fic = false; IDV.pv = null; idCmp(false); renderCands(); } // 1.4.51: regresar a la lista también deja solo tu foto
 const FICF = { L: 'Este lado', T: 'Todas', R: 'Con rosetas' }, FLS = { I: 'izq.', D: 'der.', A: 'ambos' };
 function renderFic() {
   const box = $('#idv_fic'), k = IDV.fic && (IDV.cands || []).find(x => x.id === IDV.id), cw = $('#idv_chipsw');
@@ -476,7 +477,7 @@ function renderFic() {
   box.querySelector('.ficn').textContent = [candName(k), `${n} foto${n === 1 ? '' : 's'}`].filter(Boolean).join(' · ');
   box.querySelector('.ficw').textContent = info;
   box.querySelector('.ficr').append(cw); // las rosetas de siempre (1–9 en el teclado), arriba de las fotos
-  box.querySelector('.ficbk').onclick = () => { IDV.fic = false; renderCands(); };
+  box.querySelector('.ficbk').onclick = ficBack;
   box.querySelectorAll('.idff button').forEach(b => b.onclick = () => { IDV.ff = b.dataset.f; renderFic(); });
   const g = box.querySelector('.idfg');
   if (!l.length) g.innerHTML = '<p class="hint tiny">Ninguna foto con este filtro.</p>';
@@ -691,7 +692,7 @@ addEventListener('keydown', e => { // atajos dentro de «Identificar individuo»
   const k = e.key.toLowerCase(), ctl = (e.ctrlKey || e.metaKey) && !e.altKey, side = IDV.hov; let done = true;
   if (ctl && k === 'z') idUndo(side, e.shiftKey); else if (ctl && k === 'y') idUndo(side, true);
   else if (e.ctrlKey || e.metaKey || e.altKey) done = false;
-  else if (k === 'escape') { if (IDV.menu) { IDV.menu = null; idSeg(); } else if (IDV.fic) { IDV.fic = false; renderCands(); } else { closeOver(); idClosed(); } } // 1.4.49: Esc primero regresa de la ficha
+  else if (k === 'escape') { if (IDV.menu) { IDV.menu = null; idSeg(); } else if (IDV.fic) ficBack(); else { closeOver(); idClosed(); } } // 1.4.49: Esc primero regresa de la ficha
   else if (k === 'p') idTool(side, 'pen'); else if (k === 'e') idTool(side, 'erase'); else if (k === 'h') idTool(side, 'eye');
   else if (k === 'v') { IDV.pen[side] = IDV.er[side] = false; idHint(); }
   else if (e.key === ' ') { IDV.space = true; }
