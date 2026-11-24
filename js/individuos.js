@@ -121,6 +121,7 @@ async function setLeft(it, first) { // la foto que se identifica (al abrir, o al
     saveReg(); } IDV.flg = false; // 1.4.18: el lado propuesto (como la anterior) solo se guarda al confirmarlo
   IDV.it = it;
   IDV.o = obsOf(it, IDV.c);
+  IDV.fic = false; // 1.4.49: cada foto empieza en la lista de candidatos
   IDV.mosi = {}; // 1.4.47: qué foto de cada candidato se ve en el mosaico
   IDV.out = new Set(); // 1.4.44: candidatos descartados en el mosaico (solo para esta foto)
   renderQueue();
@@ -345,10 +346,14 @@ function setPick(id, p) {
   $('#idv_rcap').textContent = p ? `${id} · ${p.ext ? 'referencia importada' : station(p.it)}${p.it.meta && p.it.meta.date ? ' · ' + p.it.meta.date : ''} · ${(FL[p.o.fl] || 'sin lado').toLowerCase()}${p.o.ref ? ' · referencia' : ''}` : id ? `${id}: no tiene fotos de este lado` : '';
   resetView('r'); IDV.hist.r = []; IDV.redo.r = []; renderVerdict(); loadSide('r', p ? p.it : null);
 }
-function candInfo(k, o, shown) { // aviso (w) y datos de un candidato, para la lista y el mosaico
-  const w = k.fast ? `${k.fast.d.toFixed(0)} km en ${k.fast.h < 1 ? Math.round(k.fast.h * 60) + ' min' : Math.round(k.fast.h) + ' h'}: muy improbable` : k.sexOff ? `sexo distinto: esta foto ${SEXS[o.sex]}` : '';
-  return { w, info: w || (k.other ? 'solo se conoce el otro lado' : !shown.length ? 'sin fotos de este lado' : [k.sameSt ? 'misma estación' : isFinite(k.dmin) ? `a ${k.dmin.toFixed(1)} km` : '', isFinite(k.tmin) ? `${Math.round(k.tmin / DAY)} día(s)` : '', k.rec.marcas ? k.rec.marcas : ''].filter(Boolean).join(' · ') || `${k.ph.length} foto(s)`) };
+function candInfo(k, o, shown) { // aviso (w) y datos de un candidato, para la lista y el mosaico; 1.4.49: textos cortos
+  const w = k.fast ? `Muy lejos (${k.fast.d.toFixed(0)} km en ${k.fast.h < 1 ? Math.round(k.fast.h * 60) + ' min' : Math.round(k.fast.h) + ' h'})` : k.sexOff ? 'Otro sexo' : '';
+  const n = k.ph.length;
+  return { w, info: w || (k.other ? `Solo lado ${o.fl === 'I' ? 'der.' : 'izq.'}` : !shown.length ? 'Sin este lado' : [k.sameSt ? 'Aquí' : isFinite(k.dmin) ? (k.dmin < 1 ? '<1 km' : Math.round(k.dmin) + ' km') : '', isFinite(k.tmin) ? gapTxt(k.tmin) : ''].filter(Boolean).join(' · ') || `${n} foto${n === 1 ? '' : 's'}`) };
 }
+const gapTxt = ms => { const d = ms / DAY; // tiempo entre esta foto y la más cercana del candidato, fácil de leer
+  return d < 1 ? 'mismo día' : d < 14 ? `${Math.round(d)} día${Math.round(d) === 1 ? '' : 's'}` : d < 60 ? `${Math.round(d / 7)} semanas` : d < 365 ? `${Math.round(d / 30.4)} meses` : `${(d / 365).toFixed(d < 730 ? 0 : 1).replace('.0', '')} año${d < 547 ? '' : 's'}`; };
+const candName = k => [k.rec.nombre, SEXS[k.sex] || ''].filter(Boolean).join(' '); // «Pedro ♂»
 function renderCands(repick) { // repick: elegir de nuevo el candidato (si la foto ya tiene individuo, se muestra ese)
   const { it, c, o } = IDV, box = $('#idv_cands'), cw = $('#idv_chipsw'), vd = $('#idv_verdict'); box.after(cw, vd); box.textContent = '';
   if (!o.fl || !o.q) { IDV.cands = [];
@@ -356,6 +361,7 @@ function renderCands(repick) { // repick: elegir de nuevo el candidato (si la fo
     box.innerHTML = '<p class="idph">Elige lado y claridad para verlos.</p>';
     $('#idv_same').disabled = true;
     renderMos();
+    IDV.fic = false; renderFic();
     return; } // 1.4.18
   const l = candidates(it, c, o.fl), zp = IDV.zp;
   IDV.cands = l;
@@ -370,30 +376,17 @@ function renderCands(repick) { // repick: elegir de nuevo el candidato (si la fo
     const { w, info } = candInfo(k, o, shown);
     d.innerHTML = '<button class="ch"><img alt=""><span class="cn"><span></span><small></small></span><b></b></button>';
     d.querySelector('.cn span').textContent = k.id;
-    d.querySelector('.cn small').textContent = [k.rec.nombre, k.sex ? k.sex.toLowerCase() : ''].filter(Boolean).join(' · ');
+    d.querySelector('.cn small').textContent = candName(k);
     const sm = d.querySelector('.ch>b'); sm.textContent = info; sm.title = info; if (w) sm.className = 'w';
     box.appendChild(d);
     const im = d.querySelector('img'), first = shown[0] || [...k.ph].sort(refFirst)[0];
     if (first) thumbAny(im, first.it);
-    d.querySelector('.ch').onclick = () => { if (on && IDV.cmp && !IDV.mos && !IDV.pv) return idCmp(false);
+    d.querySelector('.ch').onclick = () => { IDV.fic = true; // 1.4.49: abre su ficha en la columna
       if (!on || IDV.pv) setPick(k.id, (on && IDV.p) || shown[0] || null);
       IDV.mos = false;
       IDV.pv = null;
       idCmp(true);
       renderCands(); }; // 1.4.19: tocar el candidato abre la comparación; otra vez, la cierra
-    const all = [...shown, ...k.ph.filter(p => !shown.includes(p))]; // 1.4.19: todas sus fotos (las del mismo lado primero)
-    if (on && all.length > 1) { const th = document.createElement('div'); th.className = 'cth';
-      for (const p of all) { const t = document.createElement('img');
-        t._it = p.it;
-        t.alt = '';
-        t.title = `${station(p.it)} · lado ${(FL[p.o.fl] || 'sin dato').toLowerCase()}${p.o.ref ? ' · referencia' : ''}${(p.o.tr || []).length ? ' · rosetas calcadas' : ''}`;
-        t.className = (p === IDV.p ? 'on' : '') + (p.o.ref ? ' ref' : '');
-        t.onclick = () => { setPick(k.id, p);
-          IDV.mos = false;
-          idCmp(true);
-          renderCands(); };
-        th.appendChild(t); }
-      d.appendChild(th); th.querySelectorAll('img').forEach(t => thumbAny(t, t._it)); }
     if (on) d.append(cw, vd);
   }
   if (vis.length < l.length) { const b = document.createElement('button');
@@ -403,6 +396,7 @@ function renderCands(repick) { // repick: elegir de nuevo el candidato (si la fo
       renderCands(); };
     box.appendChild(b); }
   renderMos();
+  renderFic();
   if (!l.length) box.innerHTML = `<p class="hint tiny">Todavía no hay otros individuos de ${esc(c)} en el catálogo. Si es la primera vez que ves a este animal, pulsa «Individuo nuevo».</p>`;
 }
 function renderVerdict() {
@@ -469,6 +463,32 @@ function applyInd(id, opt = {}) { // asigna el individuo a la foto (y, si se pid
     if (S.cur && !$('#lb').hidden) show(S.cur); }); // 1.4.14: la foto pasa a la subcarpeta del individuo
   toast((!id ? 'Esta foto quedó como «no se puede saber».' : first ? `${id} creado${dud ? ' (dudoso)' : ''}. Esta foto es su referencia.` : `${list.length} foto(s) → ${id}${dud ? ' (dudosa)' : ''}${pk && list.includes(pk) ? `, con la de ${camOf(pk)}` : ''}.`) + (nx ? '' : ` Ya no quedan fotos de ${c} ${IDV.mode === 'dud' ? 'dudosas' : 'sin identificar'}.`), first ? 6000 : 3000);
 }
+/* ---------- 1.4.49: ficha del candidato en la columna (sus rosetas y todas sus fotos) ---------- */
+const FICF = { L: 'Este lado', T: 'Todas', R: 'Con rosetas' }, FLS = { I: 'izq.', D: 'der.', A: 'ambos' };
+function renderFic() {
+  const box = $('#idv_fic'), k = IDV.fic && (IDV.cands || []).find(x => x.id === IDV.id);
+  $('#idv_s3').classList.toggle('onfic', !!k); box.hidden = !k; if (!k) return;
+  const o = IDV.o, shown = bestPhotos(k, o.fl, IDV.zp), all = [...shown, ...k.ph.filter(p => !shown.includes(p))], { w, info } = candInfo(k, o, shown);
+  if (IDV.ffid !== k.id) { IDV.ffid = k.id; IDV.ff = shown.length ? 'L' : 'T'; } // el filtro vuelve a «Este lado» con cada candidato
+  const lists = { L: shown, T: all, R: all.filter(p => (p.o.tr || []).length) }, l = lists[IDV.ff], n = k.ph.length;
+  box.innerHTML = `<button class="ficbk"><i class="ic sm">${icon('left')}</i>Candidatos</button><h3></h3><p class="ficn"></p><p class="ficw${w ? ' w' : ''}"></p><div class="ficr"></div><div class="idff">${Object.entries(FICF).map(([f, t]) => `<button data-f="${f}"${f === IDV.ff ? ' class="on"' : ''}>${t} <b>${lists[f].length}</b></button>`).join('')}</div><div class="idfg"></div>`;
+  box.querySelector('h3').textContent = k.id;
+  box.querySelector('.ficn').textContent = [candName(k), `${n} foto${n === 1 ? '' : 's'}`].filter(Boolean).join(' · ');
+  box.querySelector('.ficw').textContent = info;
+  box.querySelector('.ficr').append($('#idv_chipsw')); // las rosetas de siempre (1–9 en el teclado), arriba de las fotos
+  box.querySelector('.ficbk').onclick = () => { IDV.fic = false; renderCands(); };
+  box.querySelectorAll('.idff button').forEach(b => b.onclick = () => { IDV.ff = b.dataset.f; renderFic(); });
+  const g = box.querySelector('.idfg');
+  if (!l.length) g.innerHTML = '<p class="hint tiny">Ninguna foto con este filtro.</p>';
+  for (const p of l) { const b = document.createElement('button');
+    b.className = (p === IDV.p ? 'on' : '') + (shown.includes(p) ? '' : ' off');
+    b.title = phTitle(p);
+    b.innerHTML = `<span><img alt="">${p.o.ref || p.ext ? '<i>★</i>' : ''}${(p.o.tr || []).length ? '<i>✎</i>' : ''}</span><small></small>`;
+    b.querySelector('small').textContent = [p.ext ? 'Referencia' : phWhen(p).slice(0, 10), FLS[p.o.fl]].filter(Boolean).join(' · ');
+    b.onclick = () => { setPick(k.id, p); IDV.mos = false; idCmp(true); renderFic(); };
+    g.appendChild(b);
+    thumbAny(b.querySelector('img'), p.it); }
+}
 /* ---------- 1.4.44: mosaico de candidatos y cámara en par ---------- */
 function renderMos() { // la mejor foto del mismo lado de cada candidato: × descarta a simple vista, tocar compara
   const g = $('#idv_mosg'), { o } = IDV; if (!IDV.mos) return; g.textContent = '';
@@ -481,7 +501,7 @@ function renderMos() { // la mejor foto del mismo lado de cada candidato: × des
     d.className = 'mt' + (out || !p || !bestPhotos(k, o.fl, IDV.zp).length ? ' off' : ''); // 1.4.47: en el mosaico ninguno va marcado
     d.innerHTML = `<button class="mtb"><span class="mti">${p ? '<img alt="">' : '<em>Sin foto de este lado</em>'}${i < 9 ? `<kbd>${i + 1}</kbd>` : ''}${n > 1 ? '<span class="mtc"></span>' : ''}</span><span class="mtn"><b></b><small></small></span><small class="mtx${w && !out ? ' w' : ''}"></small></button><button class="mto" title="${t}" aria-label="${t}"><i class="ic sm">${icon(out ? 'undo' : 'x')}</i></button>${n > 1 ? `<button class="mta l" title="Foto anterior de ${esc(k.id)}" aria-label="Foto anterior"><i class="ic sm">${icon('left')}</i></button><button class="mta r" title="Siguiente foto de ${esc(k.id)}" aria-label="Siguiente foto"><i class="ic sm">${icon('right')}</i></button>` : ''}`;
     d.querySelector('.mtn b').textContent = k.id;
-    d.querySelector('.mtn small').textContent = [k.rec.nombre, k.sex ? k.sex.toLowerCase() : ''].filter(Boolean).join(' · ');
+    d.querySelector('.mtn small').textContent = candName(k);
     d.querySelector('.mtx').textContent = out ? 'descartado' : info;
     d.querySelector('.mtb').onclick = () => mosPick(i);
     d.querySelector('.mto').onclick = () => { if (out) IDV.out.delete(k.id); else IDV.out.add(k.id); renderMos(); };
@@ -544,7 +564,7 @@ function pairShow() { const x = IDV.pk, d = pairDt(x); // la foto de la otra cá
   idCmp(true); }
 // 1.4.15: newInd() abre el formulario de individuo nuevo (más abajo)
 $('#idv_same').onclick = () => { if (IDV.id) applyInd(IDV.id); };
-$('#idv_new').onclick = () => { if (IDV.o.q === 'M') { $('#idv_warn').hidden = false; return; } newInd(); };
+$('#idv_new').onclick = () => { IDV.fic = false; renderFic(); if (IDV.o.q === 'M') { $('#idv_warn').hidden = false; return; } newInd(); }; // 1.4.49: el aviso y el formulario están en la lista, no en la ficha
 $('#idv_wnew').onclick = () => { $('#idv_warn').hidden = true; newInd(true); };
 $('#idv_ns').onclick = $('#idv_wns').onclick = () => applyInd(null);
 document.addEventListener('pointerdown', e => { if (IDV.menu && !$('#idv').hidden && !e.target.closest('.idpkw')) { IDV.menu = null;
@@ -653,7 +673,8 @@ function idUndo(side, again) { const o = sideObs(side), from = again ? IDV.redo 
   if (!o.tr.length) delete o.tr;
   if (side === 'r') IDV.m = h.m;
   trSaved(side); }
-function idTool(side, t) { const o = sideObs(side); if (!o) return;
+function idTool(side, t) { if (t === 'adj') { $('#idv_adjp').hidden = !$('#idv_adjp').hidden; return; } // 1.4.49: brillo y contraste, desde la barra
+  const o = sideObs(side); if (!o) return;
   if (t === 'zone') { IDV.zm = !IDV.zm;
     IDV.pen.l = IDV.er.l = false;
     if (IDV.zm && !IDV.zp) IDV.zp = PARTS.find(p => !zoneOf(IDV.o, p)) || PARTS[0]; }
@@ -670,7 +691,7 @@ addEventListener('keydown', e => { // atajos dentro de «Identificar individuo»
   const k = e.key.toLowerCase(), ctl = (e.ctrlKey || e.metaKey) && !e.altKey, side = IDV.hov; let done = true;
   if (ctl && k === 'z') idUndo(side, e.shiftKey); else if (ctl && k === 'y') idUndo(side, true);
   else if (e.ctrlKey || e.metaKey || e.altKey) done = false;
-  else if (k === 'escape') { if (IDV.menu) { IDV.menu = null; idSeg(); } else { closeOver(); idClosed(); } }
+  else if (k === 'escape') { if (IDV.menu) { IDV.menu = null; idSeg(); } else if (IDV.fic) { IDV.fic = false; renderCands(); } else { closeOver(); idClosed(); } } // 1.4.49: Esc primero regresa de la ficha
   else if (k === 'p') idTool(side, 'pen'); else if (k === 'e') idTool(side, 'erase'); else if (k === 'h') idTool(side, 'eye');
   else if (k === 'v') { IDV.pen[side] = IDV.er[side] = false; idHint(); }
   else if (e.key === ' ') { IDV.space = true; }

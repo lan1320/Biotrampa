@@ -1253,3 +1253,48 @@ html,body{overscroll-behavior:none}
 #idv .idckh{margin-bottom:8px} /* 1.4.46: aire entre lista/mosaico y el primer candidato */
 .mta{position:absolute;top:calc(50% - 36px);width:30px;height:30px;padding:0;border:0;border-radius:50%;background:#0000008c;color:#e6e8e6;display:flex;align-items:center;justify-content:center}.mta.l{left:10px}.mta.r{right:10px}.mta:hover{background:#000000b3}
 .mtc{position:absolute;right:6px;bottom:6px;font-size:11px;line-height:18px;padding:0 6px;border-radius:5px;background:#0000008c;color:#e6e8e6} /* 1.4.47: flechas y número de foto en el mosaico */
+/* ---------- 1.4.49: columna de Identificar rediseñada ---------- */
+.idtools{top:10px;right:10px;gap:2px;padding:4px;border-radius:12px;background:#0b0c0bd9}
+.idtools button{width:34px;height:34px;border-radius:8px}
+.idtools button.on{background:#b0a2ff33;color:#c3b8ff}
+.idstage{position:relative}
+.idadjp{position:absolute;top:58px;right:10px;z-index:3;width:250px;margin:0;padding:12px 14px;border-radius:10px;background:var(--pn);box-shadow:0 10px 30px #0000004d;display:flex;flex-direction:column;gap:8px}
+.idadjp .lnk2{align-self:flex-start}
+.idlc{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:0 2px}
+.idlc .idpk{position:relative;padding:0}
+.idlc .idpkl{position:absolute;left:12px;top:7px;z-index:1;margin:0;font-size:11px;font-weight:400;color:var(--fa);pointer-events:none}
+.idlc .idbox{height:52px;padding:16px 12px 0;border:0;border-radius:10px;background:var(--pn2);font-size:14px;font-weight:500}
+.idlc .idbox.open{box-shadow:0 0 0 2px var(--ac)}
+.idlc .idbox small,.idlc .idbox kbd{display:none}
+.idlc .idbox::after{margin-top:-14px}
+.idfoot3{border-top:0}
+.idprog{display:none}
+#idv_burstl input{appearance:none;-webkit-appearance:none;position:relative;width:30px;height:18px;margin:0;border-radius:9px;background:var(--scr);transition:background-color .15s;flex:none}
+#idv_burstl input::before{content:"";position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:var(--pn);transition:transform .15s var(--ease)}
+#idv_burstl input:checked{background:var(--ac)}#idv_burstl input:checked::before{transform:translateX(12px)}
+#idv .idtools3 .cat{background:none;border:0}
+#idv .idtools3 .cat:hover{background:var(--ac2)}
+#idv .idchip{position:relative;width:34px;height:34px;border:2px solid var(--ln2);border-radius:50%;background:none;font-size:13px;font-weight:600;color:var(--mu);text-decoration:none}
+#idv .idchip.y{border-color:var(--ac);background:var(--act);color:var(--ac)}
+#idv .idchip.n{border-color:var(--danger);background:color-mix(in srgb,var(--danger) 14%,transparent);color:var(--danger);text-decoration:none}
+#idv .idchip.y::after,#idv .idchip.n::after{position:absolute;right:-5px;bottom:-5px;width:16px;height:16px;border-radius:50%;font-size:10px;line-height:16px;text-align:center;color:var(--onac)}
+#idv .idchip.y::after{content:"✓";background:var(--ac)}#idv .idchip.n::after{content:"✕";background:var(--danger);color:#fff}
+#idv_s3.onfic>:not(#idv_fic):not(.idnf){display:none}
+.idfic{flex:1;min-height:0;display:flex;flex-direction:column;gap:4px;padding:0 8px}
+.ficbk{align-self:flex-start;display:flex;align-items:center;gap:4px;border:0;background:none;padding:4px 6px 4px 0;font-size:13px;color:var(--mu)}
+.ficbk:hover{background:none;color:var(--tx)}
+.idfic h3{margin:6px 0 0;font-size:22px;font-weight:700;color:var(--ac)}
+.ficn{margin:0;font-size:13px}.ficw{margin:0;font-size:12px;color:var(--mu)}.ficw.w{color:var(--pe)}
+.ficr{margin:12px 0 4px}.ficr #idv_chipsw{padding:0}#idv .ficr .idchips{display:flex;flex-wrap:wrap;gap:10px;padding:0}
+.idff{display:flex;gap:14px;margin:10px 0 4px}
+.idff button{border:0;background:none;padding:0;font-size:12px;color:var(--fa)}.idff button:hover{background:none;color:var(--tx)}
+.idff button.on{font-weight:600;color:var(--tx)}.idff b{font-weight:600}.idff button.on b{color:var(--ac)}
+.idfg{flex:1;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:10px;padding:2px;overflow:auto}
+.idfg button{display:flex;flex-direction:column;gap:4px;border:0;background:none;padding:0;text-align:left}.idfg button:hover{background:none}
+.idfg button.off{opacity:.45}
+.idfg span{position:relative;display:block;aspect-ratio:3/2;border-radius:8px;overflow:hidden;background:var(--vbg)}
+.idfg button.on span{box-shadow:0 0 0 2px var(--ac)}
+.idfg img{width:100%;height:100%;object-fit:cover;display:block}
+.idfg i{position:absolute;top:3px;left:6px;font-style:normal;font-size:11px;color:#ffd400;text-shadow:0 1px 2px #000}.idfg i+i{left:20px}
+.idfg small{font-size:11px;color:var(--mu)}
+#idv .idadjp{margin:0}
