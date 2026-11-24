@@ -1251,3 +1251,5 @@ html,body{overscroll-behavior:none}
 .idpairc{margin:8px 0 0 10px;font-size:13px}
 .idvw{display:flex;gap:2px;padding:2px;margin-left:8px;border-radius:8px;background:var(--pn2);flex:none;align-self:center}.idvw button{display:flex;align-items:center;justify-content:center;width:30px;height:26px;padding:0;border:0;border-radius:6px;background:none;color:var(--mu)}.idvw button:hover{color:var(--tx)}.idvw button.on{background:var(--pn);color:var(--ac);box-shadow:0 1px 2px #0000001a} /* 1.4.45: lista o mosaico, como en la maqueta */
 #idv .idckh{margin-bottom:8px} /* 1.4.46: aire entre lista/mosaico y el primer candidato */
+.mta{position:absolute;top:calc(50% - 36px);width:30px;height:30px;padding:0;border:0;border-radius:50%;background:#0000008c;color:#e6e8e6;display:flex;align-items:center;justify-content:center}.mta.l{left:10px}.mta.r{right:10px}.mta:hover{background:#000000b3}
+.mtc{position:absolute;right:6px;bottom:6px;font-size:11px;line-height:18px;padding:0 6px;border-radius:5px;background:#0000008c;color:#e6e8e6} /* 1.4.47: flechas y número de foto en el mosaico */

@@ -121,6 +121,7 @@ async function setLeft(it, first) { // la foto que se identifica (al abrir, o al
     saveReg(); } IDV.flg = false; // 1.4.18: el lado propuesto (como la anterior) solo se guarda al confirmarlo
   IDV.it = it;
   IDV.o = obsOf(it, IDV.c);
+  IDV.mosi = {}; // 1.4.47: qué foto de cada candidato se ve en el mosaico
   IDV.out = new Set(); // 1.4.44: candidatos descartados en el mosaico (solo para esta foto)
   renderQueue();
   if (!IDV.o.fl && IDV.lastFl) { IDV.o.fl = IDV.lastFl;
@@ -476,9 +477,9 @@ function renderMos() { // la mejor foto del mismo lado de cada candidato: × des
   if (!o.fl || !o.q) return void (g.innerHTML = '<p class="idmosh">Elige lado y claridad para ver a los candidatos.</p>');
   const l = IDV.mosl = (IDV.cands || []).slice().sort((a, b) => IDV.out.has(a.id) - IDV.out.has(b.id)); // los descartados al final
   if (!l.length) return void (g.innerHTML = `<p class="idmosh">Todavía no hay otros individuos de ${esc(IDV.c)} en el catálogo.</p>`);
-  l.forEach((k, i) => { const shown = bestPhotos(k, o.fl, IDV.zp), p = shown[0], { w, info } = candInfo(k, o, shown), out = IDV.out.has(k.id), d = document.createElement('div'), t = out ? 'Volver a mostrar' : 'Descartar';
-    d.className = 'mt' + (out || !p ? ' off' : '') + (k.id === IDV.id ? ' on' : '');
-    d.innerHTML = `<button class="mtb"><span class="mti">${p ? '<img alt="">' : '<em>Sin foto de este lado</em>'}${i < 9 ? `<kbd>${i + 1}</kbd>` : ''}</span><span class="mtn"><b></b><small></small></span><small class="mtx${w && !out ? ' w' : ''}"></small></button><button class="mto" title="${t}" aria-label="${t}"><i class="ic sm">${icon(out ? 'undo' : 'x')}</i></button>`;
+  l.forEach((k, i) => { const shown = bestPhotos(k, o.fl, IDV.zp), n = shown.length; let j = Math.min(IDV.mosi[k.id] || 0, Math.max(0, n - 1)), p = shown[j]; const { w, info } = candInfo(k, o, shown), out = IDV.out.has(k.id), d = document.createElement('div'), t = out ? 'Volver a mostrar' : 'Descartar';
+    d.className = 'mt' + (out || !p ? ' off' : ''); // 1.4.47: en el mosaico ninguno va marcado
+    d.innerHTML = `<button class="mtb"><span class="mti">${p ? '<img alt="">' : '<em>Sin foto de este lado</em>'}${i < 9 ? `<kbd>${i + 1}</kbd>` : ''}${n > 1 ? '<span class="mtc"></span>' : ''}</span><span class="mtn"><b></b><small></small></span><small class="mtx${w && !out ? ' w' : ''}"></small></button><button class="mto" title="${t}" aria-label="${t}"><i class="ic sm">${icon(out ? 'undo' : 'x')}</i></button>${n > 1 ? `<button class="mta l" title="Foto anterior de ${esc(k.id)}" aria-label="Foto anterior"><i class="ic sm">${icon('left')}</i></button><button class="mta r" title="Siguiente foto de ${esc(k.id)}" aria-label="Siguiente foto"><i class="ic sm">${icon('right')}</i></button>` : ''}`;
     d.querySelector('.mtn b').textContent = k.id;
     d.querySelector('.mtn small').textContent = [k.rec.nombre, k.sex ? k.sex.toLowerCase() : ''].filter(Boolean).join(' · ');
     d.querySelector('.mtx').textContent = out ? 'descartado' : info;
@@ -486,9 +487,13 @@ function renderMos() { // la mejor foto del mismo lado de cada candidato: × des
     d.querySelector('.mto').onclick = () => { if (out) IDV.out.delete(k.id); else IDV.out.add(k.id); renderMos(); };
     g.appendChild(d);
     if (!p) return;
-    const im = d.querySelector('img');
-    thumbAny(im, p.it); // 1.4.45: después de agregarla (la miniatura solo carga en imágenes ya visibles)
-    (p.ext ? refUrl(p.it.ref) : repaired(p.it, p.o.vt).then(b => { const u = URL.createObjectURL(b); IDV.mosu.push(u); return u; })).then(u => { im.src = u; }).catch(() => {}); // 1.4.46: luego la foto completa, para acercarse
+    const im = d.querySelector('img'), load = () => { p = shown[j];
+      im.removeAttribute('src'); im._z = 1; im.style.transform = '';
+      if (n > 1) d.querySelector('.mtc').textContent = `${j + 1}/${n}`;
+      thumbAny(im, p.it); // 1.4.45: después de agregarla (la miniatura solo carga en imágenes ya visibles)
+      (p.ext ? refUrl(p.it.ref) : repaired(p.it, p.o.vt).then(b => { const u = URL.createObjectURL(b); IDV.mosu.push(u); return u; })).then(u => { if (p === shown[j]) im.src = u; }).catch(() => {}); }; // 1.4.46: luego la foto completa, para acercarse
+    load();
+    d.querySelectorAll('.mta').forEach(b => b.onclick = () => { j = (j + (b.classList.contains('l') ? n - 1 : 1)) % n; IDV.mosi[k.id] = j; load(); }); // 1.4.47: cambiar la foto del individuo
     d.querySelector('.mti').addEventListener('wheel', e => { e.preventDefault(); // 1.4.46: rueda o pellizco acerca esa foto donde está el puntero
       const r = e.currentTarget.getBoundingClientRect(), z = Math.min(8, Math.max(1, (im._z || 1) * (e.deltaY < 0 ? 1.2 : 1 / 1.2)));
       im._z = z;
@@ -505,7 +510,7 @@ function mosFit() { // 1.4.46: columnas según cuántos candidatos hay, para que
   g.style.gridTemplateRows = `repeat(${Math.ceil(n / best)}, minmax(0, 1fr))`;
 }
 function mosPick(i) { const k = (IDV.mosl || [])[i]; if (!k) return;
-  setPick(k.id, bestPhotos(k, IDV.o.fl, IDV.zp)[0] || null);
+  const sh = bestPhotos(k, IDV.o.fl, IDV.zp); setPick(k.id, sh[Math.min(IDV.mosi[k.id] || 0, sh.length - 1)] || null); // 1.4.47: la foto que se veía en el mosaico
   IDV.mos = false;
   idCmp(true);
   renderCands(); }
