@@ -471,6 +471,8 @@ function applyInd(id, opt = {}) { // asigna el individuo a la foto (y, si se pid
 /* ---------- 1.4.44: mosaico de candidatos y cámara en par ---------- */
 function renderMos() { // la mejor foto del mismo lado de cada candidato: × descarta a simple vista, tocar compara
   const g = $('#idv_mosg'), { o } = IDV; if (!IDV.mos) return; g.textContent = '';
+  for (const u of IDV.mosu || []) URL.revokeObjectURL(u);
+  IDV.mosu = []; // shortcut: las fotos grandes del último mosaico se liberan al volver a dibujarlo, no al cerrar Identificar
   if (!o.fl || !o.q) return void (g.innerHTML = '<p class="idmosh">Elige lado y claridad para ver a los candidatos.</p>');
   const l = IDV.mosl = (IDV.cands || []).slice().sort((a, b) => IDV.out.has(a.id) - IDV.out.has(b.id)); // los descartados al final
   if (!l.length) return void (g.innerHTML = `<p class="idmosh">Todavía no hay otros individuos de ${esc(IDV.c)} en el catálogo.</p>`);
@@ -483,7 +485,24 @@ function renderMos() { // la mejor foto del mismo lado de cada candidato: × des
     d.querySelector('.mtb').onclick = () => mosPick(i);
     d.querySelector('.mto').onclick = () => { if (out) IDV.out.delete(k.id); else IDV.out.add(k.id); renderMos(); };
     g.appendChild(d);
-    if (p) thumbAny(d.querySelector('img'), p.it); }); // 1.4.45: después de agregarla (la miniatura solo carga en imágenes ya visibles)
+    if (!p) return;
+    const im = d.querySelector('img');
+    thumbAny(im, p.it); // 1.4.45: después de agregarla (la miniatura solo carga en imágenes ya visibles)
+    (p.ext ? refUrl(p.it.ref) : repaired(p.it, p.o.vt).then(b => { const u = URL.createObjectURL(b); IDV.mosu.push(u); return u; })).then(u => { im.src = u; }).catch(() => {}); // 1.4.46: luego la foto completa, para acercarse
+    d.querySelector('.mti').addEventListener('wheel', e => { e.preventDefault(); // 1.4.46: rueda o pellizco acerca esa foto donde está el puntero
+      const r = e.currentTarget.getBoundingClientRect(), z = Math.min(8, Math.max(1, (im._z || 1) * (e.deltaY < 0 ? 1.2 : 1 / 1.2)));
+      im._z = z;
+      im.style.transformOrigin = `${(e.clientX - r.left) / r.width * 100}% ${(e.clientY - r.top) / r.height * 100}%`;
+      im.style.transform = `scale(${z})`; }, { passive: false }); });
+  mosFit();
+}
+function mosFit() { // 1.4.46: columnas según cuántos candidatos hay, para que cada foto (3:2) salga lo más grande posible
+  const g = $('#idv_mosg'), n = g.querySelectorAll('.mt').length; if (!n || g.hidden) return;
+  const W = g.clientWidth - 20, H = g.clientHeight - 20; let best = 1, bs = 0;
+  for (let c = 1; c <= n; c++) { const r = Math.ceil(n / c), w = (W - 10 * (c - 1)) / c, h = (H - 10 * (r - 1)) / r - 44, s = Math.min(w, h * 1.5);
+    if (s > bs) { bs = s; best = c; } }
+  g.style.gridTemplateColumns = `repeat(${best}, minmax(0, 1fr))`;
+  g.style.gridTemplateRows = `repeat(${Math.ceil(n / best)}, minmax(0, 1fr))`;
 }
 function mosPick(i) { const k = (IDV.mosl || [])[i]; if (!k) return;
   setPick(k.id, bestPhotos(k, IDV.o.fl, IDV.zp)[0] || null);
@@ -591,7 +610,7 @@ for (const side of ['l', 'r']) { // zoom y desplazamiento sincronizados; arrastr
     idHint(); }); // 1.4.15: después del recuadro, el lápiz queda listo para calcar
   box.addEventListener('dblclick', () => { if (IDV.pen[side] || IDV.er[side]) return; resetView(side); layoutId(); });
 }
-addEventListener('resize', () => { if (!$('#idv').hidden) layoutId(); });
+addEventListener('resize', () => { if (!$('#idv').hidden) { layoutId(); mosFit(); } });
 
 /* ---------- 1.4.15: lápiz mejorado (borrador, deshacer/rehacer, color, grosor, atajos), cola de pendientes y dudosas, individuo nuevo con formulario ---------- */
 function trSmooth(t) { let p = t.concat([t[0]]); const q = []; // una pasada de suavizado (Chaikin) y el trazo queda cerrado
