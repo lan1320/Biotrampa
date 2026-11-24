@@ -915,7 +915,8 @@ const REFD = 'Referencias de individuos'; // 1.4.15: imágenes de referencia imp
 const isPhoto = n => /\.(jpe?g|png|mp4|mov|m4v|webm|avi)$/i.test(n) && !n.startsWith('._'); // fotos y videos; ._ = archivos ocultos que macOS crea en tarjetas SD
 const isVideo = n => /\.(mp4|mov|m4v|webm|avi)$/i.test(n);
 function newItem(n, h, dir, parts, src, extra) {
-  const cat = catFor(parts), r = (src.reg && src.reg[[...parts, n].join('/')]) || null, o = r && r.o ? r.o.split('/') : null;
+  const r = (src.reg && src.reg[[...parts, n].join('/')]) || null, o = r && r.o ? r.o.split('/') : null, c0 = catFor(parts);
+  const cat = c0 && r && r.obs && !r.obs[c0] && Object.keys(r.obs).find(c => !(r.xt || []).includes(c) && !(r.x || []).some(x => x.c === c)) || c0; // 1.4.55: si el nombre de la carpeta no es el de la especie (p. ej. carpeta con nombre científico o «Leopardus sp.» → Leopardus_sp), manda el nombre guardado en sus datos; si no, sus individuos se quedaban sin fotos
   return { name: n, h, dir, parts, src, cat, size: 0, cls: (r && r.c) || '', origMod: (r && r.m) || null, note: (r && r.n) || '', obs: (r && r.obs) || {}, rev: !!(r && r.rv), revWhy: (r && r.rw) || '', ver: (r && r.vf) || '', verBy: (r && r.vb) || '', bl: (r && r.bl) || '', bb: (r && r.bb) || '', br: (r && r.br) || '',
     extras: cat && r && Array.isArray(r.xt) ? r.xt.filter(c => c && c !== cat).map(c => ({ cat: c })) : [], _x: r && r.x,
     origParts: cat ? (o ? o.slice(0, -1) : null) : parts, origName: cat ? (o ? o[o.length - 1] : n) : n, ...extra };
