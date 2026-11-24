@@ -1249,3 +1249,4 @@ html,body{overscroll-behavior:none}
 #idv_pair button{position:relative}
 #idv_pair span{position:absolute;left:3px;bottom:2px;font-size:11px;line-height:16px;color:#fff;background:#0000008c;padding:0 4px;border-radius:4px}
 .idpairc{margin:8px 0 0 10px;font-size:13px}
+.idvw{display:flex;gap:2px;padding:2px;margin-left:8px;border-radius:8px;background:var(--pn2);flex:none;align-self:center}.idvw button{display:flex;align-items:center;justify-content:center;width:30px;height:26px;padding:0;border:0;border-radius:6px;background:none;color:var(--mu)}.idvw button:hover{color:var(--tx)}.idvw button.on{background:var(--pn);color:var(--ac);box-shadow:0 1px 2px #0000001a} /* 1.4.45: lista o mosaico, como en la maqueta */

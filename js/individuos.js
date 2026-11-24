@@ -145,6 +145,7 @@ function idCmp(on) { IDV.cmp = on;
   $('#idv_r').hidden = !on || IDV.mos;
   $('#idv_mosg').hidden = !IDV.mos; // 1.4.44: el mosaico ocupa el lugar de la otra foto
   $('#idv_mosb').classList.toggle('on', !!IDV.mos);
+  $('#idv_lstb').classList.toggle('on', !IDV.mos);
   $('#idv_stage').classList.toggle('two', on || !!IDV.mos);
   requestAnimationFrame(() => { layoutId();
     drawZones('l');
@@ -479,17 +480,19 @@ function renderMos() { // la mejor foto del mismo lado de cada candidato: × des
     d.querySelector('.mtn b').textContent = k.id;
     d.querySelector('.mtn small').textContent = [k.rec.nombre, k.sex ? k.sex.toLowerCase() : ''].filter(Boolean).join(' · ');
     d.querySelector('.mtx').textContent = out ? 'descartado' : info;
-    if (p) thumbAny(d.querySelector('img'), p.it);
     d.querySelector('.mtb').onclick = () => mosPick(i);
     d.querySelector('.mto').onclick = () => { if (out) IDV.out.delete(k.id); else IDV.out.add(k.id); renderMos(); };
-    g.appendChild(d); });
+    g.appendChild(d);
+    if (p) thumbAny(d.querySelector('img'), p.it); }); // 1.4.45: después de agregarla (la miniatura solo carga en imágenes ya visibles)
 }
 function mosPick(i) { const k = (IDV.mosl || [])[i]; if (!k) return;
   setPick(k.id, bestPhotos(k, IDV.o.fl, IDV.zp)[0] || null);
   IDV.mos = false;
   idCmp(true);
   renderCands(); }
-$('#idv_mosb').onclick = () => { IDV.mos = !IDV.mos; idCmp(IDV.cmp); renderMos(); };
+function mosSet(on) { IDV.mos = on; idCmp(IDV.cmp); renderMos(); }
+$('#idv_mosb').onclick = () => mosSet(true);
+$('#idv_lstb').onclick = () => mosSet(false);
 const PAIRW = 60e3; // shortcut: ventana fija de 60 s entre las dos cámaras del par; si sus relojes difieren más, corrige la hora de una cámara
 function pairShots(it, c) { // fotos de la otra cámara de la misma estación, de la misma especie, tomadas casi al mismo tiempo
   if (!it.src || !it.src.pair || !goodTs(it)) return [];
@@ -652,7 +655,7 @@ addEventListener('keydown', e => { // atajos dentro de «Identificar individuo»
   else if (/^[idan]$/.test(k)) idSet('fl', k.toUpperCase()); // 1.4.18: lado I/D/A/N, claridad 1/2/3, S salta, Enter confirma, ↑ ↓ candidatos
   else if (/^[1-3]$/.test(k) && (!IDV.o.q || IDV.menu === 'q')) idSet('q', 'BRM'[+k - 1]);
   else if (k === 's') { const sk = $('#idv_skip'); if (sk) sk.click(); }
-  else if (k === 'm') $('#idv_mosb').click(); // 1.4.44: lista o mosaico
+  else if (k === 'm') mosSet(!IDV.mos); // 1.4.44: lista o mosaico
   else if (IDV.mos && /^[1-9]$/.test(k)) mosPick(+k - 1);
   else if (k === 'enter' && !$('#idv_same').disabled && !document.activeElement.closest('button,summary,label')) $('#idv_same').click();
   else if (k === 'arrowdown' || k === 'arrowup') idMove(k === 'arrowdown' ? 1 : -1);
