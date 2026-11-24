@@ -245,6 +245,7 @@ function idHint() {
     $('#idv_' + side).classList.toggle('erase', IDV.er[side]); }
 }
 async function loadSide(side, item) {
+  if (side === 'r') { rVid(false); $('#idv_r [data-t=play]').hidden = !(item && isVideo(item.name)); } // 1.4.54
   const box = $('#idv_' + side), img = box.querySelector('img'), tok = IDV['t' + side] = (IDV['t' + side] || 0) + 1; // si se pide otra foto mientras carga, gana la última
   if (!item || box._item !== item) { if (idUrls[side]) URL.revokeObjectURL(idUrls[side]);
     idUrls[side] = null;
@@ -315,8 +316,12 @@ $('#idv_seek').oninput = e => { if (VS.v) { VS.v.pause(); VS.v.currentTime = +e.
 $('#idv_gf').onclick = () => { const v = VS.v;
   if (!v) return;
   v.pause();
+  const n = (IDV.o.tr || []).length + (IDV.o.zn || []).length; // 1.4.54: las rosetas y recuadros se dibujaron sobre el frame anterior
+  if (IDV.o.vt != null && Math.abs(v.currentTime - IDV.o.vt) > .02 && !confirm(`Este frame reemplaza al que guardaste antes${n ? ', y se borrarán las rosetas y recuadros que dibujaste en él' : ''}. ¿Continuar?`)) return;
+  if (IDV.o.vt != null && n) { delete IDV.o.tr; delete IDV.o.zn; }
   IDV.o.vt = v.currentTime;
   saveReg();
+  thumbs.delete(IDV.it); document.querySelectorAll(`img[data-id="${IDV.it.id}"]`).forEach(im => { im.removeAttribute('src'); thumb(im); }); // la miniatura pasa al nuevo frame
   loadSide('l', IDV.it);
   toast('Frame guardado: este cuadro, con sus rosetas, es el que se compara.', 3000); }; // shortcut: las rosetas no se borran al cambiar de cuadro; si se calca en otro momento hay que guardar ese frame
 $('#idv_l .idvt').onpointerdown = e => e.stopPropagation(); // no arrastra la foto
@@ -463,7 +468,17 @@ function applyInd(id, opt = {}) { // asigna el individuo a la foto (y, si se pid
   toast((!id ? 'Esta foto quedó como «no se puede saber».' : first ? `${id} creado${dud ? ' (dudoso)' : ''}. Esta foto es su referencia.` : `${list.length} foto(s) → ${id}${dud ? ' (dudosa)' : ''}${pk && list.includes(pk) ? `, con la de ${camOf(pk)}` : ''}.`) + (nx ? '' : ` Ya no quedan fotos de ${c} ${IDV.mode === 'dud' ? 'dudosas' : 'sin identificar'}.`), first ? 6000 : 3000);
 }
 /* ---------- 1.4.49: ficha del candidato en la columna (sus rosetas y todas sus fotos) ---------- */
-function ficBack() { IDV.fic = false; IDV.pv = null; idCmp(false); renderCands(); } // 1.4.51: regresar a la lista también deja solo tu foto
+function rVid(on) { // 1.4.54: ▶ reproduce a la derecha el video del candidato (sin trazos); el ícono de imagen regresa al frame guardado
+  const box = $('#idv_r'), old = box.querySelector('video.rvid'), p = IDV.pv ? { it: IDV.pv, o: {} } : IDV.p;
+  if (old) { old.pause(); URL.revokeObjectURL(old.src); old.remove(); }
+  box.classList.toggle('rvon', !!on);
+  if (!on || !p || p.ext || !isVideo(p.it.name)) return;
+  p.it.h.getFile().then(f => { if (!box.classList.contains('rvon') || box.querySelector('video.rvid')) return;
+    const v = document.createElement('video');
+    v.className = 'rvid'; v.controls = v.muted = v.playsInline = true; v.src = URL.createObjectURL(f);
+    v.onloadedmetadata = () => { v.currentTime = p.o.vt ?? 0; };
+    box.appendChild(v); }).catch(() => toast('No se pudo abrir el video.', 2500)); }
+function ficBack() { IDV.fic = false; IDV.pv = null; rVid(false); idCmp(false); renderCands(); } // 1.4.51: regresar a la lista también deja solo tu foto
 const FICF = { L: 'Este lado', T: 'Todas', R: 'Con rosetas' }, FLS = { I: 'izq.', D: 'der.', A: 'ambos' };
 function renderFic() {
   const box = $('#idv_fic'), k = IDV.fic && (IDV.cands || []).find(x => x.id === IDV.id), cw = $('#idv_chipsw');
@@ -597,7 +612,7 @@ for (const side of ['l', 'r']) { // zoom y desplazamiento sincronizados; arrastr
     V.y = z === 1 ? 0 : cy - (cy - V.y) * k;
     V.z = z;
     layoutId(); }, { passive: false }); // 1.4.15: el zoom de una foto ya no mueve la otra
-  box.addEventListener('pointerdown', e => { if (e.button !== 0 || e.target.closest('.idtools')) return;
+  box.addEventListener('pointerdown', e => { if (e.button !== 0 || e.target.closest('.idtools, video.rvid')) return;
     const o = sideObs(side);
     let mode = null, a = null;
     if (o && IDV.er[side] && !IDV.space) { const q = imgPt(e), k = q ? trHit(o.tr || [], q, (box.querySelector('img').naturalWidth || 1000) * .012) : -1;
@@ -684,7 +699,8 @@ function idUndo(side, again) { const o = sideObs(side), from = again ? IDV.redo 
   if (!o.tr.length) delete o.tr;
   if (side === 'r') IDV.m = h.m;
   trSaved(side); }
-function idTool(side, t) { if (t === 'adj') { $('#idv_adjp').hidden = !$('#idv_adjp').hidden; return; } // 1.4.49: brillo y contraste, desde la barra
+function idTool(side, t) { if (t === 'play' || t === 'img') return rVid(t === 'play'); // 1.4.54: el video del candidato, a la derecha
+  if (t === 'adj') { $('#idv_adjp').hidden = !$('#idv_adjp').hidden; return; } // 1.4.49: brillo y contraste, desde la barra
   const o = sideObs(side); if (!o) return;
   if (t === 'zone') { IDV.zm = !IDV.zm;
     IDV.pen.l = IDV.er.l = false;
@@ -706,6 +722,7 @@ addEventListener('keydown', e => { // atajos dentro de «Identificar individuo»
   else if (k === 'p') idTool(side, 'pen'); else if (k === 'e') idTool(side, 'erase'); else if (k === 'h') idTool(side, 'eye');
   else if (k === 'v') { IDV.pen[side] = IDV.er[side] = false; idHint(); }
   else if (e.key === ' ') { IDV.space = true; }
+  else if ((k === 'arrowleft' || k === 'arrowright') && IDV.hov === 'r' && $('#idv_r video.rvid')) { const v = $('#idv_r video.rvid'); v.pause(); v.currentTime = Math.max(0, v.currentTime + (k === 'arrowright' ? 1 : -1) / 30); } // 1.4.54
   else if ((k === 'arrowleft' || k === 'arrowright') && !$('#idv_l .idvt').hidden && VS.v) { VS.v.pause();
     VS.v.currentTime = Math.max(0, Math.min(VS.dur, VS.v.currentTime + (k === 'arrowright' ? 1 : -1) / 30)); } // 1.4.35: ← → avanzan o retroceden un cuadro del video
   else if (!$('#idv_nf').hidden) done = false;
@@ -723,7 +740,7 @@ addEventListener('keydown', e => { // atajos dentro de «Identificar individuo»
   else done = false;
   if (done) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
 addEventListener('keyup', e => { if (e.key === ' ') IDV.space = false; });
-function idClosed() { vidFree();
+function idClosed() { vidFree(); rVid(false);
   if (IDV.flg && IDV.o) { delete IDV.o.fl;
     saveReg(); } IDV.flg = false;
   IDV.menu = null;

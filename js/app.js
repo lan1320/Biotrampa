@@ -1107,7 +1107,7 @@ async function thumb(img) {
       thumbUrls.push(url);
       if (img.isConnected) { img.src = url;
         img.classList.remove('lo'); } return; }
-    const bmp = await videoFrame(f), c = document.createElement('canvas');
+    const bmp = await videoFrame(f, false, Object.values(it.obs || {}).map(o => o && o.vt).find(v => v != null)), c = document.createElement('canvas'); // 1.4.54: la miniatura es el frame guardado
     c.width = bmp.width;
     c.height = bmp.height;
     c.getContext('2d').drawImage(bmp, 0, 0);

@@ -1307,3 +1307,6 @@ html,body{overscroll-behavior:none}
 .ficbar{display:flex;align-items:center;justify-content:space-between}
 .ficx{width:32px;height:32px;padding:0;border:0;border-radius:8px;background:none;color:var(--mu);display:flex;align-items:center;justify-content:center}
 .ficx:hover{background:var(--ac2);color:var(--tx)}
+/* 1.4.54: video del candidato a la derecha */
+#idv_r video.rvid{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+#idv_r:not(.rvon) .idtools [data-t=img],#idv_r.rvon .idtools button:not([data-t=img]),#idv_r.rvon .idtools .tsep{display:none}

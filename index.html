@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BioTrampa 1.4</title>
 <link rel="icon" href="data:,"><!-- sin ícono por ahora (icono.svg queda en la carpeta para más adelante) -->
-<link rel="stylesheet" href="css/styles.css?v=1.4.53">
+<link rel="stylesheet" href="css/styles.css?v=1.4.54">
 </head>
 <body class="home">
 <div id="app">
@@ -144,7 +144,7 @@
         <section id="hlast" hidden></section>
         <section class="hprojs"><h2>Proyectos</h2><div id="homelist"><button id="open2" class="hnew"><i class="ic" data-ic="plus"></i><b>Nuevo proyecto</b><span>Haz clic o suelta aquí la carpeta de una cámara</span></button></div></section>
         <span class="sp"></span>
-        <p class="hfoot">También puedes arrastrar una carpeta a esta ventana · Versión 1.4.53</p>
+        <p class="hfoot">También puedes arrastrar una carpeta a esta ventana · Versión 1.4.54</p>
       </div><div id="grid"></div></section>
     <div id="lb" hidden>
       <button id="unfocus" title="Mostrar controles (H o Esc)">Mostrar controles</button>
@@ -227,7 +227,7 @@
       <div class="idtools"><button data-t="pen" title="Calcar rosetas en esta foto (P)" aria-label="Calcar rosetas"><i class="ic" data-ic="pen"></i></button><button data-t="erase" title="Borrar una roseta (E)" aria-label="Borrar una roseta"><i class="ic" data-ic="erase"></i></button><button data-t="zone" title="Recuadro de una parte del cuerpo" aria-label="Recuadro de una parte del cuerpo"><i class="ic" data-ic="crop"></i></button><i class="tsep"></i><button data-t="undo" title="Deshacer (Ctrl+Z)" aria-label="Deshacer"><i class="ic" data-ic="undo"></i></button><button data-t="redo" title="Rehacer (Ctrl+Shift+Z)" aria-label="Rehacer"><i class="ic" data-ic="redo"></i></button><i class="tsep"></i><button data-t="eye" title="Mostrar u ocultar los trazos (H)" aria-label="Mostrar u ocultar los trazos"><i class="ic" data-ic="eye"></i></button><button data-t="color" title="Color del trazo" aria-label="Color del trazo"><span class="tsw"></span></button><button data-t="adj" title="Brillo, contraste y grosor del trazo" aria-label="Brillo, contraste y grosor del trazo"><i class="ic" data-ic="sliders"></i></button></div>
       <span class="idhint" id="idv_lhint" hidden></span><div class="idvt" hidden aria-label="Video"><button id="idv_play" title="Reproducir o pausar (←/→ un cuadro)" aria-label="Reproducir o pausar"></button><input type="range" id="idv_seek" min="0" max="1" step="0.01" value="0" aria-label="Momento del video"><small id="idv_time"></small><button id="idv_gf" title="Este cuadro, con sus rosetas, es el que se compara con los demás individuos">Guardar frame</button></div></div>
     <div class="idimg empty" id="idv_r" hidden><div class="idin"><img alt="Foto del catálogo"><svg class="pts" aria-hidden="true"></svg></div><span class="idlab" id="idv_rcap"></span>
-      <div class="idtools"><button data-t="pen" title="Calcar rosetas (una vez por individuo y lado) (P)" aria-label="Calcar rosetas"><i class="ic" data-ic="pen"></i></button><button data-t="erase" title="Borrar una roseta (E)" aria-label="Borrar una roseta"><i class="ic" data-ic="erase"></i></button><i class="tsep"></i><button data-t="undo" title="Deshacer (Ctrl+Z)" aria-label="Deshacer"><i class="ic" data-ic="undo"></i></button><button data-t="redo" title="Rehacer (Ctrl+Shift+Z)" aria-label="Rehacer"><i class="ic" data-ic="redo"></i></button><i class="tsep"></i><button data-t="eye" title="Mostrar u ocultar los trazos (H)" aria-label="Mostrar u ocultar los trazos"><i class="ic" data-ic="eye"></i></button><button data-t="color" title="Color del trazo" aria-label="Color del trazo"><span class="tsw"></span></button></div>
+      <div class="idtools"><button data-t="pen" title="Calcar rosetas (una vez por individuo y lado) (P)" aria-label="Calcar rosetas"><i class="ic" data-ic="pen"></i></button><button data-t="erase" title="Borrar una roseta (E)" aria-label="Borrar una roseta"><i class="ic" data-ic="erase"></i></button><i class="tsep"></i><button data-t="undo" title="Deshacer (Ctrl+Z)" aria-label="Deshacer"><i class="ic" data-ic="undo"></i></button><button data-t="redo" title="Rehacer (Ctrl+Shift+Z)" aria-label="Rehacer"><i class="ic" data-ic="redo"></i></button><i class="tsep"></i><button data-t="eye" title="Mostrar u ocultar los trazos (H)" aria-label="Mostrar u ocultar los trazos"><i class="ic" data-ic="eye"></i></button><button data-t="color" title="Color del trazo" aria-label="Color del trazo"><span class="tsw"></span></button><button data-t="play" title="Ver el video (← → un cuadro)" aria-label="Ver el video" hidden><i class="ic" data-ic="play"></i></button><button data-t="img" title="Volver al frame guardado" aria-label="Volver al frame guardado"><i class="ic" data-ic="image"></i></button></div>
       <span class="idhint" id="idv_rhint" hidden></span></div>
     <div class="idadj idadjp" id="idv_adjp" hidden><label>Esta foto: brillo <input type="range" id="idv_lb" min="0.5" max="3" step="0.05" value="1"></label><label>contraste <input type="range" id="idv_lc" min="0.5" max="2.5" step="0.05" value="1"></label>
         <label>La otra: brillo <input type="range" id="idv_rb" min="0.5" max="3" step="0.05" value="1"></label><label>contraste <input type="range" id="idv_rc" min="0.5" max="2.5" step="0.05" value="1"></label><label>Grosor del trazo <input type="range" id="idv_trw" min="1" max="6" step="0.5" value="2.2"></label><button class="lnk2" id="idv_adjr">Restablecer</button></div>
@@ -300,8 +300,8 @@
 <input id="filest" type="file" accept=".csv,text/csv" hidden><input id="fileimp" type="file" accept=".json,application/json" hidden><input id="filecsv" type="file" accept=".csv,text/csv" multiple hidden><input id="filebak" type="file" accept=".zip,.json,application/zip,application/json" hidden><input id="filerev" type="file" accept=".csv,text/csv" hidden><input id="fileind" type="file" accept=".json,application/json" hidden><input id="filepkg" type="file" accept=".zip,application/zip" hidden>
 <div id="tip" role="tooltip" hidden></div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
-<script src="js/app.js?v=1.4.53"></script>
-<script src="js/estudio.js?v=1.4.53"></script>
-<script src="js/individuos.js?v=1.4.53"></script>
+<script src="js/app.js?v=1.4.54"></script>
+<script src="js/estudio.js?v=1.4.54"></script>
+<script src="js/individuos.js?v=1.4.54"></script>
 </body>
 </html>
