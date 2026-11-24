@@ -1298,3 +1298,4 @@ html,body{overscroll-behavior:none}
 .idfg i{position:absolute;top:3px;left:6px;font-style:normal;font-size:11px;color:#ffd400;text-shadow:0 1px 2px #000}.idfg i+i{left:20px}
 .idfg small{font-size:11px;color:var(--mu)}
 #idv .idadjp{margin:0}
+#idv_s3:not(.onfic) #idv_chipsw,#idv .idverdict{display:none} /* 1.4.50: las rosetas solo en la ficha; sin la línea del veredicto */

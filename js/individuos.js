@@ -387,7 +387,6 @@ function renderCands(repick) { // repick: elegir de nuevo el candidato (si la fo
       IDV.pv = null;
       idCmp(true);
       renderCands(); }; // 1.4.19: tocar el candidato abre la comparación; otra vez, la cierra
-    if (on) d.append(cw, vd);
   }
   if (vis.length < l.length) { const b = document.createElement('button');
     b.className = 'cat idmore';
@@ -466,16 +465,17 @@ function applyInd(id, opt = {}) { // asigna el individuo a la foto (y, si se pid
 /* ---------- 1.4.49: ficha del candidato en la columna (sus rosetas y todas sus fotos) ---------- */
 const FICF = { L: 'Este lado', T: 'Todas', R: 'Con rosetas' }, FLS = { I: 'izq.', D: 'der.', A: 'ambos' };
 function renderFic() {
-  const box = $('#idv_fic'), k = IDV.fic && (IDV.cands || []).find(x => x.id === IDV.id);
+  const box = $('#idv_fic'), k = IDV.fic && (IDV.cands || []).find(x => x.id === IDV.id), cw = $('#idv_chipsw');
+  if (box.contains(cw)) $('#idv_cands').after(cw); // 1.4.50: sacarlas antes de redibujar la ficha (si no, se borraban y salía «null»)
   $('#idv_s3').classList.toggle('onfic', !!k); box.hidden = !k; if (!k) return;
   const o = IDV.o, shown = bestPhotos(k, o.fl, IDV.zp), all = [...shown, ...k.ph.filter(p => !shown.includes(p))], { w, info } = candInfo(k, o, shown);
-  if (IDV.ffid !== k.id) { IDV.ffid = k.id; IDV.ff = shown.length ? 'L' : 'T'; } // el filtro vuelve a «Este lado» con cada candidato
+  if (IDV.ffid !== k.id) { IDV.ffid = k.id; IDV.ff = 'T'; } // 1.4.50: con cada candidato, todas sus fotos (las de este lado primero)
   const lists = { L: shown, T: all, R: all.filter(p => (p.o.tr || []).length) }, l = lists[IDV.ff], n = k.ph.length;
   box.innerHTML = `<button class="ficbk"><i class="ic sm">${icon('left')}</i>Candidatos</button><h3></h3><p class="ficn"></p><p class="ficw${w ? ' w' : ''}"></p><div class="ficr"></div><div class="idff">${Object.entries(FICF).map(([f, t]) => `<button data-f="${f}"${f === IDV.ff ? ' class="on"' : ''}>${t} <b>${lists[f].length}</b></button>`).join('')}</div><div class="idfg"></div>`;
   box.querySelector('h3').textContent = k.id;
   box.querySelector('.ficn').textContent = [candName(k), `${n} foto${n === 1 ? '' : 's'}`].filter(Boolean).join(' · ');
   box.querySelector('.ficw').textContent = info;
-  box.querySelector('.ficr').append($('#idv_chipsw')); // las rosetas de siempre (1–9 en el teclado), arriba de las fotos
+  box.querySelector('.ficr').append(cw); // las rosetas de siempre (1–9 en el teclado), arriba de las fotos
   box.querySelector('.ficbk').onclick = () => { IDV.fic = false; renderCands(); };
   box.querySelectorAll('.idff button').forEach(b => b.onclick = () => { IDV.ff = b.dataset.f; renderFic(); });
   const g = box.querySelector('.idfg');
