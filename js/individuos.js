@@ -477,8 +477,8 @@ function renderMos() { // la mejor foto del mismo lado de cada candidato: × des
   if (!o.fl || !o.q) return void (g.innerHTML = '<p class="idmosh">Elige lado y claridad para ver a los candidatos.</p>');
   const l = IDV.mosl = (IDV.cands || []).slice().sort((a, b) => IDV.out.has(a.id) - IDV.out.has(b.id)); // los descartados al final
   if (!l.length) return void (g.innerHTML = `<p class="idmosh">Todavía no hay otros individuos de ${esc(IDV.c)} en el catálogo.</p>`);
-  l.forEach((k, i) => { const shown = bestPhotos(k, o.fl, IDV.zp), n = shown.length; let j = Math.min(IDV.mosi[k.id] || 0, Math.max(0, n - 1)), p = shown[j]; const { w, info } = candInfo(k, o, shown), out = IDV.out.has(k.id), d = document.createElement('div'), t = out ? 'Volver a mostrar' : 'Descartar';
-    d.className = 'mt' + (out || !p ? ' off' : ''); // 1.4.47: en el mosaico ninguno va marcado
+  l.forEach((k, i) => { const shown = mosList(k), n = shown.length; let j = Math.min(IDV.mosi[k.id] || 0, Math.max(0, n - 1)), p = shown[j]; const { w, info } = candInfo(k, o, bestPhotos(k, o.fl, IDV.zp)), out = IDV.out.has(k.id), d = document.createElement('div'), t = out ? 'Volver a mostrar' : 'Descartar';
+    d.className = 'mt' + (out || !p || !bestPhotos(k, o.fl, IDV.zp).length ? ' off' : ''); // 1.4.47: en el mosaico ninguno va marcado
     d.innerHTML = `<button class="mtb"><span class="mti">${p ? '<img alt="">' : '<em>Sin foto de este lado</em>'}${i < 9 ? `<kbd>${i + 1}</kbd>` : ''}${n > 1 ? '<span class="mtc"></span>' : ''}</span><span class="mtn"><b></b><small></small></span><small class="mtx${w && !out ? ' w' : ''}"></small></button><button class="mto" title="${t}" aria-label="${t}"><i class="ic sm">${icon(out ? 'undo' : 'x')}</i></button>${n > 1 ? `<button class="mta l" title="Foto anterior de ${esc(k.id)}" aria-label="Foto anterior"><i class="ic sm">${icon('left')}</i></button><button class="mta r" title="Siguiente foto de ${esc(k.id)}" aria-label="Siguiente foto"><i class="ic sm">${icon('right')}</i></button>` : ''}`;
     d.querySelector('.mtn b').textContent = k.id;
     d.querySelector('.mtn small').textContent = [k.rec.nombre, k.sex ? k.sex.toLowerCase() : ''].filter(Boolean).join(' · ');
@@ -509,8 +509,9 @@ function mosFit() { // 1.4.46: columnas según cuántos candidatos hay, para que
   g.style.gridTemplateColumns = `repeat(${best}, minmax(0, 1fr))`;
   g.style.gridTemplateRows = `repeat(${Math.ceil(n / best)}, minmax(0, 1fr))`;
 }
+const mosList = k => { const s = bestPhotos(k, IDV.o.fl, IDV.zp); return [...s, ...k.ph.filter(p => !s.includes(p))]; }; // 1.4.48: todas sus fotos, las del mismo lado primero (como en la lista)
 function mosPick(i) { const k = (IDV.mosl || [])[i]; if (!k) return;
-  const sh = bestPhotos(k, IDV.o.fl, IDV.zp); setPick(k.id, sh[Math.min(IDV.mosi[k.id] || 0, sh.length - 1)] || null); // 1.4.47: la foto que se veía en el mosaico
+  const sh = mosList(k); setPick(k.id, sh[Math.min(IDV.mosi[k.id] || 0, sh.length - 1)] || null); // 1.4.47: la foto que se veía en el mosaico
   IDV.mos = false;
   idCmp(true);
   renderCands(); }
