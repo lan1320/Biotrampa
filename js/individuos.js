@@ -1741,13 +1741,13 @@ function ficForm(id, ph) { const rec = S.ind.list[id], col = $('#indcol'), kids 
     locked(() => indFolders(l)).then(() => { refreshCards(l);
       renderIndPane(); }); }; }
 /* 1.4.56: tabla de Excel de los individuos de la especie con el formato del laboratorio: una fila por foto de un individuo (una ráfaga cuenta
-   como una: misma cámara y pocos segundos, como en la galería), apariciones de ese día y, en Observaciones, las notas de sus fotos */
+   como una: misma cámara y pocos segundos, como en la galería), apariciones de ese día y, en Observaciones, el comportamiento y las notas de sus fotos */
 function indXlsx(id) { const rec = S.ind.list[id], gap = (S.burst || 10) * 1000, ev = [], T = p => phTime(p) || 9e15;
   for (const k of Object.keys(S.ind.list).filter(k => norm(S.ind.list[k].sp) === norm(rec.sp)))
     for (const p of indPhotos(k).sort((a, b) => T(a) - T(b))) { const t = goodTs(p.it) ? fixTs(p.it) : null, cam = p.it.src ? p.it.src.label : '', e = ev.findLast(x => x.k === k && x.cam === cam);
       if (e && t != null && e.t1 != null && t - e.t1 >= 0 && t - e.t1 <= gap && !S.split.has(skey(p.it))) e.t1 = t;
       else ev.push({ k, cam, t, t1: t, n: new Set() });
-      if (p.it.note) ev[ev.length - 1].n.add(p.it.note); }
+      for (const x of [p.o.beh, p.it.note]) if (x) ev[ev.length - 1].n.add(x); } // 1.4.57: comportamiento y nota de la foto
   if (!ev.length) return toast(`Los individuos de ${rec.sp || 'esta especie'} no tienen fotos.`, 3000);
   ev.sort((a, b) => (a.t ?? 9e15) - (b.t ?? 9e15));
   const perDay = {}, f = t => new Date(t), day = e => e.k + '|' + ymd(e.t);
