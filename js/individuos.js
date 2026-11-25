@@ -1706,7 +1706,7 @@ function ficForm(id, ph) { const rec = S.ind.list[id], col = $('#indcol'), kids 
   const fl = [...new Set(photosOf(id).map(p => p.o.fl))];
   col.innerHTML = `<p class="mu idsub">${esc(rec.sp)} · ${fl.includes('A') || (fl.includes('I') && fl.includes('D')) ? 'los dos lados conocidos' : fl.includes('I') ? 'solo se conoce el lado izquierdo' : fl.includes('D') ? 'solo se conoce el lado derecho' : 'sin lado anotado'}</p>
     <div class="ficnav">${[['f', 'ind', 'Ficha', 'Referencias, cifras y datos'], ['p', 'image', 'Fotos', `${ph.length} foto(s)`], ['r', 'clock', 'Registros', 'Estaciones, horas, asociaciones e historial']].map(([k, ic, t, sub]) => `<button data-sec="${k}" class="${(FI.sec || 'f') === k ? 'on' : ''}"><i class="ic">${icon(ic)}</i><span><b>${t}</b><small>${esc(sub)}</small></span></button>`).join('')}</div><hr class="fichr">
-    <div class="indact ficacts"><button id="ind_png"><i class="ic">${icon('download')}</i><span><b>Foto con rosetas</b><small>Guardar en PNG</small></span></button><button id="ind_cmp"><i class="ic">${icon('split')}</i><span><b>Comparar con otro</b><small>Lado a lado</small></span></button><button id="ind_print"><i class="ic">${icon('sheet')}</i><span><b>Imprimir ficha</b><small>O guardar en PDF</small></span></button><button id="ind_join"><i class="ic">${icon('plus')}</i><span><b>Unir otro individuo</b><small>Sus fotos pasan a ${esc(id)}</small></span></button><span class="sp"></span><button id="ind_del" class="danger"><i class="ic">${icon('trash')}</i><span><b>Quitar del catálogo</b><small>${ph.length ? 'Sus fotos quedan sin identificar' : 'No tiene fotos'}</small></span></button></div>`;
+    <div class="indact ficacts"><button id="ind_png"><i class="ic">${icon('download')}</i><span><b>Foto con rosetas</b><small>Guardar en PNG</small></span></button><button id="ind_cmp"><i class="ic">${icon('split')}</i><span><b>Comparar con otro</b><small>Lado a lado</small></span></button><button id="ind_print"><i class="ic">${icon('sheet')}</i><span><b>Imprimir ficha</b><small>O guardar en PDF</small></span></button><button id="ind_xls"><i class="ic">${icon('sheet')}</i><span><b>Tabla de Excel</b><small>Cámara, fecha, hora y notas</small></span></button><button id="ind_join"><i class="ic">${icon('plus')}</i><span><b>Unir otro individuo</b><small>Sus fotos pasan a ${esc(id)}</small></span></button><span class="sp"></span><button id="ind_del" class="danger"><i class="ic">${icon('trash')}</i><span><b>Quitar del catálogo</b><small>${ph.length ? 'Sus fotos quedan sin identificar' : 'No tiene fotos'}</small></span></button></div>`;
   const fb = $('#ficform') || document.createElement('div'); // 1.4.33: los datos van en la sección Ficha
   fb.innerHTML = `<label>Nombre <input data-k="nombre"></label><div class="two"><label>Sexo <select data-k="sexo"><option value="">Sin dato</option><option>Macho</option><option>Hembra</option></select></label><label>Edad <select data-k="edad"><option value="">Sin dato</option>${EDADES.map(e => `<option>${e}</option>`).join('')}</select></label></div>
     ${rec.edad === 'Cría' ? `<label>Es cría de <select data-k="madre"><option value="">No se sabe</option>${Object.keys(S.ind.list).filter(k => k !== id && S.ind.list[k].sexo === 'Hembra' && norm(S.ind.list[k].sp) === norm(rec.sp)).sort().map(k => `<option>${esc(k)}</option>`).join('')}</select></label>` : rec.sexo === 'Hembra' ? `<label class="chk indcr"><input type="checkbox" id="ind_cr" ${rec.crias ? 'checked' : ''}> Se ha visto con crías</label>` : ''}
@@ -1728,6 +1728,7 @@ function ficForm(id, ph) { const rec = S.ind.list[id], col = $('#indcol'), kids 
     exportCard(id, l.find(p => (p.o.tr || []).length) || l[0]); };
   $('#ind_cmp').onclick = () => openCompare(id);
   $('#ind_print').onclick = () => openPrint([id]);
+  $('#ind_xls').onclick = () => indXlsx(id);
   $('#ind_join').onclick = () => { const v = (prompt(`Código del individuo que se une a ${id} (sus fotos pasan a ${id}):`) || '').trim();
     if (v) mergeInd(id, v); };
   $('#ind_del').onclick = () => { const l = ph.map(p => p.it); // 1.4.33: también con fotos: quedan sin identificar y vuelven a la carpeta de su especie
@@ -1739,6 +1740,32 @@ function ficForm(id, ph) { const rec = S.ind.list[id], col = $('#indcol'), kids 
     closeOver();
     locked(() => indFolders(l)).then(() => { refreshCards(l);
       renderIndPane(); }); }; }
+/* 1.4.56: tabla de Excel del individuo con el formato del laboratorio: una fila por aparición (fotos de la misma cámara a menos de
+   «minutos entre eventos» cuentan como una), apariciones de ese día y, en Observaciones, las notas de sus fotos */
+function indXlsx(id) { const rec = S.ind.list[id], gap = evMin() * 60000, ev = [], T = p => phTime(p) || 9e15;
+  for (const p of indPhotos(id).sort((a, b) => T(a) - T(b))) { const t = goodTs(p.it) ? fixTs(p.it) : null, cam = p.it.src ? p.it.src.label : '', e = ev.findLast(x => x.cam === cam);
+    if (e && gap && t != null && e.t1 != null && t - e.t1 <= gap) e.t1 = t;
+    else ev.push({ cam, t, t1: t, n: new Set() });
+    if (p.it.note) ev[ev.length - 1].n.add(p.it.note); }
+  if (!ev.length) return toast(`${id} no tiene fotos.`, 3000);
+  const perDay = {}, f = t => new Date(t);
+  for (const e of ev) if (e.t != null) perDay[ymd(e.t)] = (perDay[ymd(e.t)] || 0) + 1;
+  const rows = ev.map(e => [e.cam, e.t == null ? '' : `${pad(f(e.t).getDate())}/${pad(f(e.t).getMonth() + 1)}/${f(e.t).getFullYear()}`, e.t == null ? '' : `${pad(f(e.t).getHours())}:${pad(f(e.t).getMinutes())}`,
+    e.t == null ? '' : perDay[ymd(e.t)], id + (rec.nombre ? ` (${rec.nombre})` : ''), [...e.n].join('; ')]);
+  download(xlsxBlob(`Identificación de individuos de ${rec.sp || 'la especie'}`, ['No. de cámara', 'Fecha', 'Hora', 'Apariciones por día', rec.sp || 'Individuo', 'Observaciones'], rows), `individuo_${folder(id)}_${ymd(Date.now())}.xlsx`);
+  toast(`Tabla de ${id}: ${ev.length} aparición(es).`, 4000); }
+function xlsxBlob(title, head, rows) { // .xlsx mínimo hecho a mano (sin librerías): título combinado arriba, encabezados en negritas y bordes
+  const X = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>', M = 'http://schemas.openxmlformats.org/', col = i => String.fromCharCode(65 + i), all = [head.map((_, i) => i ? '' : title), head, ...rows];
+  const cell = (v, r, i, st) => typeof v === 'number' ? `<c r="${col(i)}${r}" s="${st}"><v>${v}</v></c>` : `<c r="${col(i)}${r}" s="${st}" t="inlineStr"><is><t>${esc(v ?? '')}</t></is></c>`;
+  const w = head.map((_, i) => Math.min(60, Math.max(10, ...all.slice(1).map(r => String(r[i] ?? '').length)) + 2));
+  const sheet = `${X}<worksheet xmlns="${M}spreadsheetml/2006/main"><cols>${w.map((x, i) => `<col min="${i + 1}" max="${i + 1}" width="${x}" customWidth="1"/>`).join('')}</cols><sheetData>${all.map((r, j) => `<row r="${j + 1}">${r.map((v, i) => cell(v, j + 1, i, j ? (j === 1 ? 3 : 2) : 1)).join('')}</row>`).join('')}</sheetData><mergeCells count="1"><mergeCell ref="A1:${col(head.length - 1)}1"/></mergeCells></worksheet>`;
+  const styles = `${X}<styleSheet xmlns="${M}spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD9E1F2"/></patternFill></fill></fills><borders count="2"><border/><border><left style="thin"/><right style="thin"/><top style="thin"/><bottom style="thin"/><diagonal/></border></borders><cellStyleXfs count="1"><xf/></cellStyleXfs><cellXfs count="4"><xf/><xf fontId="1" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf><xf borderId="1" applyBorder="1"/><xf fontId="1" borderId="1" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf></cellXfs></styleSheet>`;
+  const rel = (id, type, target) => `<Relationship Id="${id}" Type="${M}officeDocument/2006/relationships/${type}" Target="${target}"/>`, ct = 'application/vnd.openxmlformats-officedocument.spreadsheetml.';
+  return new Blob([zipStore([['[Content_Types].xml', `${X}<Types xmlns="${M}package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="${ct}sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="${ct}worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="${ct}styles+xml"/></Types>`],
+    ['_rels/.rels', `${X}<Relationships xmlns="${M}package/2006/relationships">${rel('rId1', 'officeDocument', 'xl/workbook.xml')}</Relationships>`],
+    ['xl/workbook.xml', `${X}<workbook xmlns="${M}spreadsheetml/2006/main" xmlns:r="${M}officeDocument/2006/relationships"><sheets><sheet name="Individuos" sheetId="1" r:id="rId1"/></sheets></workbook>`],
+    ['xl/_rels/workbook.xml.rels', `${X}<Relationships xmlns="${M}package/2006/relationships">${rel('rId1', 'worksheet', 'worksheets/sheet1.xml')}${rel('rId2', 'styles', 'styles.xml')}</Relationships>`],
+    ['xl/worksheets/sheet1.xml', sheet], ['xl/styles.xml', styles]])], { type: ct + 'sheet' }); }
 function ficPhoto(id) { const L = ficList(id);
   FI.open = Math.max(0, Math.min(FI.open, L.length - 1));
   const p = L[FI.open], tok = ++FI.tok, rec = S.ind.list[id];
